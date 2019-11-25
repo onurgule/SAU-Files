@@ -1,0 +1,6 @@
+2;31792752938;Onur Osman;GÅle
+3;31892852938;Mert;ôzmanav
+4;31792852938;Onur;Gule
+5;31892852938;asd;dsa
+6;31792752938;Onur;Gule
+7;31792752938;Onur Osman;GÅle

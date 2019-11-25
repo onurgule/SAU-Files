@@ -1,0 +1,14 @@
+﻿  2BG171210021Odev3.cpp
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(53): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(65): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(76): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(88): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(114): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(112): warning C4101: 'kharfsayisi': unreferenced local variable
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(139): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(147): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(137): warning C4101: 'kharfsayisi': unreferenced local variable
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(167): warning C4018: '<': signed/unsigned mismatch
+c:\users\m2hes\documents\visual studio 2017\projects\2b_g171210021_odev3\2b_g171210021_odev3\2bg171210021odev3.cpp(165): warning C4101: 'kharfsayisi': unreferenced local variable
+  2B_G171210021_Odev3.vcxproj -> C:\Users\m2hes\Documents\Visual Studio 2017\Projects\2B_G171210021_Odev3\Debug\2B_G171210021_Odev3.exe
+  2B_G171210021_Odev3.vcxproj -> C:\Users\m2hes\Documents\Visual Studio 2017\Projects\2B_G171210021_Odev3\Debug\2B_G171210021_Odev3.pdb (Partial PDB)

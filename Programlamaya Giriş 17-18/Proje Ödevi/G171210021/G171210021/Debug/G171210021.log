@@ -1,0 +1,5 @@
+﻿  G171210021.cpp
+c:\users\m2hes\documents\visual studio 2017\projects\g171210021\g171210021\g171210021.cpp(698): warning C4244: 'argument': conversion from 'double' to 'DWORD', possible loss of data
+c:\users\m2hes\documents\visual studio 2017\projects\g171210021\g171210021\g171210021.cpp(707): warning C4244: 'argument': conversion from 'double' to 'DWORD', possible loss of data
+  G171210021.vcxproj -> C:\Users\m2hes\Documents\Visual Studio 2017\Projects\G171210021\Debug\G171210021.exe
+  G171210021.vcxproj -> C:\Users\m2hes\Documents\Visual Studio 2017\Projects\G171210021\Debug\G171210021.pdb (Partial PDB)
