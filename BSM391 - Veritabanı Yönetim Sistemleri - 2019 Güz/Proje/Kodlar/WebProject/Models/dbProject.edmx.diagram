@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="97c0d7f4b2334de7a627a21e1633cea6" Name="Diagram1" ZoomLevel="67" >
+        <EntityTypeShape EntityType="dbModel.Users" Width="1.5" PointX="0.5" PointY="1.625" />
+        <EntityTypeShape EntityType="dbModel.Action" Width="1.5" PointX="3.75" PointY="0.75" />
+        <EntityTypeShape EntityType="dbModel.Budgets" Width="1.5" PointX="11" PointY="6.375" />
+        <EntityTypeShape EntityType="dbModel.Joins" Width="1.5" PointX="2.75" PointY="3.75" />
+        <EntityTypeShape EntityType="dbModel.BudgetTypes" Width="1.5" PointX="0.75" PointY="7.25" />
+        <EntityTypeShape EntityType="dbModel.Diller" Width="1.5" PointX="6.375" PointY="0.75" />
+        <EntityTypeShape EntityType="dbModel.Girisler" Width="1.5" PointX="3" PointY="6.625" />
+        <EntityTypeShape EntityType="dbModel.Iller" Width="1.5" PointX="4.875" PointY="6.875" />
+        <EntityTypeShape EntityType="dbModel.Kurlar" Width="1.5" PointX="8.375" PointY="3.375" />
+        <EntityTypeShape EntityType="dbModel.Oncelikler" Width="1.5" PointX="6.75" PointY="6.875" />
+        <EntityTypeShape EntityType="dbModel.ParaBirimleri" Width="1.5" PointX="6" PointY="3.5" />
+        <EntityTypeShape EntityType="dbModel.sysdiagrams" Width="1.5" PointX="8.375" PointY="0.75" />
+        <EntityTypeShape EntityType="dbModel.Yetkiler" Width="1.5" PointX="10.125" PointY="4.375" />
+        <EntityTypeShape EntityType="dbModel.database_firewall_rules" Width="1.5" PointX="8.625" PointY="6.75" />
+        <AssociationConnector Association="dbModel.FK_Action_Budgets" />
+        <AssociationConnector Association="dbModel.FK_Action_Users" />
+        <AssociationConnector Association="dbModel.FK_Budgets_BudgetTypes" />
+        <AssociationConnector Association="dbModel.FK_Joins_Budgets" />
+        <AssociationConnector Association="dbModel.FK_Users_Budgets" />
+        <AssociationConnector Association="dbModel.FK_Girisler_Users" />
+        <AssociationConnector Association="dbModel.FK_Joins_Users" />
+        <AssociationConnector Association="dbModel.FK_Kurlar_Kurlar" />
+        <AssociationConnector Association="dbModel.FK_Users_Yetkiler1" />
+        <AssociationConnector Association="dbModel.FK_Budgets_Oncelikler" />
+        <AssociationConnector Association="dbModel.FK_Users_Iller" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>

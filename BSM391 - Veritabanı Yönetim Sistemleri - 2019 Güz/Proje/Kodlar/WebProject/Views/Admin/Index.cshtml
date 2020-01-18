@@ -1,0 +1,53 @@
+﻿@model WebProject.Models.HomeVar
+@{
+    ViewBag.Title = "Admin Panel";
+}
+<div class="dashboard-wrapper">
+    <div class="container-fluid dashboard-content">
+        <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <h5 class="card-header">@Resource.Uyeler</h5>
+                <div class="card-body">
+                    <label style="list-style-type:none;color:red;">@Html.ValidationSummary()</label>
+                    <div class="table-responsive">
+                        <table class="table no-wrap p-table">
+                            <thead class="bg-light">
+                                <tr class="border-0">
+                                    <th class="border-0">#</th>
+                                    <th class="border-0">@Resource.FirstName</th>
+                                    <th class="border-0">Email</th>
+                                    <th class="border-0">@Resource.Yetki</th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var hacn = 0;}
+                                @foreach (var item in Model.listUsers.Where(x=>x.UID != 9).OrderByDescending(x => x.UID))
+                                {
+                                    hacn++;
+                                <tr>
+                                    <td>@hacn</td>
+                                    <td>@item.Ad @item.Soyad </td>
+                                    <td>@item.Email</td>
+                                    <td><a href="@Url.Action("UserAdmin",new { UID=item.UID })" style="color:orange">@Model.listYetkiler.Where(x => x.YID == item.Yetki).FirstOrDefault().Yetki</a></td>
+                                    <td><a href="@Url.Action("UserSil",new { UID=item.UID })" style="color:red">@Resource.Sil</a></td>
+                                </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+@*Burada yukarıda bir navbar olsun sadece bütçen ve geri(homescreen) yazsın. sonra tüm userları listelesin orda user sil filan yaparız userı admin yap yaparız... 1 saatimizi almaz.*@
+
+<script src="~/Content/jquery/jquery-3.3.1.min.js"></script>
+<script>
+    $('#navbarNavCollapse').click(function () {
+        $('#navbarNav').toggleClass("show");
+    });
+</script>

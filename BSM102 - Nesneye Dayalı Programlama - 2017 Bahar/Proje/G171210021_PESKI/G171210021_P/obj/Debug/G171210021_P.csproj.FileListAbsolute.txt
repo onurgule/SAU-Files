@@ -1,0 +1,10 @@
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\bin\Debug\G171210021_P.exe.config
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\bin\Debug\G171210021_P.exe
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\bin\Debug\G171210021_P.pdb
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.csprojResolveAssemblyReference.cache
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.frmAna.resources
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.Properties.Resources.resources
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.csproj.GenerateResource.Cache
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.csproj.CoreCompileInputs.cache
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.exe
+C:\Users\m2hes\Source\repos\G171210021_P\G171210021_P\obj\Debug\G171210021_P.pdb

@@ -1,0 +1,67 @@
+﻿@model WebProject.Models.HomeVar
+@{
+    ViewBag.Title = "ButcendenCikar";
+}
+<div class="dashboard-wrapper">
+    <div class="container-fluid dashboard-content">
+        <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <h5 class="card-header">@Resource.ButcedenCikart</h5>
+                <div class="card-body">
+                    @using (Html.BeginForm())
+                    {
+
+                        <div class="form-group row">
+                            <label for="Soyad" class="col-3 col-lg-2 col-form-label text-right">@Resource.FirstName</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.TextBoxFor(x => x.user.Ad, new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="detay" class="col-3 col-lg-2 col-form-label text-right">@Resource.LastName</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.TextBoxFor(x => x.user.Soyad, new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="detay" class="col-3 col-lg-2 col-form-label text-right">Email</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.TextBoxFor(x => x.user.Email, new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="detay" class="col-3 col-lg-2 col-form-label text-right">@Resource.Password</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.TextBoxFor(x => x.user.Password, new { @class = "form-control", @required = "true", @type = "password" })
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="Ad" class="col-3 col-lg-2 col-form-label text-right">@Resource.VarsayilanButce</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.DropDownListFor(x => x.user.DefaultBudget, new SelectList(Model.listBudgets, "BID", "Name", Model.user.DefaultBudget), new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="Ad" class="col-3 col-lg-2 col-form-label text-right">@Resource.City</label>
+                            <div class="col-9 col-lg-10">
+                                @Html.DropDownListFor(x => x.user.Sehir, new SelectList(Model.listIller, "id", "sehir", Model.user.Sehir), new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+
+
+                        <div class="row pt-2 pt-sm-5 mt-1">
+                            <div class="col-sm-6 pl-0">
+                                <p class="text-right">
+                                    <button type="submit" class="btn btn-space btn-primary">@Resource.BilgileriniDegistir</button>
+                                    <button class="btn btn-space btn-secondary">@Resource.Iptal</button>
+                                </p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

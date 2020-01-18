@@ -1,0 +1,6 @@
+if(sizeof(komutlar)/sizeof(char *) == 0)
+				printf("aga bos");
+				else{
+					strcpy(komutlar[kk], " ");
+					strcpy(komutlar[kk], args[o]);
+				}

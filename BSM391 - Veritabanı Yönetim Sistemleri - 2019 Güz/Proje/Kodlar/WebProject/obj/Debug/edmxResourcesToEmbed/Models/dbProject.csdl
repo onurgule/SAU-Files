@@ -1,0 +1,429 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="dbModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+  <EntityContainer Name="dbEntities" annotation:LazyLoadingEnabled="true">
+    <EntitySet Name="Users" EntityType="dbModel.Users" />
+    <EntitySet Name="Action" EntityType="dbModel.Action" />
+    <EntitySet Name="Budgets" EntityType="dbModel.Budgets" />
+    <EntitySet Name="Joins" EntityType="dbModel.Joins" />
+    <EntitySet Name="BudgetTypes" EntityType="dbModel.BudgetTypes" />
+    <EntitySet Name="Diller" EntityType="dbModel.Diller" />
+    <EntitySet Name="Girisler" EntityType="dbModel.Girisler" />
+    <EntitySet Name="Iller" EntityType="dbModel.Iller" />
+    <EntitySet Name="Kurlar" EntityType="dbModel.Kurlar" />
+    <EntitySet Name="Oncelikler" EntityType="dbModel.Oncelikler" />
+    <EntitySet Name="ParaBirimleri" EntityType="dbModel.ParaBirimleri" />
+    <EntitySet Name="sysdiagrams" EntityType="dbModel.sysdiagrams" />
+    <EntitySet Name="Yetkiler" EntityType="dbModel.Yetkiler" />
+    <EntitySet Name="database_firewall_rules" EntityType="dbModel.database_firewall_rules" />
+    <AssociationSet Name="FK_Action_Budgets" Association="dbModel.FK_Action_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Action" EntitySet="Action" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Action_Users" Association="dbModel.FK_Action_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Action" EntitySet="Action" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Budgets_BudgetTypes" Association="dbModel.FK_Budgets_BudgetTypes">
+      <End Role="BudgetTypes" EntitySet="BudgetTypes" />
+      <End Role="Budgets" EntitySet="Budgets" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Joins_Budgets" Association="dbModel.FK_Joins_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Joins" EntitySet="Joins" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Budgets" Association="dbModel.FK_Users_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Girisler_Users" Association="dbModel.FK_Girisler_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Girisler" EntitySet="Girisler" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Joins_Users" Association="dbModel.FK_Joins_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Joins" EntitySet="Joins" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Kurlar_Kurlar" Association="dbModel.FK_Kurlar_Kurlar">
+      <End Role="ParaBirimleri" EntitySet="ParaBirimleri" />
+      <End Role="Kurlar" EntitySet="Kurlar" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Yetkiler1" Association="dbModel.FK_Users_Yetkiler1">
+      <End Role="Yetkiler" EntitySet="Yetkiler" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+    <FunctionImport Name="ButceSil">
+      <Parameter Name="BID" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="GirisYap" ReturnType="Collection(dbModel.GirisYap_Result)">
+      <Parameter Name="Email" Mode="In" Type="String" />
+      <Parameter Name="Password" Mode="In" Type="String" />
+    </FunctionImport>
+    <FunctionImport Name="KayitOl">
+      <Parameter Name="Ad" Mode="In" Type="String" />
+      <Parameter Name="Soyad" Mode="In" Type="String" />
+      <Parameter Name="Email" Mode="In" Type="String" />
+      <Parameter Name="Password" Mode="In" Type="String" />
+      <Parameter Name="Sehir" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="sp_alterdiagram">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+      <Parameter Name="version" Mode="In" Type="Int32" />
+      <Parameter Name="definition" Mode="In" Type="Binary" />
+    </FunctionImport>
+    <FunctionImport Name="sp_creatediagram">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+      <Parameter Name="version" Mode="In" Type="Int32" />
+      <Parameter Name="definition" Mode="In" Type="Binary" />
+    </FunctionImport>
+    <FunctionImport Name="sp_dropdiagram">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="sp_helpdiagramdefinition" ReturnType="Collection(dbModel.sp_helpdiagramdefinition_Result)">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="sp_helpdiagrams" ReturnType="Collection(dbModel.sp_helpdiagrams_Result)">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="sp_renamediagram">
+      <Parameter Name="diagramname" Mode="In" Type="String" />
+      <Parameter Name="owner_id" Mode="In" Type="Int32" />
+      <Parameter Name="new_diagramname" Mode="In" Type="String" />
+    </FunctionImport>
+    <FunctionImport Name="sp_upgraddiagrams" />
+    <FunctionImport Name="TumButcelerim" ReturnType="Collection(dbModel.TumButcelerim_Result)">
+      <Parameter Name="UID" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <AssociationSet Name="FK_Budgets_Oncelikler" Association="dbModel.FK_Budgets_Oncelikler">
+      <End Role="Oncelikler" EntitySet="Oncelikler" />
+      <End Role="Budgets" EntitySet="Budgets" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Iller" Association="dbModel.FK_Users_Iller">
+      <End Role="Iller" EntitySet="Iller" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+    <FunctionImport Name="ButceOlustur">
+      <Parameter Name="Name" Mode="In" Type="String" />
+      <Parameter Name="BTID" Mode="In" Type="Int32" />
+      <Parameter Name="Oncelik" Mode="In" Type="Int32" />
+      <Parameter Name="UID" Mode="In" Type="Int32" />
+    </FunctionImport>
+  </EntityContainer>
+  <EntityType Name="Users">
+    <Key>
+      <PropertyRef Name="UID" />
+    </Key>
+    <Property Name="UID" Type="Int32" Nullable="false" />
+    <Property Name="Email" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+    <Property Name="Password" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+    <Property Name="Ad" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+    <Property Name="Soyad" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+    <Property Name="DefaultBudget" Type="Int32" />
+    <Property Name="Yetki" Type="Int32" Nullable="false" />
+    <Property Name="Sehir" Type="Int32" />
+    <NavigationProperty Name="Action" Relationship="dbModel.FK_Action_Users" FromRole="Users" ToRole="Action" />
+    <NavigationProperty Name="Budgets" Relationship="dbModel.FK_Users_Budgets" FromRole="Users" ToRole="Budgets" />
+    <NavigationProperty Name="Girisler" Relationship="dbModel.FK_Girisler_Users" FromRole="Users" ToRole="Girisler" />
+    <NavigationProperty Name="Joins" Relationship="dbModel.FK_Joins_Users" FromRole="Users" ToRole="Joins" />
+    <NavigationProperty Name="Yetkiler" Relationship="dbModel.FK_Users_Yetkiler1" FromRole="Users" ToRole="Yetkiler" />
+    <NavigationProperty Name="Iller" Relationship="dbModel.FK_Users_Iller" FromRole="Users" ToRole="Iller" />
+    <Property Name="IslemHacmi" Type="Decimal" Precision="18" Scale="2" />
+  </EntityType>
+  <EntityType Name="Action">
+    <Key>
+      <PropertyRef Name="GID" />
+    </Key>
+    <Property Name="GID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Type" Type="Int32" Nullable="false" />
+    <Property Name="Amount" Type="Decimal" Nullable="false" Precision="18" Scale="2" />
+    <Property Name="Description" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+    <Property Name="Date" Type="DateTime" Precision="3" />
+    <Property Name="BID" Type="Int32" Nullable="false" />
+    <Property Name="UID" Type="Int32" Nullable="false" />
+    <NavigationProperty Name="Budgets" Relationship="dbModel.FK_Action_Budgets" FromRole="Action" ToRole="Budgets" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Action_Users" FromRole="Action" ToRole="Users" />
+  </EntityType>
+  <EntityType Name="Budgets">
+    <Key>
+      <PropertyRef Name="BID" />
+    </Key>
+    <Property Name="BID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Name" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+    <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+    <Property Name="BTID" Type="Int32" />
+    <NavigationProperty Name="Action" Relationship="dbModel.FK_Action_Budgets" FromRole="Budgets" ToRole="Action" />
+    <NavigationProperty Name="BudgetTypes" Relationship="dbModel.FK_Budgets_BudgetTypes" FromRole="Budgets" ToRole="BudgetTypes" />
+    <NavigationProperty Name="Joins" Relationship="dbModel.FK_Joins_Budgets" FromRole="Budgets" ToRole="Joins" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Users_Budgets" FromRole="Budgets" ToRole="Users" />
+    <Property Name="Oncelik" Type="Int32" Nullable="false" />
+    <NavigationProperty Name="Oncelikler" Relationship="dbModel.FK_Budgets_Oncelikler" FromRole="Budgets" ToRole="Oncelikler" />
+  </EntityType>
+  <EntityType Name="Joins">
+    <Key>
+      <PropertyRef Name="PID" />
+    </Key>
+    <Property Name="PID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="BID" Type="Int32" Nullable="false" />
+    <Property Name="UID" Type="Int32" Nullable="false" />
+    <NavigationProperty Name="Budgets" Relationship="dbModel.FK_Joins_Budgets" FromRole="Joins" ToRole="Budgets" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Joins_Users" FromRole="Joins" ToRole="Users" />
+  </EntityType>
+  <EntityType Name="BudgetTypes">
+    <Key>
+      <PropertyRef Name="BTID" />
+    </Key>
+    <Property Name="BTID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Type" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+    <NavigationProperty Name="Budgets" Relationship="dbModel.FK_Budgets_BudgetTypes" FromRole="BudgetTypes" ToRole="Budgets" />
+  </EntityType>
+  <EntityType Name="Diller">
+    <Key>
+      <PropertyRef Name="DID" />
+    </Key>
+    <Property Name="DID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Dil" Type="String" MaxLength="10" FixedLength="false" Unicode="true" />
+  </EntityType>
+  <EntityType Name="Girisler">
+    <Key>
+      <PropertyRef Name="GID" />
+    </Key>
+    <Property Name="GID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="UID" Type="Int32" Nullable="false" />
+    <Property Name="Date" Type="DateTime" Precision="3" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Girisler_Users" FromRole="Girisler" ToRole="Users" />
+  </EntityType>
+  <EntityType Name="Iller">
+    <Key>
+      <PropertyRef Name="id" />
+    </Key>
+    <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="sehir" Type="String" MaxLength="255" FixedLength="false" Unicode="true" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Users_Iller" FromRole="Iller" ToRole="Users" />
+  </EntityType>
+  <EntityType Name="Kurlar">
+    <Key>
+      <PropertyRef Name="KID" />
+    </Key>
+    <Property Name="KID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="PBID" Type="Int32" />
+    <Property Name="Kur" Type="Double" />
+    <NavigationProperty Name="ParaBirimleri" Relationship="dbModel.FK_Kurlar_Kurlar" FromRole="Kurlar" ToRole="ParaBirimleri" />
+  </EntityType>
+  <EntityType Name="Oncelikler">
+    <Key>
+      <PropertyRef Name="OID" />
+    </Key>
+    <Property Name="OID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Oncelik" Type="String" MaxLength="10" FixedLength="true" Unicode="true" />
+    <NavigationProperty Name="Budgets" Relationship="dbModel.FK_Budgets_Oncelikler" FromRole="Oncelikler" ToRole="Budgets" />
+  </EntityType>
+  <EntityType Name="ParaBirimleri">
+    <Key>
+      <PropertyRef Name="PBID" />
+    </Key>
+    <Property Name="PBID" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="ParaBirimi" Type="String" MaxLength="25" FixedLength="false" Unicode="true" />
+    <Property Name="Simge" Type="String" MaxLength="5" FixedLength="false" Unicode="true" />
+    <NavigationProperty Name="Kurlar" Relationship="dbModel.FK_Kurlar_Kurlar" FromRole="ParaBirimleri" ToRole="Kurlar" />
+  </EntityType>
+  <EntityType Name="sysdiagrams">
+    <Key>
+      <PropertyRef Name="diagram_id" />
+    </Key>
+    <Property Name="name" Type="String" Nullable="false" MaxLength="128" FixedLength="false" Unicode="true" />
+    <Property Name="principal_id" Type="Int32" Nullable="false" />
+    <Property Name="diagram_id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="version" Type="Int32" />
+    <Property Name="definition" Type="Binary" MaxLength="Max" FixedLength="false" />
+  </EntityType>
+  <EntityType Name="Yetkiler">
+    <Key>
+      <PropertyRef Name="YID" />
+    </Key>
+    <Property Name="YID" Type="Int32" Nullable="false" />
+    <Property Name="Yetki" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+    <NavigationProperty Name="Users" Relationship="dbModel.FK_Users_Yetkiler1" FromRole="Yetkiler" ToRole="Users" />
+  </EntityType>
+  <EntityType Name="database_firewall_rules">
+    <Key>
+      <PropertyRef Name="id" />
+      <PropertyRef Name="name" />
+      <PropertyRef Name="start_ip_address" />
+      <PropertyRef Name="end_ip_address" />
+      <PropertyRef Name="create_date" />
+      <PropertyRef Name="modify_date" />
+    </Key>
+    <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="name" Type="String" Nullable="false" MaxLength="128" FixedLength="false" Unicode="true" />
+    <Property Name="start_ip_address" Type="String" Nullable="false" MaxLength="45" FixedLength="false" Unicode="false" />
+    <Property Name="end_ip_address" Type="String" Nullable="false" MaxLength="45" FixedLength="false" Unicode="false" />
+    <Property Name="create_date" Type="DateTime" Nullable="false" Precision="3" />
+    <Property Name="modify_date" Type="DateTime" Nullable="false" Precision="3" />
+  </EntityType>
+  <Association Name="FK_Action_Budgets">
+    <End Type="dbModel.Budgets" Role="Budgets" Multiplicity="1" />
+    <End Type="dbModel.Action" Role="Action" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Action">
+        <PropertyRef Name="BID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Action_Users">
+    <End Type="dbModel.Users" Role="Users" Multiplicity="1" />
+    <End Type="dbModel.Action" Role="Action" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Action">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Budgets_BudgetTypes">
+    <End Type="dbModel.BudgetTypes" Role="BudgetTypes" Multiplicity="0..1" />
+    <End Type="dbModel.Budgets" Role="Budgets" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="BudgetTypes">
+        <PropertyRef Name="BTID" />
+      </Principal>
+      <Dependent Role="Budgets">
+        <PropertyRef Name="BTID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Joins_Budgets">
+    <End Type="dbModel.Budgets" Role="Budgets" Multiplicity="1" />
+    <End Type="dbModel.Joins" Role="Joins" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Joins">
+        <PropertyRef Name="BID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Budgets">
+    <End Type="dbModel.Budgets" Role="Budgets" Multiplicity="0..1" />
+    <End Type="dbModel.Users" Role="Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="DefaultBudget" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Girisler_Users">
+    <End Type="dbModel.Users" Role="Users" Multiplicity="1" />
+    <End Type="dbModel.Girisler" Role="Girisler" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Girisler">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Joins_Users">
+    <End Type="dbModel.Users" Role="Users" Multiplicity="1" />
+    <End Type="dbModel.Joins" Role="Joins" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Joins">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Kurlar_Kurlar">
+    <End Type="dbModel.ParaBirimleri" Role="ParaBirimleri" Multiplicity="0..1" />
+    <End Type="dbModel.Kurlar" Role="Kurlar" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="ParaBirimleri">
+        <PropertyRef Name="PBID" />
+      </Principal>
+      <Dependent Role="Kurlar">
+        <PropertyRef Name="PBID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Yetkiler1">
+    <End Type="dbModel.Yetkiler" Role="Yetkiler" Multiplicity="1" />
+    <End Type="dbModel.Users" Role="Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Yetkiler">
+        <PropertyRef Name="YID" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="Yetki" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <ComplexType Name="GirisYap_Result">
+    <Property Type="Int32" Name="UID" Nullable="false" />
+    <Property Type="String" Name="Email" Nullable="false" MaxLength="100" />
+    <Property Type="String" Name="Password" Nullable="false" MaxLength="50" />
+    <Property Type="String" Name="Ad" Nullable="true" MaxLength="50" />
+    <Property Type="String" Name="Soyad" Nullable="true" MaxLength="50" />
+    <Property Type="Int32" Name="DefaultBudget" Nullable="true" />
+    <Property Type="Int32" Name="Yetki" Nullable="false" />
+    <Property Type="Int32" Name="Sehir" Nullable="true" />
+  </ComplexType>
+  <ComplexType Name="sp_helpdiagramdefinition_Result">
+    <Property Type="Int32" Name="version" Nullable="true" />
+    <Property Type="Binary" Name="definition" Nullable="true" />
+  </ComplexType>
+  <ComplexType Name="sp_helpdiagrams_Result">
+    <Property Type="String" Name="Database" Nullable="true" MaxLength="128" />
+    <Property Type="String" Name="Name" Nullable="false" MaxLength="128" />
+    <Property Type="Int32" Name="ID" Nullable="false" />
+    <Property Type="String" Name="Owner" Nullable="true" MaxLength="128" />
+    <Property Type="Int32" Name="OwnerID" Nullable="false" />
+  </ComplexType>
+  <ComplexType Name="TumButcelerim_Result">
+    <Property Type="Int32" Name="BID" Nullable="false" />
+    <Property Type="String" Name="Name" Nullable="true" MaxLength="10" />
+    <Property Type="DateTime" Name="CreatedDate" Nullable="true" Precision="23" />
+    <Property Type="Int32" Name="BTID" Nullable="true" />
+    <Property Type="Int32" Name="PID" Nullable="false" />
+    <Property Type="Int32" Name="BID1" Nullable="false" />
+    <Property Type="Int32" Name="UID" Nullable="false" />
+  </ComplexType>
+  <Association Name="FK_Budgets_Oncelikler">
+    <End Type="dbModel.Oncelikler" Role="Oncelikler" Multiplicity="1" />
+    <End Type="dbModel.Budgets" Role="Budgets" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Oncelikler">
+        <PropertyRef Name="OID" />
+      </Principal>
+      <Dependent Role="Budgets">
+        <PropertyRef Name="Oncelik" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Iller">
+    <End Type="dbModel.Iller" Role="Iller" Multiplicity="0..1" />
+    <End Type="dbModel.Users" Role="Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Iller">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="Sehir" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+</Schema>

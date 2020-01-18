@@ -1,0 +1,345 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Aciklama" xml:space="preserve">
+    <value>Explanation</value>
+  </data>
+  <data name="BilgileriniDegistir" xml:space="preserve">
+    <value>Change Your Information</value>
+  </data>
+  <data name="BuAydakiCikislar" xml:space="preserve">
+    <value>Outputs in this month</value>
+  </data>
+  <data name="BuAydakiGirisler" xml:space="preserve">
+    <value>Entries in this month</value>
+  </data>
+  <data name="BudgetManagementSystem" xml:space="preserve">
+    <value>Budget Management System </value>
+  </data>
+  <data name="BuIslemGeriAlinamaz" xml:space="preserve">
+    <value>This action cannot be undone</value>
+  </data>
+  <data name="ButceAdi" xml:space="preserve">
+    <value>Budget's Name</value>
+  </data>
+  <data name="ButcedenCikart" xml:space="preserve">
+    <value>Get out of Your Budget</value>
+  </data>
+  <data name="ButceHesapla" xml:space="preserve">
+    <value>Calculate Your Budget</value>
+  </data>
+  <data name="ButceKatki" xml:space="preserve">
+    <value>You should make any contributions to your budgets</value>
+  </data>
+  <data name="ButceKolaySasir" xml:space="preserve">
+    <value>Manage your budget more easily, so don't be surprised by the end of the month!</value>
+  </data>
+  <data name="Butceler" xml:space="preserve">
+    <value>Budgets</value>
+  </data>
+  <data name="Butcelerim" xml:space="preserve">
+    <value>My Budgets</value>
+  </data>
+  <data name="ButceneEkle" xml:space="preserve">
+    <value>Add to Your Budget</value>
+  </data>
+  <data name="ButceniPaylas" xml:space="preserve">
+    <value>Share Your Budget</value>
+  </data>
+  <data name="ButcePaylasimi" xml:space="preserve">
+    <value>Budget Sharing</value>
+  </data>
+  <data name="ButceSayisi" xml:space="preserve">
+    <value>Budget Count</value>
+  </data>
+  <data name="ButceSec" xml:space="preserve">
+    <value>Choose Your Budget</value>
+  </data>
+  <data name="ButceSeciniz" xml:space="preserve">
+    <value>Select Budget</value>
+  </data>
+  <data name="Cikis" xml:space="preserve">
+    <value>Out</value>
+  </data>
+  <data name="CreateButce" xml:space="preserve">
+    <value>Create Budget</value>
+  </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Detay" xml:space="preserve">
+    <value>Detail</value>
+  </data>
+  <data name="EgerEvinizdeveyaArkadasinizla" xml:space="preserve">
+    <value>If you are going to share the expenses and revenues in an event with your friend or home, budget sharing is for you!</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="EmailInvalid" xml:space="preserve">
+    <value>Invalid Email!</value>
+  </data>
+  <data name="EmailRequired" xml:space="preserve">
+    <value>Email is Required!</value>
+  </data>
+  <data name="EnCokNelereHarcadin" xml:space="preserve">
+    <value>Most Spents</value>
+  </data>
+  <data name="EvdeIsteHer" xml:space="preserve">
+    <value>You can check your budget at home, at work, anywhere, and meet your needs according to your You can check your budget at home, at work, anywhere, and meet your needs according to your budget.</value>
+  </data>
+  <data name="FirstName" xml:space="preserve">
+    <value>First Name</value>
+  </data>
+  <data name="FirstNameRequired" xml:space="preserve">
+    <value>First Name is Required!</value>
+  </data>
+  <data name="ForgotPassword" xml:space="preserve">
+    <value>Forgot Password</value>
+  </data>
+  <data name="GelirGiderPasta" xml:space="preserve">
+    <value>Income and Expense Pie Chart</value>
+  </data>
+  <data name="GeriDon" xml:space="preserve">
+    <value>Go Back</value>
+  </data>
+  <data name="Giris" xml:space="preserve">
+    <value>In</value>
+  </data>
+  <data name="GunlukHaftalik" xml:space="preserve">
+    <value>With Daily, Weekly and Monthly reports, you can save money by seeing how hard it is for your budget.</value>
+  </data>
+  <data name="HaftalikGelirGider" xml:space="preserve">
+    <value>Weekly Income and Expense</value>
+  </data>
+  <data name="Harcanan" xml:space="preserve">
+    <value>Spent</value>
+  </data>
+  <data name="Hesap" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="HesaplamaOncelikle" xml:space="preserve">
+    <value>Calculations are created primarily with the default budget you originally created</value>
+  </data>
+  <data name="Iptal" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Kisi" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="LastName" xml:space="preserve">
+    <value>Last Name</value>
+  </data>
+  <data name="LastNameRequired" xml:space="preserve">
+    <value>Last Name is Required!</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+  <data name="Miktar" xml:space="preserve">
+    <value>Amount</value>
+  </data>
+  <data name="Olustur" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="OlusturmaTarihi" xml:space="preserve">
+    <value>Creation Date</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="PasswordRequired" xml:space="preserve">
+    <value>Password is Required!</value>
+  </data>
+  <data name="Paylas" xml:space="preserve">
+    <value>Share</value>
+  </data>
+  <data name="PaylasilacakMail" xml:space="preserve">
+    <value>Your Friends E-Mail</value>
+  </data>
+  <data name="PleaseLogin" xml:space="preserve">
+    <value>Please Login</value>
+  </data>
+  <data name="Raporlar" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="Register" xml:space="preserve">
+    <value>Register</value>
+  </data>
+  <data name="RememberMe" xml:space="preserve">
+    <value>Remember Me</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign In</value>
+  </data>
+  <data name="Sil" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="SonGirisCikis" xml:space="preserve">
+    <value>Last Entries and Outputs</value>
+  </data>
+  <data name="Tarih" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Tasinabilirlik" xml:space="preserve">
+    <value>Portability</value>
+  </data>
+  <data name="ToplamIslemSayisi" xml:space="preserve">
+    <value>Total Transactions</value>
+  </data>
+  <data name="TumButcelerim" xml:space="preserve">
+    <value>All My Budgets</value>
+  </data>
+  <data name="Turu" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Uyeler" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="VarsayilanButce" xml:space="preserve">
+    <value>Default Budget</value>
+  </data>
+  <data name="Yetki" xml:space="preserve">
+    <value>Authority</value>
+  </data>
+  <data name="YoneticiSecenekleri" xml:space="preserve">
+    <value>Admin Options</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>City</value>
+  </data>
+  <data name="ButceType" xml:space="preserve">
+    <value>Budget Type</value>
+  </data>
+  <data name="Oncelik" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="Hacim" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="Girisler" xml:space="preserve">
+    <value>Logins</value>
+  </data>
+  <data name="GirisZamani" xml:space="preserve">
+    <value>Login Time</value>
+  </data>
+</root>

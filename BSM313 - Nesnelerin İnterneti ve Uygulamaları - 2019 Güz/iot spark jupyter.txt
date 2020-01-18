@@ -1,0 +1,7 @@
+import findspark
+findspark.init('/home/onurgule')
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.getOrCreate()
+dataset = spark.read.format('csv').option('header','true').load('havadurumu-13212-export.csv')
+data = dataset.groupBy('|__sicaklik').count().orderBy('count',ascending=False)
+data.collect()

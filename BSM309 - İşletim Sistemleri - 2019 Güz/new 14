@@ -1,0 +1,19 @@
+else if((strcmp(args[j],";") == 0)){
+			char *argyeni = malloc(256);
+			for (int o = n; o < j; o++)
+			{
+				if(o==n)
+				strcat(argyeni, args[o]);
+				else {
+					strcat(argyeni, " ");
+					strcat(argyeni, args[o]);
+				}
+				//printf("%s \n",argyeni);//teker teker geliyor sonuncu hariç.
+				if(o==j-1) {
+					printf("%s \n",argyeni);//teker teker geliyor sonuncu hariç.
+					//noktaliVirgul(argyeni);
+				}
+				
+			}
+			n=j+1;
+		}

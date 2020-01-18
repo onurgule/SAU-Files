@@ -1,0 +1,386 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="dbModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012.Azure" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+  <EntityType Name="Action">
+    <Key>
+      <PropertyRef Name="GID" />
+    </Key>
+    <Property Name="GID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Type" Type="int" Nullable="false" />
+    <Property Name="Amount" Type="decimal" Precision="18" Scale="2" Nullable="false" />
+    <Property Name="Description" Type="nvarchar" MaxLength="500" />
+    <Property Name="Date" Type="datetime" />
+    <Property Name="BID" Type="int" Nullable="false" />
+    <Property Name="UID" Type="int" Nullable="false" />
+  </EntityType>
+  <EntityType Name="Budgets">
+    <Key>
+      <PropertyRef Name="BID" />
+    </Key>
+    <Property Name="BID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Name" Type="nvarchar" MaxLength="50" Nullable="false" />
+    <Property Name="CreatedDate" Type="datetime" />
+    <Property Name="BTID" Type="int" />
+    <Property Name="Oncelik" Type="int" Nullable="false" />
+  </EntityType>
+  <EntityType Name="BudgetTypes">
+    <Key>
+      <PropertyRef Name="BTID" />
+    </Key>
+    <Property Name="BTID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Type" Type="nvarchar" MaxLength="50" />
+  </EntityType>
+  <EntityType Name="Diller">
+    <Key>
+      <PropertyRef Name="DID" />
+    </Key>
+    <Property Name="DID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Dil" Type="nvarchar" MaxLength="10" />
+  </EntityType>
+  <EntityType Name="Girisler">
+    <Key>
+      <PropertyRef Name="GID" />
+    </Key>
+    <Property Name="GID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="UID" Type="int" Nullable="false" />
+    <Property Name="Date" Type="datetime" />
+  </EntityType>
+  <EntityType Name="Iller">
+    <Key>
+      <PropertyRef Name="id" />
+    </Key>
+    <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="sehir" Type="nvarchar" MaxLength="255" />
+  </EntityType>
+  <EntityType Name="Joins">
+    <Key>
+      <PropertyRef Name="PID" />
+    </Key>
+    <Property Name="PID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="BID" Type="int" Nullable="false" />
+    <Property Name="UID" Type="int" Nullable="false" />
+  </EntityType>
+  <EntityType Name="Kurlar">
+    <Key>
+      <PropertyRef Name="KID" />
+    </Key>
+    <Property Name="KID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="PBID" Type="int" />
+    <Property Name="Kur" Type="float" />
+  </EntityType>
+  <EntityType Name="Oncelikler">
+    <Key>
+      <PropertyRef Name="OID" />
+    </Key>
+    <Property Name="OID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Oncelik" Type="nchar" MaxLength="10" />
+  </EntityType>
+  <EntityType Name="ParaBirimleri">
+    <Key>
+      <PropertyRef Name="PBID" />
+    </Key>
+    <Property Name="PBID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="ParaBirimi" Type="nvarchar" MaxLength="25" />
+    <Property Name="Simge" Type="nvarchar" MaxLength="5" />
+  </EntityType>
+  <EntityType Name="sysdiagrams">
+    <Key>
+      <PropertyRef Name="diagram_id" />
+    </Key>
+    <Property Name="name" Type="nvarchar" MaxLength="128" Nullable="false" />
+    <Property Name="principal_id" Type="int" Nullable="false" />
+    <Property Name="diagram_id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="version" Type="int" />
+    <Property Name="definition" Type="varbinary(max)" />
+  </EntityType>
+  <EntityType Name="Users">
+    <Key>
+      <PropertyRef Name="UID" />
+    </Key>
+    <Property Name="UID" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="Email" Type="nvarchar" MaxLength="100" Nullable="false" />
+    <Property Name="Password" Type="nvarchar" MaxLength="50" Nullable="false" />
+    <Property Name="Ad" Type="nvarchar" MaxLength="50" />
+    <Property Name="Soyad" Type="nvarchar" MaxLength="50" />
+    <Property Name="DefaultBudget" Type="int" />
+    <Property Name="Yetki" Type="int" Nullable="false" />
+    <Property Name="Sehir" Type="int" />
+    <Property Name="IslemHacmi" Type="decimal" Precision="18" Scale="2" />
+  </EntityType>
+  <EntityType Name="Yetkiler">
+    <Key>
+      <PropertyRef Name="YID" />
+    </Key>
+    <Property Name="YID" Type="int" Nullable="false" />
+    <Property Name="Yetki" Type="nvarchar" MaxLength="50" />
+  </EntityType>
+  <!--Errors Found During Generation:
+warning 6002: The table/view 'dbOnur.sys.database_firewall_rules' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+  <EntityType Name="database_firewall_rules">
+    <Key>
+      <PropertyRef Name="id" />
+      <PropertyRef Name="name" />
+      <PropertyRef Name="start_ip_address" />
+      <PropertyRef Name="end_ip_address" />
+      <PropertyRef Name="create_date" />
+      <PropertyRef Name="modify_date" />
+    </Key>
+    <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+    <Property Name="name" Type="nvarchar" MaxLength="128" Nullable="false" />
+    <Property Name="start_ip_address" Type="varchar" MaxLength="45" Nullable="false" />
+    <Property Name="end_ip_address" Type="varchar" MaxLength="45" Nullable="false" />
+    <Property Name="create_date" Type="datetime" Nullable="false" />
+    <Property Name="modify_date" Type="datetime" Nullable="false" />
+  </EntityType>
+  <Association Name="FK_Action_Budgets">
+    <End Role="Budgets" Type="Self.Budgets" Multiplicity="1" />
+    <End Role="Action" Type="Self.Action" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Action">
+        <PropertyRef Name="BID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Action_Users">
+    <End Role="Users" Type="Self.Users" Multiplicity="1" />
+    <End Role="Action" Type="Self.Action" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Action">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Budgets_BudgetTypes">
+    <End Role="BudgetTypes" Type="Self.BudgetTypes" Multiplicity="0..1" />
+    <End Role="Budgets" Type="Self.Budgets" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="BudgetTypes">
+        <PropertyRef Name="BTID" />
+      </Principal>
+      <Dependent Role="Budgets">
+        <PropertyRef Name="BTID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Budgets_Oncelikler">
+    <End Role="Oncelikler" Type="Self.Oncelikler" Multiplicity="1" />
+    <End Role="Budgets" Type="Self.Budgets" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Oncelikler">
+        <PropertyRef Name="OID" />
+      </Principal>
+      <Dependent Role="Budgets">
+        <PropertyRef Name="Oncelik" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Girisler_Users">
+    <End Role="Users" Type="Self.Users" Multiplicity="1" />
+    <End Role="Girisler" Type="Self.Girisler" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Girisler">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Joins_Budgets">
+    <End Role="Budgets" Type="Self.Budgets" Multiplicity="1" />
+    <End Role="Joins" Type="Self.Joins" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Joins">
+        <PropertyRef Name="BID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Joins_Users">
+    <End Role="Users" Type="Self.Users" Multiplicity="1" />
+    <End Role="Joins" Type="Self.Joins" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Users">
+        <PropertyRef Name="UID" />
+      </Principal>
+      <Dependent Role="Joins">
+        <PropertyRef Name="UID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Kurlar_Kurlar">
+    <End Role="ParaBirimleri" Type="Self.ParaBirimleri" Multiplicity="0..1" />
+    <End Role="Kurlar" Type="Self.Kurlar" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="ParaBirimleri">
+        <PropertyRef Name="PBID" />
+      </Principal>
+      <Dependent Role="Kurlar">
+        <PropertyRef Name="PBID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Budgets">
+    <End Role="Budgets" Type="Self.Budgets" Multiplicity="0..1" />
+    <End Role="Users" Type="Self.Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Budgets">
+        <PropertyRef Name="BID" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="DefaultBudget" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Iller">
+    <End Role="Iller" Type="Self.Iller" Multiplicity="0..1" />
+    <End Role="Users" Type="Self.Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Iller">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="Sehir" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Users_Yetkiler1">
+    <End Role="Yetkiler" Type="Self.Yetkiler" Multiplicity="1" />
+    <End Role="Users" Type="Self.Users" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Yetkiler">
+        <PropertyRef Name="YID" />
+      </Principal>
+      <Dependent Role="Users">
+        <PropertyRef Name="Yetki" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Function Name="ButceOlustur" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="Name" Type="nvarchar" Mode="In" />
+    <Parameter Name="BTID" Type="int" Mode="In" />
+    <Parameter Name="Oncelik" Type="int" Mode="In" />
+    <Parameter Name="UID" Type="int" Mode="In" />
+  </Function>
+  <Function Name="ButceSil" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="BID" Type="int" Mode="In" />
+  </Function>
+  <Function Name="fn_diagramobjects" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo" ReturnType="int" />
+  <Function Name="GirisYap" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="Email" Type="nvarchar" Mode="In" />
+    <Parameter Name="Password" Type="nvarchar" Mode="In" />
+  </Function>
+  <Function Name="KayitOl" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="Ad" Type="nvarchar" Mode="In" />
+    <Parameter Name="Soyad" Type="nvarchar" Mode="In" />
+    <Parameter Name="Email" Type="nvarchar" Mode="In" />
+    <Parameter Name="Password" Type="nvarchar" Mode="In" />
+    <Parameter Name="Sehir" Type="int" Mode="In" />
+  </Function>
+  <Function Name="sp_alterdiagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+    <Parameter Name="version" Type="int" Mode="In" />
+    <Parameter Name="definition" Type="varbinary(max)" Mode="In" />
+  </Function>
+  <Function Name="sp_creatediagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+    <Parameter Name="version" Type="int" Mode="In" />
+    <Parameter Name="definition" Type="varbinary(max)" Mode="In" />
+  </Function>
+  <Function Name="sp_dropdiagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+  </Function>
+  <Function Name="sp_helpdiagramdefinition" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+  </Function>
+  <Function Name="sp_helpdiagrams" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+  </Function>
+  <Function Name="sp_renamediagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+    <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
+    <Parameter Name="owner_id" Type="int" Mode="In" />
+    <Parameter Name="new_diagramname" Type="nvarchar" Mode="In" />
+  </Function>
+  <Function Name="sp_upgraddiagrams" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo" />
+  <EntityContainer Name="dbModelStoreContainer">
+    <EntitySet Name="Action" EntityType="Self.Action" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Budgets" EntityType="Self.Budgets" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="BudgetTypes" EntityType="Self.BudgetTypes" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Diller" EntityType="Self.Diller" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Girisler" EntityType="Self.Girisler" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Iller" EntityType="Self.Iller" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Joins" EntityType="Self.Joins" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Kurlar" EntityType="Self.Kurlar" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Oncelikler" EntityType="Self.Oncelikler" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="ParaBirimleri" EntityType="Self.ParaBirimleri" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="sysdiagrams" EntityType="Self.sysdiagrams" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Users" EntityType="Self.Users" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="Yetkiler" EntityType="Self.Yetkiler" Schema="dbo" store:Type="Tables" />
+    <EntitySet Name="database_firewall_rules" EntityType="Self.database_firewall_rules" store:Type="Views" store:Schema="sys">
+      <DefiningQuery>SELECT 
+    [database_firewall_rules].[id] AS [id], 
+    [database_firewall_rules].[name] AS [name], 
+    [database_firewall_rules].[start_ip_address] AS [start_ip_address], 
+    [database_firewall_rules].[end_ip_address] AS [end_ip_address], 
+    [database_firewall_rules].[create_date] AS [create_date], 
+    [database_firewall_rules].[modify_date] AS [modify_date]
+    FROM [sys].[database_firewall_rules] AS [database_firewall_rules]</DefiningQuery>
+    </EntitySet>
+    <AssociationSet Name="FK_Action_Budgets" Association="Self.FK_Action_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Action" EntitySet="Action" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Action_Users" Association="Self.FK_Action_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Action" EntitySet="Action" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Budgets_BudgetTypes" Association="Self.FK_Budgets_BudgetTypes">
+      <End Role="BudgetTypes" EntitySet="BudgetTypes" />
+      <End Role="Budgets" EntitySet="Budgets" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Budgets_Oncelikler" Association="Self.FK_Budgets_Oncelikler">
+      <End Role="Oncelikler" EntitySet="Oncelikler" />
+      <End Role="Budgets" EntitySet="Budgets" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Girisler_Users" Association="Self.FK_Girisler_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Girisler" EntitySet="Girisler" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Joins_Budgets" Association="Self.FK_Joins_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Joins" EntitySet="Joins" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Joins_Users" Association="Self.FK_Joins_Users">
+      <End Role="Users" EntitySet="Users" />
+      <End Role="Joins" EntitySet="Joins" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Kurlar_Kurlar" Association="Self.FK_Kurlar_Kurlar">
+      <End Role="ParaBirimleri" EntitySet="ParaBirimleri" />
+      <End Role="Kurlar" EntitySet="Kurlar" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Budgets" Association="Self.FK_Users_Budgets">
+      <End Role="Budgets" EntitySet="Budgets" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Iller" Association="Self.FK_Users_Iller">
+      <End Role="Iller" EntitySet="Iller" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Users_Yetkiler1" Association="Self.FK_Users_Yetkiler1">
+      <End Role="Yetkiler" EntitySet="Yetkiler" />
+      <End Role="Users" EntitySet="Users" />
+    </AssociationSet>
+  </EntityContainer>
+</Schema>

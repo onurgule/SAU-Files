@@ -1,0 +1,43 @@
+﻿@model WebProject.Models.HomeVar
+@{
+    ViewBag.Title = "Butceler";
+}
+<div class="dashboard-wrapper">
+    <div class="container-fluid dashboard-content">
+        <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <h5 class="card-header">@Resource.Butceler</h5>
+                <div class="card-body">
+                    <label style="list-style-type:none;color:red;">@Html.ValidationSummary()</label>
+                    <div class="table-responsive">
+                        <table class="table no-wrap p-table">
+                            <thead class="bg-light">
+                                <tr class="border-0">
+                                    <th class="border-0">#</th>
+                                    <th class="border-0">@Resource.ButceAdi</th>
+                                    <th class="border-0">@Resource.OlusturmaTarihi</th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var hacn = 0;}
+                                @foreach (var item in Model.listBudgets.OrderByDescending(x => x.CreatedDate))
+                                {
+                                    hacn++;
+                                    <tr>
+                                        <td>@hacn</td>
+                                        <td>@item.Name </td>
+                                        <td>@item.CreatedDate</td>
+                                        <td><a href="@Url.Action("ButceSil",new { BID=item.BID })" style="color:red">@Resource.Sil</a></td>
+                                        </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

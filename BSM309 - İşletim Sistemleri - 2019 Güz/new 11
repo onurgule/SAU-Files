@@ -1,0 +1,45 @@
+else if (strcmp(args[i],";") == 0)
+		{
+			printf("%s - %s - %s - %s - %s",args_aux[0],args_aux[1],args_aux[2],args_aux[3],args_aux[4]);
+			if (args[i+1] == NULL )
+			{
+				printf ("Yeterli Arguman Yok\n");
+			}
+			if(args_aux[0] != NULL){
+			komutlar[n] = args_aux;
+			n++;
+			//printf("%s",args_aux[1]);
+			printf("\n%s - %s",args_aux[2],args_aux[3]);
+			//memset(args_aux, 2, sizeof args_aux);
+			//memmove(args_aux, &args_aux[2], sizeof(args_aux));
+			i++;
+			continue;
+			}
+			else {
+				noktaliVirgul(komutlar); //BAK
+				altKabuk = 0;
+				return 1;
+			}
+		}
+		else if (strcmp(args[i],"|") == 0 || pipet == 1)
+		{
+			if(pipet ==1){
+				i++;
+				//pipet = 0;
+				pipetler[p] = args[i];
+				p++;
+				continue;
+			}
+			pipet = 1;
+			if (args[i+1] == NULL)
+			{
+				pipet = 0;
+				printf ("Yeterli Arguman Yok\n");
+				continue;
+			}
+			pipetler[p] = args[i+1];
+			p++;
+			//boruyuDose(args_aux);
+			
+			//return 1;
+		}

@@ -1,0 +1,7 @@
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\bin\Debug\Reguler_G171210021_1.exe.config
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\bin\Debug\Reguler_G171210021_1.exe
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\bin\Debug\Reguler_G171210021_1.pdb
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\obj\Debug\Reguler_G171210021_1.csprojAssemblyReference.cache
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\obj\Debug\Reguler_G171210021_1.csproj.CoreCompileInputs.cache
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\obj\Debug\Reguler_G171210021_1.exe
+C:\Users\m2hes\Source\repos\Reguler_G171210021_1\Reguler_G171210021_1\obj\Debug\Reguler_G171210021_1.pdb

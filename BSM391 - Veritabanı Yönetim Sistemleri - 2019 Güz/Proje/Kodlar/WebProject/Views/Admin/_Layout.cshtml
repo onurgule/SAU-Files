@@ -1,0 +1,77 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap.min.css">
+    <link href="~/fonts/circular-std/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content//style.css">
+    <link rel="stylesheet" href="~/fonts/fontawesome/css/fontawesome-all.css">
+    <link rel="stylesheet" href="~/Content/charts/chartist-bundle/chartist.css">
+    <link rel="stylesheet" href="~/Content/charts/morris-bundle/morris.css">
+    <link rel="stylesheet" href="~/fonts/material-design-iconic-font/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="~/Content/charts/c3charts/c3.css">
+    <link rel="stylesheet" href="~/fonts/flag-icon-css/flag-icon.min.css">
+    <title>Bütçen - Admin Panel</title>
+</head>
+<body>
+    <div class="dashboard-main-wrapper">
+        <div class="dashboard-header">
+            <nav class="navbar navbar-expand-lg bg-white fixed-top">
+                <a class="navbar-brand" href="index.html" style="color:red">Admin Panel</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse " id="navbarSupportedContent">
+                    <ul class="navbar-nav ml-auto navbar-right-top">
+                        <li class="fc-list-item">
+                            <a href="@Url.Action("BilgileriniDegistir","Home")"><i class="fa fa-fw fa-user-circle"></i> @Model.user.Ad @Model.user.Soyad &nbsp;&nbsp;&nbsp;</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+        <div class="nav-left-sidebar sidebar-dark">
+            <div class="menu-list">
+                <nav class="navbar navbar-expand-lg navbar-light">
+                    <a class="d-xl-none d-lg-none" href="#">@Resource.Dashboard</a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" id="navbarNavCollapse" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav flex-column">
+                            <li class="nav-divider">
+                                @Resource.YoneticiSecenekleri
+                            </li>
+                            <li class="nav-item ">
+                                <a class="nav-link @((((RazorView)ViewContext.View).ViewPath.IndexOf("Index.cshtml")>0)?("active"):"")" href="@Url.Action("Index","Admin")"><i class="fa fa-fw fa-user-circle"></i>@Resource.Uyeler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @((((RazorView)ViewContext.View).ViewPath.IndexOf("Butceler.cshtml")>0)?("active"):"")" href="@Url.Action("Butceler","Admin")"><i class="fa fa-fw fa-rocket"></i>@Resource.Butceler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @((((RazorView)ViewContext.View).ViewPath.IndexOf("Girisler.cshtml")>0)?("active"):"")" href="@Url.Action("Girisler","Admin")"><i class="fa fa-fw fa-rocket"></i>@Resource.Girisler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href='@Url.Action("Home", "Home")'><i class="fas fa-fw fa-sign-out-alt"></i>@Resource.GeriDon</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href='@Url.Action("Logout", "Login")'><i class="fas fa-fw fa-sign-out-alt"></i>@Resource.Logout</a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+            </div>
+        </div>
+        @RenderBody()
+        <div class="col-6">
+            <div class="text-md-right footer-links d-none d-sm-block">
+                <a href="javascript: void(0);">About</a>
+                <a href="@Url.Action("ChangeLanguage","Home", new{ lang="EN" })">English</a>
+                <a href="@Url.Action("ChangeLanguage","Home", new{ lang="TR" })">Türkçe</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,406 @@
+#include "coMut.h"
+
+
+void welcome(){
+printf("\n\t\t*************");
+printf("\n\t\t****coMut****");
+printf("\n\t\t****GRUP6****");
+printf("\n\t\t*************\n\n");
+}
+
+char *builtin_str[]={
+	"cd",
+	"help",
+	"quit"
+};
+
+int (*builtin_func[])(char**) = {
+	&coMut_cd,
+	&coMut_help,
+	&coMut_quit
+};
+
+int coMut_num_builtins()
+{
+	return sizeof(builtin_str)/sizeof(char *);
+}
+
+int coMut_cd(char **args)
+{
+	if (args[1]==NULL)
+	{
+		fprintf(stderr,"coMut: expected argument to \"cd\"\n");
+	}
+	else
+	{
+		if (chdir(args[1])!=0)
+		{
+			perror("coMut");
+		}
+	}
+	return 1;
+}
+
+int coMut_help(char **args)
+{
+	int i;
+	printf("Isletım Sistemleri Odevi\n");
+	for (i=0;i<coMut_num_builtins();i++)
+	{
+		printf("  %s\n",builtin_str[i]);
+	}
+	printf("Use the man command for information on other programs.\n");
+	return 1;
+}
+
+int coMut_quit(char **args)
+{
+	int status;
+	while (!waitpid(-1,&status,WNOHANG)){}
+	exit(0);
+}
+
+#define AUXMAX 256
+int commandHandler(char * args[])
+{
+	int i=0;
+	int j=0;
+	int p=0;
+	int n=0;
+	int kk = 0;
+	int fileDescriptor;
+	int standartOut;
+	int aux;
+	char *args_aux[AUXMAX];
+	int k;
+	int background = 0;
+	char *komutlar[AUXMAX];
+	int altKabuk = 0;
+	char *pipetler[AUXMAX];
+	int pipet = 0;
+	int status;
+	
+	while(args[j] != NULL)
+	{
+		if ((strcmp(args[j],">") == 0) || (strcmp(args[j],"<") == 0) || (strcmp(args[j],"&") == 0))
+		{
+			break;
+		}
+		else if((strcmp(args[j],";") == 0)){
+			altKabuk = 1;
+			char *argyeni[j*sizeof(char*)];
+			for (int o = n; o < j; o++)
+			{
+				if(o==n)
+				argyeni[0] = args[o];
+				else {
+					argyeni[o-n] = args[o];
+				}
+				if(o==j-1) {
+					commandHandler(argyeni);
+				}
+				
+			}
+			n=j+1;
+		}
+		else if((strcmp(args[j],"|") == 0)){
+			pipet = 1;
+			/* char *argyeni[j*sizeof(char*)];
+			for (int o = n; o < j; o++)
+			{
+				if(o==n)
+				argyeni[0] = args[o];
+				else {
+					argyeni[o-n] = args[o];
+				}
+				if(o==j-1) {
+					boruyuDose(argyeni,&args[n]);
+				}
+				
+			}
+			n=j+1; */
+			char *agalar[2] = {"find","/etc"};
+			char *babalar[2] = {"grep","src"};
+			boruyuDose(agalar,babalar);
+		}
+		args_aux[j] = args[j];
+		j++;
+	}
+	if(altKabuk == 1){
+		commandHandler((&args[n]));
+		return 1;
+	} 
+	args_aux[j]=NULL;
+
+	int m;
+	if (args[0] == NULL)
+	{
+		return 1;
+	}
+	for (m = 0 ; m < coMut_num_builtins() ; m++)
+	{
+		if (strcmp(args[0],builtin_str[m])==0)
+		{
+			(*builtin_func[m])(args);
+			return 1;
+		}
+	}
+	while (args[i] != NULL && background == 0)
+	{
+		if (strcmp(args[i],"&") == 0)
+		{
+			background = 1;
+		}
+		else if (strcmp(args[i],"<") == 0)
+		{
+			if (args[i+1] == NULL )
+			{
+				printf ("Yeterli Arguman Yok\n");
+			}
+			inputRD(args_aux,args[i+1]);
+			return 1;
+		}
+		else if (strcmp(args[i],">") == 0)
+		{
+			if (args[i+1] == NULL )
+			{
+				printf ("Yeterli Arguman Yok\n");
+			}
+			outputRD(args_aux,args[i+1]);
+			return 1;
+		}
+		
+		i++;
+		//if(pipet == 1) boruyuDose(args_aux,pipetler);
+	}
+	args_aux[i]==NULL;
+	coMut_launch(args_aux,background);
+
+	return 1;
+}
+void runpipe(int pfd[])
+{
+	int pid;
+
+	switch (pid = fork()) {
+
+	case 0: /* child */
+		dup2(pfd[0], 0);
+		close(pfd[1]);	/* the child does not need this end of the pipe */
+		execvp(cmd2[0], cmd2);
+		perror(cmd2[0]);
+
+	default: /* parent */
+		dup2(pfd[1], 1);
+		close(pfd[0]);	/* the parent does not need this end of the pipe */
+		execvp(cmd1[0], cmd1);
+		perror(cmd1[0]);
+
+	case -1:
+		perror("fork");
+		exit(1);
+	}
+}
+void boruyuDose(char *args[],char* sonrakiler[])
+{
+	
+int ps[2];
+    pipe(ps);
+	int index = 0;
+
+    pid_t pid = fork();
+    pid_t child_pid;
+    int child_status;
+
+    if(pid == 0){ // child process
+
+        close(1);
+        close(ps[0]);
+        dup2(ps[1], 1);
+
+        //if fork here, program cannot continue with infinite loop somewhere
+        if(fork()==0){
+            if (execvp(args[0],sonrakiler)==-1){
+                printf("%s: Command not found.\n", args[0]);
+            }
+        }
+        wait(0);
+    }
+    else{ // parent process
+
+        close(0);
+        close(ps[1]);
+        dup2(ps[0],0);
+
+        
+      
+        if(fork()==0){
+           if (execvp(args[0],sonrakiler)==-1){
+                printf("%s: Command not found.\n", args[0]);
+           }
+        }
+        wait(0);
+        waitpid(pid, &child_status, 0);
+    }    
+
+
+}
+void inputRD(char *args[],char* inputFile)
+{
+	pid_t pid;
+	if (!(access (inputFile,F_OK) != -1))
+	{	
+		printf("coMut: %s adinda bir dosya bulunamadi\n",inputFile);
+		return;
+	}
+	int err=-1;
+	int fileDescriptor;
+	if((pid=fork()) == -1)
+	{
+		printf("Child olusturulamadi\n");
+		return;
+	}
+	if (pid==0)
+	{
+		fileDescriptor=open(inputFile, O_RDONLY, 0600);
+		dup2(fileDescriptor,STDIN_FILENO);
+		close(fileDescriptor);
+
+		if (execvp(args[0],args)==err)	
+		{
+			printf("err");
+			kill(getpid(),SIGTERM);
+		} 
+	}
+	waitpid(pid,NULL,0);
+}
+
+void outputRD(char *args[],char* outputFile)
+{
+	pid_t pid;
+	int err=-1;
+	int fileDescriptor;
+	if((pid=fork()) == -1)
+	{
+		printf("Child olusturulamadi\n");
+		return;
+	}
+	if (pid==0)
+	{
+		fileDescriptor=open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+		dup2(fileDescriptor,STDOUT_FILENO);
+		close(fileDescriptor);
+
+		if (execvp(args[0],args)==err)	
+		{
+			printf("err");
+			kill(getpid(),SIGTERM);
+		} 
+	}
+	waitpid(pid,NULL,0);
+}
+
+
+int coMut_launchbg(char **args)
+{
+	pid_t pid;
+	int status;
+
+	struct sigaction act;
+	act.sa_handler = sig_chld;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_NOCLDSTOP;
+	if (sigaction(SIGCHLD,&act,NULL)<0)
+	{
+		fprintf(stderr,"sigaction failed\n");
+		return 1;
+	}
+
+	pid=fork();
+	if (pid == 0)
+	{
+		if (execvp(args[0],args) == -1)
+		{
+			printf("Command not found");
+			kill(getpid(),SIGTERM);
+		}
+	}
+	else if (pid < 0)
+	{
+		perror("coMut");
+	}
+	else
+	{
+		printf("Proses PID:%d Degeriyle Olusturuldu\n",pid);
+	}
+	return 1; 
+}
+
+int coMut_launch(char **args,int background)
+{
+	if (background==0)
+	{
+		pid_t pid;
+		int status;
+		pid=fork();
+		if (pid == 0)
+		{
+			if (execvp(args[0],args) == -1)
+			{
+				printf("Command not found");
+				kill(getpid(),SIGTERM);
+			}
+		}
+		else if (pid < 0)
+		{
+			perror("coMut");
+		}
+		else
+		{
+			waitpid(pid,NULL,0);
+		}
+	}
+	else
+	{
+		coMut_launchbg(args);
+	}
+	return 1; 
+}
+
+void sig_chld(int signo) 
+{
+    int status, child_val,chid;
+	chid = waitpid(-1, &status, WNOHANG);
+	if (chid > 0)
+	{
+		if (WIFEXITED(status))
+	    {
+	        child_val = WEXITSTATUS(status);
+	        printf("[%d] retval : %d \n",chid, child_val); 
+	    }
+	}
+}
+void prompt(){
+printf("%s > ",getcwd(dosyaYeri, 1024));
+fflush(stdout);
+}
+void startShell(int argc, char **argv, char **envp){
+	welcome();
+	int waiting = 0;
+	char line[MAXLINE];
+	char *tokens[LIMIT];
+	int numTokens;
+	gEnv=envp;
+	while(!waiting)
+	{
+		prompt();
+		memset(line, '\0',MAXLINE);
+		fgets(line,MAXLINE,stdin);
+		if((tokens[0] = strtok(line," \n\t")) == NULL) continue;
+		numTokens = 1;
+		while((tokens[numTokens] = strtok(NULL, " \n\t")) != NULL) numTokens++;
+		commandHandler(tokens);
+	}
+
+}
+

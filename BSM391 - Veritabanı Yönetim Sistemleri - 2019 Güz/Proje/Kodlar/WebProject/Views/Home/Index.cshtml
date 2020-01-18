@@ -1,0 +1,171 @@
+﻿
+@{
+    ViewBag.Title = "Home";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+    <link rel="shortcut icon" href="~/Content/images/noseta-122x122.png" type="image/x-icon">
+    <meta name="description" content="">
+    <title>Bütçen - @Resource.BudgetManagementSystem</title>
+    <link rel="stylesheet" href="~/Content/web/assets/mobirise-icons/mobirise-icons.css">
+    <link rel="stylesheet" href="~/Content/tether/tether.min.css">
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap-grid.min.css">
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap-reboot.min.css">
+    <link rel="stylesheet" href="~/Content/dropdown/css/style.css">
+    <link rel="stylesheet" href="~/Content/theme/css/style.css">
+    <link rel="stylesheet" href="~/Content/mobirise/css/mbr-additional.css" type="text/css">
+
+
+
+</head>
+<body style="">
+    <section class="menu cid-rbk4xYxaSX" once="menu" id="menu2-0">
+
+        <nav class="navbar navbar-expand beta-menu navbar-dropdown align-items-center navbar-fixed-top navbar-toggleable-sm">
+            <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+            <div class="menu-logo">
+                <div class="navbar-brand">
+                    <span class="navbar-logo">
+                        <a href="#top">
+                            <img src="~/Content/images/noseta-122x122.png" alt="Butcen" title="" style="height: 3.8rem;">
+                        </a>
+                    </span>
+
+                </div>
+            </div>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav nav-dropdown" data-app-modern-menu="true">
+                    <li class="nav-item">
+                        <a class="nav-link link text-black display-4" href="#top">
+                            Bütçen
+                        </a>
+                    </li>
+                </ul>
+                <div class="navbar-buttons mbr-section-btn">
+                    <a class="btn btn-sm btn-primary display-4" href="@Url.Action("Index","Login")">
+                        <span class="btn-icon mbri-mobile mbr-iconfont mbr-iconfont-btn">
+                        </span>@Resource.SignIn
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </section>
+    <section class="header1 cid-rbk4zfXwLy mbr-parallax-background" id="header1-1">
+
+        <div class="mbr-overlay" style="opacity: 0.4; background-color: rgb(0, 0, 0);">
+        </div>
+        <div class="container">
+            <div class="row justify-content-md-center">
+                <div class="mbr-white col-md-10">
+                    <h1 class="mbr-section-title align-center mbr-bold pb-3 mbr-fonts-style display-1">
+                        BÜTÇEN
+                    </h1>
+                    <h3 class="mbr-section-subtitle align-center mbr-light pb-3 mbr-fonts-style display-2">
+                        @Resource.BudgetManagementSystem
+                    </h3>
+                    <p class="mbr-text align-center pb-3 mbr-fonts-style display-5">
+                        @Resource.ButceKolaySasir
+                    </p>
+                    <div class="mbr-section-btn align-center">
+                        <a class="btn btn-md btn-white-outline display-4" href="@Url.Action("Register","Login")">
+                            <span class="mbri-right mbr-iconfont mbr-iconfont-btn"></span>
+                          @Resource.Register
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="features2 cid-rbk4GzSZqc" id="features2-2">
+
+
+
+        <div class="container">
+            <div class="media-container-row">
+                <div class="card p-3 col-12 col-md-6 col-lg-4">
+                    <div class="card-wrapper">
+                        <div class="card-img">
+                            <img src="~/Content/images/01.jpg" alt="Butcen">
+                        </div>
+                        <div class="card-box">
+                            <h4 class="card-title pb-3 mbr-fonts-style display-7">@Resource.Tasinabilirlik</h4>
+                            <p class="mbr-text mbr-fonts-style display-7">@Resource.EvdeIsteHer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-3 col-12 col-md-6 col-lg-4">
+                    <div class="card-wrapper">
+                        <div class="card-img">
+                            <img src="~/Content/images/mbr-676x451.jpg" alt="Butcen" title="">
+                        </div>
+                        <div class="card-box ">
+                            <h4 class="card-title pb-3 mbr-fonts-style display-7">
+                                @Resource.Raporlar
+                            </h4>
+                            <p class="mbr-text mbr-fonts-style display-7">@Resource.GunlukHaftalik</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-3 col-12 col-md-6 col-lg-4">
+                    <div class="card-wrapper">
+                        <div class="card-img">
+                            <img src="~/Content/images/mbr-2-676x451.jpg" alt="Butcen" title="">
+                        </div>
+                        <div class="card-box">
+                            <h4 class="card-title pb-3 mbr-fonts-style display-7">@Resource.ButcePaylasimi</h4>
+                            <p class="mbr-text mbr-fonts-style display-7">@Resource.EgerEvinizdeveyaArkadasinizla</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+    <section once="" class="cid-rbk6gtJN7w" id="footer6-3">
+
+
+        <div class="container">
+            <div class="media-container-row align-center mbr-white">
+                <div class="col-6">
+                    <p class="mbr-text mb-0 mbr-fonts-style display-7">
+                        © Copyright 2019 Noseta - Bütçen
+                    </p>
+                </div>
+                <div class="col-6">
+                    <div class="text-md-right footer-links d-none d-sm-block">
+                        <a href="javascript: void(0);">About</a>
+                        <a href="@Url.Action("ChangeLanguage","Home", new{ lang="EN" })">English</a>
+                        <a href="@Url.Action("ChangeLanguage","Home", new{ lang="TR" })">Türkçe</a>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+
+    <script src="~/Content/web/assets/jquery/jquery.min.js"></script>
+    <script src="~/Content/popper/popper.min.js"></script>
+    <script src="~/Content/tether/tether.min.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap.min.js"></script>
+    <script src="~/Content/smoothscroll/smooth-scroll.js"></script>
+    <script src="~/Content/dropdown/js/script.min.js"></script>
+    <script src="~/Content/touchswipe/jquery.touch-swipe.min.js"></script>
+    <script src="~/Content/parallax/jarallax.min.js"></script>
+    <script src="~/Content/theme/js/script.js"></script>
+
+
+</body>
+</html>

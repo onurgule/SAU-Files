@@ -1,0 +1,41 @@
+﻿@model WebProject.Models.HomeVar
+@{
+    ViewBag.Title = "Paylas";
+}
+<div class="dashboard-wrapper">
+    <div class="container-fluid dashboard-content">
+        <div class="col-xl-10 col-lg-10 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <h5 class="card-header">@Resource.ButceniPaylas</h5>
+                <div class="card-body">
+                    @using (Html.BeginForm())
+                    {
+                        <div class="form-group row">
+                            <label for="butcesec" class="col-4 col-lg-3 col-form-label text-right">@Resource.ButceSeciniz</label>
+                            <div class="col-8 col-lg-9">
+                                @Html.DropDownListFor(x => x.budget.BID, new SelectList(Model.listBudgets, "BID", "Name", Model.user.DefaultBudget), new { @class = "form-control", @required = "true" })
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="miktar" class="col-4 col-lg-3 col-form-label text-right">@Resource.PaylasilacakMail</label>
+                            <div class="col-8 col-lg-9">
+                                @Html.TextBoxFor(x => x.user.Email, new { @class = "form-control", @required = "true", @type = "email", @Value="" })
+                            </div>
+                        </div>
+                        <p style="color:red; font-weight:bold">@Resource.BuIslemGeriAlinamaz</p>
+                        <p style="color:darkred; font-weight:bold">@Model.Error</p>
+                        <div class="row pt-2 pt-sm-5 mt-1">
+                            <div class="col-sm-6 pl-0">
+                                <p class="text-right">
+                                    <button type="submit" class="btn btn-space btn-primary">@Resource.Paylas</button>
+                                    <button class="btn btn-space btn-secondary">@Resource.Iptal</button>
+                                </p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -1,0 +1,51 @@
+﻿@model WebProject.Models.HomeVar
+@{
+    ViewBag.Title = "Admin Panel";
+}
+<div class="dashboard-wrapper">
+    <div class="container-fluid dashboard-content">
+        <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <h5 class="card-header">@Resource.Girisler</h5>
+                <div class="card-body">
+                    <label style="list-style-type:none;color:red;">@Html.ValidationSummary()</label>
+                    <div class="table-responsive">
+                        <table class="table no-wrap p-table">
+                            <thead class="bg-light">
+                                <tr class="border-0">
+                                    <th class="border-0">#</th>
+                                    <th class="border-0">@Resource.FirstName</th>
+                                    <th class="border-0">Email</th>
+                                    <th class="border-0">@Resource.GirisZamani</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var hacn = 0;}
+                                @foreach (var item in Model.listGirisler.OrderByDescending(x => x.Date))
+                                {
+                                    hacn++;
+                                    <tr>
+                                        <td>@hacn</td>
+                                        <td>@item.Users.Ad @item.Users.Soyad </td>
+                                        <td>@item.Users.Email</td>
+                                        <td>@item.Date</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+@*Burada yukarıda bir navbar olsun sadece bütçen ve geri(homescreen) yazsın. sonra tüm userları listelesin orda user sil filan yaparız userı admin yap yaparız... 1 saatimizi almaz.*@
+
+<script src="~/Content/jquery/jquery-3.3.1.min.js"></script>
+<script>
+    $('#navbarNavCollapse').click(function () {
+        $('#navbarNav').toggleClass("show");
+    });
+</script>

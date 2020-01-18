@@ -1,0 +1,15 @@
+else if (strcmp(args[i],"|") == 0)
+		{
+			pipet = 1;
+			if (args[i+1] == NULL)
+			{
+				pipet = 0;
+				printf ("Yeterli Arguman Yok\n");
+				continue;
+			}
+			pipetler[p] = args[i+1];
+			p++;
+			//boruyuDose(args_aux);
+			
+			//return 1;
+		}

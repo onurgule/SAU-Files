@@ -1,0 +1,21 @@
+pid_t pid;
+	int err=-1;
+	int fileDescriptor;
+	if((pid=fork()) == -1)
+	{
+		printf("Child olusturulamadi\n");
+		return;
+	}
+	if (pid==0)
+	{
+		fileDescriptor=open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+		dup2(fileDescriptor,STDOUT_FILENO);
+		close(fileDescriptor);
+
+		if (execvp(args[0],args)==err)	
+		{
+			printf("err");
+			kill(getpid(),SIGTERM);
+		} 
+	}
+	waitpid(pid,NULL,0);

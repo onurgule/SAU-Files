@@ -1,0 +1,86 @@
+﻿@model WebProject.Models.Login
+@{
+    ViewBag.Title = WebProject.Resource.PleaseLogin;
+}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Register</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap.min.css">
+    <link href="~/fonts/circular-std/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content/style.css">
+    <link rel="stylesheet" href="~/fonts/fontawesome/css/fontawesome-all.css">
+    <style>
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            display: -ms-flexbox;
+            display: contents;
+            -ms-flex-align: center;
+            align-items: center;
+            padding-top: 40px;
+            padding-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================== -->
+    <!-- login page  -->
+    <!-- ============================================================== -->
+    <div class="splash-container">
+        <div class="card ">
+            <div class="card-header text-center"><a href="#"><img class="logo-img" src="~/Content/images/noseta-122x122.png" alt="logo"></a><span class="splash-description">@WebProject.Resource.Register</span></div>
+            <div class="card-body">
+                @using (Html.BeginForm())
+                {
+                    @Html.ValidationSummary(){
+                        <div class="form-group">
+                            @Html.TextBoxFor(x => x.FirstName, new { @class = "form-control form-control-lg", @id = "first", @type = "text", @required = "true", @placeholder = WebProject.Resource.FirstName })
+                        </div>
+                        <div class="form-group">
+                            @Html.TextBoxFor(x => x.LastName, new { @class = "form-control form-control-lg", @id = "last", @type = "text", @required = "true", @placeholder = WebProject.Resource.LastName })
+                        </div>
+                        <div class="form-group">
+                            @Html.TextBoxFor(x => x.Email, new { @class = "form-control form-control-lg", @id = "username", @type = "text", @required = "true", @placeholder = WebProject.Resource.Email })
+                        </div>
+                        <div class="form-group">
+                            @Html.TextBoxFor(x => x.Password, new { @class = "form-control form-control-lg", @id = "password", @type = "password", @required = "true", @placeholder = WebProject.Resource.Password })
+                        </div>
+                        <div class="form-group">
+                            @Html.DropDownListFor(x => x.Sehir, new SelectList(ViewBag.sehirler,"id","sehir"), new { @class = "form-control form-control", @id = "sehir", @required = "true", @placeholder = WebProject.Resource.City })
+                        </div>
+                        <div class="form-group">
+                            <label class="custom-control custom-checkbox">
+                                <input class="custom-control-input" type="checkbox"><span class="custom-control-label">@WebProject.Resource.RememberMe</span>
+                            </label>
+                        </div>
+                    }
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">@WebProject.Resource.Register</button>
+                }
+            </div>
+            <div class="card-footer bg-white p-0  ">
+                <div class="card-footer-item card-footer-item-bordered">
+                    <a href="@Url.Action("Index","Login")" class="footer-link">@WebProject.Resource.SignIn</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- end login page  -->
+    <!-- ============================================================== -->
+    <!-- Optional JavaScript -->
+    <script src="~/Content/jquery/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap.bundle.js"></script>
+</body>
+
+</html>

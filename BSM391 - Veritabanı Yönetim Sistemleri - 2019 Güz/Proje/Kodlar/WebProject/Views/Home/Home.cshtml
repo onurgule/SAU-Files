@@ -1,0 +1,386 @@
+﻿@using WebProject.Models;
+@model HomeVar
+@{
+    ViewBag.Title = "Index";
+
+}
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="~/Content/bootstrap/css/bootstrap.min.css">
+    <link href="~/fonts/circular-std/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content//style.css">
+    <link rel="stylesheet" href="~/fonts/fontawesome/css/fontawesome-all.css">
+    <link rel="stylesheet" href="~/Content/charts/chartist-bundle/chartist.css">
+    <link rel="stylesheet" href="~/Content/charts/morris-bundle/morris.css">
+    <link rel="stylesheet" href="~/fonts/material-design-iconic-font/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="~/Content/charts/c3charts/c3.css">
+    <link rel="stylesheet" href="~/fonts/flag-icon-css/flag-icon.min.css">
+    <title>Bütçen - @Resource.ButceHesapla</title>
+</head>
+<body>
+       
+        <!-- ============================================================== -->
+        <!-- end left sidebar -->
+        <!-- ============================================================== -->
+        <!-- ============================================================== -->
+        <!-- wrapper  -->
+        <!-- ============================================================== -->
+        <div class="dashboard-wrapper">
+            <div class="dashboard-ecommerce">
+                <div class="container-fluid dashboard-content ">
+                    <!-- ============================================================== -->
+                    <!-- pageheader  -->
+                    <!-- ============================================================== -->
+                    <div class="row">
+                        <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+                            <div class="page-header">
+                                <h2 class="pageheader-title">Bütçen @Resource.Dashboard </h2>
+                                <div class="page-breadcrumb">
+                                    <nav aria-label="breadcrumb">
+                                        <ol class="breadcrumb">
+                                            <li class="breadcrumb-item"><a href="#" class="breadcrumb-link">Bütçen</a></li>
+                                            <li class="breadcrumb-item active" aria-current="page">@Resource.Dashboard</li>
+                                        </ol>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @{
+                        var defaultBudget = Model.listBudgets.Where(x => x.BID == Model.user.DefaultBudget).FirstOrDefault() ;
+                        var actions = Model.listActions.Where(x => x.BID == Model.user.DefaultBudget).ToList();
+                        var topActions = Model.listActions.Where(x => x.UID == Model.user.UID).ToList();
+                        var topGelen = topActions.Where(x => x.Type == 1).Sum(x => x.Amount);
+                        var topGiden = topActions.Where(x => x.Type == 0).Sum(x => x.Amount);
+                        var buAyGirisler = actions.Where(x => x.Type == 1).Where(x => x.Date.Value.Month == DateTime.Now.Month).Sum(x => x.Amount);
+                        var buAyCikislar = actions.Where(x => x.Type == 0).Where(x => x.Date.Value.Month == DateTime.Now.Month).Sum(x => x.Amount);
+                        var buHaftaGirisler = actions.Where(x => x.Type == 1).Where(x => x.Date.Value >= DateTime.Now.AddDays(-7)).ToList();
+                        List<decimal> haftalikGiris = new List<decimal>();
+                        List<decimal> haftalikCikis = new List<decimal>();
+                        for (int i = 0; i <= 6; i++)
+                        {
+                            var day = DateTime.Now.AddDays(-i).Day;
+                            haftalikGiris.Add(actions.Where(x => x.Type == 1).Where(x => x.Date.Value.Day == DateTime.Now.AddDays(-i).Day).Sum(x => x.Amount));
+                            haftalikCikis.Add(actions.Where(x => x.Type == 0).Where(x => x.Date.Value.Day == DateTime.Now.AddDays(-i).Day).Sum(x => x.Amount));
+                        }
+                        var buAyNet = buAyGirisler - buAyCikislar;
+                        var butcedeKalan = topGelen - topGiden;
+                        var butceSayisi = Model.listBudgets.Count();
+                        var actionSayisi = Model.listActions.Count();
+                        var hacim = Model.user.IslemHacmi;
+                    }
+                    @if (actions.Count() > 0)
+                    {
+                        <div class="ecommerce-widget">
+                            <div class="row">
+                                <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="text-muted">Net</h5>
+                                            <div class="metric-value d-inline-block">
+                                                @foreach (var item in Model.listParaBirimleri)
+                                                {
+                                                    var para = ((double)buAyNet / (Model.listKurlar.Where(x => x.PBID == item.PBID).Select(x => x.Kur).FirstOrDefault()));
+                                                    <h1 class="mb-1">@item.Simge @String.Format("{0:#.00}",para)</h1>
+                                                }
+
+                                            </div>
+                                            <div class="metric-label d-inline-block float-right text-primary font-weight-bold">
+                                                
+                                            </div>
+                                        </div>
+                                        <div id="sparkline-revenue3"></div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="text-muted">@Resource.BuAydakiGirisler</h5>
+                                            <div class="metric-value d-inline-block">
+                                                @foreach (var item in Model.listParaBirimleri)
+                                                {
+                                                    var para = ((double)buAyGirisler / (Model.listKurlar.Where(x => x.PBID == item.PBID).Select(x => x.Kur).FirstOrDefault()));
+                                                    <h1 class="mb-1">@item.Simge @String.Format("{0:#.00}", para)</h1>
+                                                }
+                                            </div>
+                                            <div class="metric-label d-inline-block float-right text-success font-weight-bold">
+                                                <span><i class="fa fa-fw fa-arrow-up"></i></span>
+                                            </div>
+                                        </div>
+                                        <div id="sparkline-revenue"></div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="text-muted">@Resource.BuAydakiCikislar</h5>
+                                            <div class="metric-value d-inline-block">
+                                                @foreach (var item in Model.listParaBirimleri)
+                                                {
+                                                    var para = ((double)buAyCikislar / (Model.listKurlar.Where(x => x.PBID == item.PBID).Select(x => x.Kur).FirstOrDefault()));
+                                                    <h1 class="mb-1">@item.Simge @String.Format("{0:#.00}", para)</h1>
+                                                }
+                                            </div>
+                                            <div class="metric-label d-inline-block float-right text-success font-weight-bold">
+                                                <span><i class="fa fa-fw fa-arrow-down"></i></span>
+                                            </div>
+                                        </div>
+                                        <div id="sparkline-revenue2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xl-9 col-lg-12 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <h5 class="card-header">@Resource.SonGirisCikis</h5>
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table">
+                                                    <thead class="bg-light">
+                                                        <tr class="border-0">
+                                                            <th class="border-0">#</th>
+                                                            <th class="border-0">@Resource.Tarih</th>
+                                                            <th class="border-0">@Resource.Miktar</th>
+                                                            <th class="border-0">@Resource.Aciklama</th>
+                                                            <th class="border-0">@Resource.Kisi</th>
+                                                            <th class="border-0">@Resource.Turu</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @{ var acn = 0;}
+                                                        @foreach (var item in actions.OrderByDescending(x=>x.GID).Take(5))
+                                                        {
+                                                            acn++;
+                                                        <tr>
+                                                            <td>@acn</td>
+                                                            <td>
+                                                                @item.Date
+                                                            </td>
+                                                            <td>₺@item.Amount</td>
+                                                            <td>@item.Description </td>
+                                                            <td>@Model.listUsers.Where(x=>x.UID == item.UID).FirstOrDefault().Ad</td>
+                                                            @if (item.Type == 1) {
+                                                                <td><span class="badge-dot badge-success mr-1"></span>@Resource.Giris </td>
+                                                            }
+                                                            else
+                                                            {
+                                                                <td><span class="badge-dot badge-danger mr-1"></span>@Resource.Cikis </td>
+                                                            }
+
+
+                                                        </tr>
+	                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-3 col-lg-12 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <h5 class="card-header">@Resource.EnCokNelereHarcadin</h5>
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table no-wrap p-table">
+                                                    <thead class="bg-light">
+                                                        <tr class="border-0">
+                                                            <th class="border-0">#</th>
+                                                            <th class="border-0">@Resource.Harcanan</th>
+                                                            <th class="border-0">@Resource.Miktar</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @{ var hacn = 0;}
+                                                        @foreach (var item in actions.Where(x=>x.Type==0).OrderByDescending(x => x.Amount).Take(5))
+                                                        {
+                                                            hacn++;
+                                                            <tr>
+                                                                <td>@hacn</td>
+                                                                <td>@item.Description </td>
+                                                                <td>₺@item.Amount</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <h5 class="card-header">@Resource.GelirGiderPasta </h5>
+                                        <div class="card-body">
+                                            <div id="chartGelirGider"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+                                    <div class="card">
+                                        <h5 class="card-header">@Resource.HaftalikGelirGider</h5>
+                                        <div class="card-body">
+                                            <div id="chartHaftalik" class="ct-chart-horizontal ct-golden-section"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>@Resource.ButceKatki</p>
+                    }
+
+                        <div class="row">
+                            <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
+                                <div class="card border-3 border-top border-top-primary">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">@Resource.Hesap</h5>
+                                        <div class="metric-value d-inline-block">
+                                            <h1 class="mb-1">@butcedeKalan.ToString() ₺</h1>
+                                        </div>
+                                        <div class="metric-label d-inline-block float-right text-success font-weight-bold">
+                                            <span class="icon-circle-small icon-box-xs text-success bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1">5.86%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
+                                <div class="card border-3 border-top border-top-primary">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">@Resource.Hacim - @Resource.ToplamIslemSayisi</h5>
+                                        <div class="metric-value d-inline-block">
+                                            <h1 class="mb-1">@((hacim != null && hacim != 0)?(String.Format("{0:#.00}", hacim)) : "0") ₺ - @actionSayisi</h1>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
+                                <div class="card border-3 border-top border-top-primary">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">@Resource.ButceSayisi</h5>
+                                        <div class="metric-value d-inline-block">
+                                            <h1 class="mb-1">@butceSayisi</h1>
+                                        </div>
+                                        <div class="metric-label d-inline-block float-right text-success font-weight-bold">
+                                            <span class="icon-circle-small icon-box-xs text-success bg-success-light"><i class="fa fa-fw fa-arrow-up"></i></span><span class="ml-1">5%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-12">
+                                <div class="card border-3 border-top border-top-primary">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">@Resource.VarsayilanButce</h5>
+                                        <div class="metric-value d-inline-block">
+                                            <h1 class="mb-1">@((defaultBudget != null) ? defaultBudget.Name : "-")</h1>
+                                        </div>
+                                        <div class="metric-label d-inline-block float-right text-danger font-weight-bold">
+                                            <span class="icon-circle-small icon-box-xs text-danger bg-danger-light bg-danger-light "><i class="fa fa-fw fa-arrow-down"></i></span><span class="ml-1">4%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @Resource.HesaplamaOncelikle
+                </div>
+            </div>
+            <div class="footer">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12">
+                            Copyright © 2018 Noseta. All rights reserved.
+                        </div>
+                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12">
+                            <div class="text-md-right footer-links d-none d-sm-block">
+                                <a href="javascript: void(0);">About</a>
+                                <a href="@Url.Action("ChangeLanguage","Login", new{ lang="EN" })">English</a>
+                                <a href="@Url.Action("ChangeLanguage","Login", new{ lang="TR" })">Türkçe</a>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 col-12">
+                            @if (Model.isAdmin)
+                            {
+                                @Html.ActionLink("Admin Panel", "Index", "Admin");
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+    <script src="~/Content/jquery/jquery-3.3.1.min.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap.bundle.js"></script>
+    <script src="~/Content/slimscroll/jquery.slimscroll.js"></script>
+    <script src="~/Scripts/main-js.js"></script>
+    <script src="~/Content/charts/chartist-bundle/chartist.min.js"></script>
+    <script src="~/Content/charts/sparkline/jquery.sparkline.js"></script>
+    <script src="~/Content/charts/morris-bundle/raphael.min.js"></script>
+    <script src="~/Content/charts/morris-bundle/morris.js"></script>
+    <script src="~/Content/charts/c3charts/c3.min.js"></script>
+    <script src="~/Content/charts/c3charts/d3-5.4.0.min.js"></script>
+    <script src="~/Content/charts/c3charts/C3chartjs.js"></script>
+    <script src="~/Scripts/dashboard-ecommerce.js"></script>
+    <script>
+        $('#navbarNavCollapse').click(function () {
+            $('#navbarNav').toggleClass("show");
+        });
+        if ($('#chartGelirGider').length) {
+            var chart = c3.generate({
+                bindto: "#chartGelirGider",
+                data: {
+                    columns: [
+                        ['Gelir', @(topGelen)],
+                        ['Gider', @(topGiden)]
+                    ],
+                    type: 'pie',
+
+                    colors: {
+                        data1: '#00ff00',
+                        data2: '#ff0000'
+
+
+                    }
+                },
+                pie: {
+                    label: {
+                        format: function (value, ratio, id) {
+                            return d3.format('')(value);
+                        }
+                    }
+                }
+            });
+        }
+
+        if ($('#chartHaftalik').length) {
+            new Chartist.Bar('#chartHaftalik', {
+                labels: ['@DateTime.Now.ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-1).ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-2).ToString("dddd",new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-3).ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-4).ToString("dddd",new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-5).ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))', '@DateTime.Now.AddDays(-6).ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))'],
+                series: [
+                    [@haftalikGiris[0],@haftalikGiris[1], @haftalikGiris[2], @haftalikGiris[3], @haftalikGiris[4], @haftalikGiris[5], @haftalikGiris[6]],
+                    [@haftalikCikis[0], @haftalikCikis[1], @haftalikCikis[2], @haftalikCikis[3], @haftalikCikis[4], @haftalikCikis[5], @haftalikCikis[6]]
+                ]
+            }, {
+                    seriesBarDistance: 8,
+                    reverseData: true,
+                    horizontalBars: true,
+                    axisY: {
+                        offset: 70
+                    }
+                });
+
+        }
+    </script>
+    <style>
+        .fixed-top{
+            height:30px;
+        }
+    </style>
+</body>
+
+</html>

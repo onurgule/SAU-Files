@@ -1,0 +1,16 @@
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\g171210021_1_3.exe.config
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\g171210021_1_3.exe
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.DebuggerVisualizers.VS2017.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.UI.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.UI.GL.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.World.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\ZedGraph.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Microsoft.VisualStudio.DebuggerVisualizers.dll
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.UI.xml
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.UI.GL.xml
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\bin\x64\Emgu.CV.World.xml
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\obj\x64\g171210021_1_3.frmMain.resources
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\obj\x64\g171210021_1_3.Properties.Resources.resources
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\obj\x64\g171210021_1_3.csproj.GenerateResource.Cache
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\obj\x64\g171210021_1_3.csproj.CoreCompileInputs.cache
+C:\Users\m2hes\Source\repos\g171210021_1_3\g171210021_1_3\obj\x64\g171210021_1_3.exe
