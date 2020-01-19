@@ -1,12 +1,12 @@
 #include <ESP8266WiFi.h>
 #include "location.h"
 
-char ssid[] ="baglanirsan_ekime";    // your network SSID (name) 
-char pass[] = "nevereyimabime";   // your network password
+char ssid[] ="";    // your network SSID (name) 
+char pass[] = "";   // your network password
 
 // Google API key
-String geolocationKey = "AIzaSyCuSCzBd-B4dqSmyjxtbA_FeaWzKfQNoc8";
-String geocodingKey   = "AIzaSyCuSCzBd-B4dqSmyjxtbA_FeaWzKfQNoc8";
+String geolocationKey = "";
+String geocodingKey   = "";
 
 // From http://www.mcc-mnc.com/
 int MCC = 286;  // Egypt Country Code
