@@ -1,0 +1,379 @@
+
+<!-- saved from url=(0091)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/index.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Pointer Arithmetic (Small lecture)</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Pointer Arithmetic (Small lecture)</h1>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: 
+<b>/home/plank/cs360/notes/Pointer-Arithmetic</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/index.html">
+    <b>http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/index.html</b></a>
+</li><li>Lecture notes directory: <b>/home/plank/cs360/notes/Pointer-Arithmetic</b>
+</li><li> Bitbucket: <a href="https://bitbucket.org/jimplank/cs360-lecture-notes">https://bitbucket.org/jimplank/cs360-lecture-notes</a>.
+</li><li>
+Original lecture notes ("PointMalloc"): <i>Fri Aug 31 10:39:16 EDT 2007.</i><br>
+</li><li> Last modified: <i>
+Wed Jan 17 16:45:00 EST 2018
+</i>
+<hr>
+There's really nothing new in this small lecture - just some reinforcement 
+from the last lecture.
+<hr>
+
+We've used pointers in CS140 and CS302.  If you want some review, 
+please see
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs140/Notes/Pointers/index.html">
+pointer lecture notes from CS140</a>.  For additional reinforcement, I have a 
+set of <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs302/Notes/Kurt/">old 
+lecture notes from CS302 where I set up more STL data structures
+that point to each other with pointers.</a>
+Both of these are in C++.
+<p>
+There is no standard template library in C.  This means that vectors, lists, sets
+and maps are gone.  We will replace all of them in the next few lectures.  We'll
+start with vectors.  In C, we use arrays instead of vectors.  You can statically
+declare an array by putting <b>[size]</b> in the variable declaration.  For example,
+the following variable declaration will create an array <b>iarray</b> of ten integers:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int iarray[10];
+</pre></td></tr></tbody></table></center><p>
+
+You can access the elements of <b>iarray</b> in square brackets.  Unlike C++, <b>iarray</b>
+has no methods.  In particular, the size of <b>iarray</b> is not stored anywhere -- you
+have to keep track of it yourself.
+</p><p>
+In reality, <b>iarray</b> is a pointer to the first element of the array.  In other words,
+there are 40 bytes allocated for the array (since integers are four bytes each),
+and <b>iarray</b> points to the first of these.  If we want, we can set a second pointer
+to <b>iarray</b>, and we can print the elements of <b>iarray</b> by incrementing the 
+pointer and dereferencing it.  We do all of that in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/ptr1.c">ptr1.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  int iarray[10];
+  int *ip;
+  int i;
+
+  for (i = 0; i &lt; 10; i++) iarray[i] = 100+i;
+
+  printf("iarray = 0x%lx\n", (unsigned long) iarray);
+
+  ip = iarray;
+
+  for (i = 0; i &lt; 10; i++) {
+    printf("i=%d.  iarray[i]=%d.  ip = 0x%lx.  *ip=%d.  (ip-iarray)=%d\n", 
+        i, iarray[i], (unsigned long) ip, *ip, (int) (ip-iarray));
+    ip++;
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+In the <b>for</b> loop, we print out five quantities:
+</p><p>
+</p><ul>
+<li> <b>i</b>, which will go from 0 to 9.
+</li><li> <b>iarray[i]</b>, which will go from 100 to 109.
+</li><li> <b>ip</b>, which will start out equaling <b>iarray</b>, and will be incremented
+on each iteration.
+</li><li> <b>*ip</b>, which will go from 100 to 109, since it is going to successively point to
+  each element of <b>iarray</b>.
+</li><li> <b>(ip - iarray)</b>, which will equal <b>i</b>.
+</li></ul>
+Let's take a look at output:
+
+<pre>UNIX&gt; <font color="darkred"><b>./ptr1</b></font>
+iarray = 0x7fff5fbfdc40
+i=0.  iarray[i]=100.  ip = 0x7fff5fbfdc40.  *ip=100.  (ip-iarray)=0
+i=1.  iarray[i]=101.  ip = 0x7fff5fbfdc44.  *ip=101.  (ip-iarray)=1
+i=2.  iarray[i]=102.  ip = 0x7fff5fbfdc48.  *ip=102.  (ip-iarray)=2
+i=3.  iarray[i]=103.  ip = 0x7fff5fbfdc4c.  *ip=103.  (ip-iarray)=3
+i=4.  iarray[i]=104.  ip = 0x7fff5fbfdc50.  *ip=104.  (ip-iarray)=4
+i=5.  iarray[i]=105.  ip = 0x7fff5fbfdc54.  *ip=105.  (ip-iarray)=5
+i=6.  iarray[i]=106.  ip = 0x7fff5fbfdc58.  *ip=106.  (ip-iarray)=6
+i=7.  iarray[i]=107.  ip = 0x7fff5fbfdc5c.  *ip=107.  (ip-iarray)=7
+i=8.  iarray[i]=108.  ip = 0x7fff5fbfdc60.  *ip=108.  (ip-iarray)=8
+i=9.  iarray[i]=109.  ip = 0x7fff5fbfdc64.  *ip=109.  (ip-iarray)=9
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Everything in hex will change from machine to machine.  However, their interrelationship will
+always be the same.  In the <b>for</b> loop, <b>i</b>, <b>iarray[i]</b> and <b>*ip</b>
+should all be straightforward and require no explanation.  I'll explain the others in
+detail.
+<p>
+When this program starts to run, the operating system has set it up so that the 40 bytes
+starting with <tt>0x7fff5fbfdc40</tt> are where <b>iarray</b> is stored.  That is why <b>iarray</b>
+is equal to <tt>0x7fff5fbfdc40</tt>.  If <b>iarray[0]</b> is the four bytes that start at
+<tt>0x7fff5fbfdc40</tt>, then <b>iarray[1]</b> must be the four bytes that start at
+<tt>0x7fff5fbfdc44</tt>.  This is why <b>ip</b> is equal to <tt>0x7fff5fbfdc44 </tt>on the second iteration 
+of the <b>for</b> loop.
+</p><p>
+While this is all logical, it is a little confusing: adding one to <b>ip</b> actually
+adds four to the value of the pointer.  
+This is called "pointer arithmetic" -- when you add <i>x</i>
+to a pointer, it really adds <i>sx</i> to it, where <i>s</i> is the size of data to 
+which the pointer points.  
+</p><p>
+The last column printed in the <b>for</b> loop is a little confusing too.  Again, focus
+on the line where <b>i</b> equals one.  <b>ip</b> is equal to <tt>0x7fff5fbfdc44</tt>, so you 
+would think that <b>(ip-iarray)</b> would equal four.  It does not, because the compiler
+is doing pointer arithmetic -- from the point of view of the compiler, when you 
+say "<b>ip-iarray</b>," you are asking for the number of elements between <b>ip</b>
+and <b>iarray</b>.  That will be the difference between the pointers, divided by the
+size of the element.  In this case, it is <tt>(0x7fff5fbfdc44-0x7fff5fbfdc40)/4</tt>, 
+which equals one.
+</p><p>
+To help hammer this home a little further, I have three other programs where are
+nearly identical to <b>ptr.c</b>:
+</p><p>
+</p><ul>
+<li> <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/cptr.c">cptr.c</a></b>: The array is <b>char</b>'s, so the pointer's
+value is actually incremented by one on each iteration.
+</li><li> <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/dptr.c">dptr.c</a></b>: The array is <b>double</b>'s, so the pointer's
+value is actually incremented by eight on each iteration.
+</li><li> <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/sptr.c">sptr.c</a></b>: The array is a struct of two <b>double</b>'s, so the pointer's
+value is actually incremented by sixteen on each iteration.
+</li></ul>
+
+That last one is worth looking at it its entirety:
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct {
+  double d1;
+  double d2;
+} Two;
+
+int main()
+{
+  Two iarray[10];
+  Two *ip;
+  int i;
+
+  for (i = 0; i &lt; 10; i++) { 
+    iarray[i].d1 = 100+i;
+    iarray[i].d2 = 200+i;
+  }
+
+  printf("iarray = 0x%lx\n", (unsigned long) iarray);
+
+  ip = iarray;
+
+  for (i = 0; i &lt; 10; i++) {
+    printf("i=%d.  iarray[i]={%.2lf,%.2lf}.  ip = 0x%lx.  *ip={%.2lf,%.2lf}.  (ip-iarray)=%d\n", 
+        i, iarray[i].d1, iarray[i].d2, (unsigned long) ip, ip-&gt;d1, ip-&gt;d2, (int) (ip-iarray));
+    ip++;
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+In particular, I use the arrow to dereference different parts of the struct from the 
+pointer: <b>ip-&gt;d1</b> accesses <b>d1</b>, and 
+<b>ip-&gt;d2</b> accesses <b>d2</b>.  
+</p><p>
+You can force your machine into 32-bit mode by using the compiler directive <b>-m32</b>.
+Let's do that with the last program:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>gcc -m32 -o sptr sptr.c</b></font>
+UNIX&gt; <font color="darkred"><b>./sptr</b></font>
+iarray = 0xbfffdd98
+i=0.  iarray[i]={100.00,200.00}.  ip = 0xbfffdd98.  *ip={100.00,200.00}.  (ip-iarray)=0
+i=1.  iarray[i]={101.00,201.00}.  ip = 0xbfffdda8.  *ip={101.00,201.00}.  (ip-iarray)=1
+i=2.  iarray[i]={102.00,202.00}.  ip = 0xbfffddb8.  *ip={102.00,202.00}.  (ip-iarray)=2
+i=3.  iarray[i]={103.00,203.00}.  ip = 0xbfffddc8.  *ip={103.00,203.00}.  (ip-iarray)=3
+i=4.  iarray[i]={104.00,204.00}.  ip = 0xbfffddd8.  *ip={104.00,204.00}.  (ip-iarray)=4
+i=5.  iarray[i]={105.00,205.00}.  ip = 0xbfffdde8.  *ip={105.00,205.00}.  (ip-iarray)=5
+i=6.  iarray[i]={106.00,206.00}.  ip = 0xbfffddf8.  *ip={106.00,206.00}.  (ip-iarray)=6
+i=7.  iarray[i]={107.00,207.00}.  ip = 0xbfffde08.  *ip={107.00,207.00}.  (ip-iarray)=7
+i=8.  iarray[i]={108.00,208.00}.  ip = 0xbfffde18.  *ip={108.00,208.00}.  (ip-iarray)=8
+i=9.  iarray[i]={109.00,209.00}.  ip = 0xbfffde28.  *ip={109.00,209.00}.  (ip-iarray)=9
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+As you can see, the pointers are smaller (8 hex digits).  However, their interrelationship
+is the same, and each time you increment <b>ip</b>, its value is increased by 16.
+
+<hr>
+
+<h2>Little Quiz</h2>
+
+More pointers: 
+Behold the following C program (in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/quiz.c"><b>quiz.c</b></a>):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>/* Line 1 */   #include &lt;stdio.h&gt;
+/* Line 2 */  
+/* Line 3 */   int main()
+/* Line 4 */   {
+/* Line 5 */     int i, array[10];
+/* Line 6 */     int *ip, *a1;
+/* Line 7 */     int **ipp;
+/* Line 8 */   
+/* Line 9 */     ip = &amp;i;
+/* Line 10 */    ipp = &amp;ip;
+/* Line 11 */    a1 = &amp;(array[1]);
+/* Line 12 */  
+/* Line 13 */    for (i = 0; i &lt; 10; i++) array[i] = i;
+/* Line 14 */  
+/* Line 15 */    i = 11;
+/* Line 16 */  
+/* Line 17 */    printf("ip: 0x%lx, &amp;ip: 0x%lx, array: 0x%lx\n", (unsigned long) ip, (unsigned long) &amp;ip, (unsigned long) array);
+/* Line 18 */    printf("\n");
+/* Line 19 */    
+/* Line 20 */  
+/* Line 21 */    printf("&amp;i: 0x%lx\n", (unsigned long) &amp;i);
+/* Line 22 */    printf("ipp: 0x%lx, *ipp: 0x%lx, **ipp: 0x%lx\n", (unsigned long) ipp, (unsigned long) *ipp, (unsigned long) **ipp);
+/* Line 23 */    printf("\n");
+/* Line 24 */    printf("a1: 0x%lx, *a1: 0x%lx\n", (unsigned long) a1, (unsigned long) *a1);
+/* Line 25 */  
+/* Line 26 */    a1 += 4;
+/* Line 27 */    *a1 = 500;
+/* Line 28 */    
+/* Line 29 */    for (i = 0; i &lt; 10; i++) {
+/* Line 30 */      printf("%d ", array[i]);
+/* Line 31 */    }
+/* Line 32 */    printf("\n");
+/* Line 33 */  }
+</pre></td></tr></tbody></table></center><p>
+
+When you run this, the first line of output is:
+
+</p><pre>UNIX&gt; ./quiz
+ip: 0xeffff9fc, &amp;ip: 0xeffff9cc, array: 0xeffff9d0
+
+</pre>
+What is the rest of the output?
+<p>
+(In class, I used the following drawing to help illustrate.  You can 
+get them in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/Little-Quiz-Helper.odp">Little-Quiz-Helper.odp (Open Office)</a>
+or <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pointer-Arithmetic/Little-Quiz-Helper.pdf"> Little-Quiz-Helper.pdf (PDF)</a>.)
+</p><p>
+This is tricky, but you should be able to do it with all you currently
+know about pointers.  This is the kind of question I am fond of asking
+on tests. Here's the answer.  If you want to make sure you're doing
+things right, try to draw a picture of memory and fill in what that
+first line tells you.  Here would be my picture.  We'll start with 
+a blank slate with the relevant addresses from the first line of 
+the program:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>0xeffff9cc: |                        |
+0xeffff9d0: |                        |
+0xeffff9d4: |                        |
+0xeffff9d8: |                        |
+0xeffff9dc: |                        |
+0xeffff9e0: |                        |
+0xeffff9e4: |                        |
+0xeffff9e8: |                        |
+0xeffff9ec: |                        |
+0xeffff9f0: |                        |
+0xeffff9f4: |                        |
+0xeffff9f8: |                        |
+0xeffff9fc: |                        |
+</pre></td></tr></tbody></table></center><p>
+Now, what do we know from the first line of output.  Well, the 
+address of <b>ip</b> is <tt>0xeffff9cc</tt>, and its value is
+<tt>0xeffff9fc</tt>.  So we can draw in its value at that address:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>0xeffff9cc: | ip = 0xeffff9fc        |
+0xeffff9d0: |                        |
+0xeffff9d4: |                        |
+0xeffff9d8: |                        |
+0xeffff9dc: |                        |
+0xeffff9e0: |                        |
+0xeffff9e4: |                        |
+0xeffff9e8: |                        |
+0xeffff9ec: |                        |
+0xeffff9f0: |                        |
+0xeffff9f4: |                        |
+0xeffff9f8: |                        |
+0xeffff9fc: |                        |
+</pre></td></tr></tbody></table></center><p>
+From line 9, we know that the address of <b>i</b> is equal to <b>ip</b>.
+Moreover, <b>i</b>'s value is 11, so we can draw that in:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>0xeffff9cc: | ip = 0xeffff9fc        |
+0xeffff9d0: |                        |
+0xeffff9d4: |                        |
+0xeffff9d8: |                        |
+0xeffff9dc: |                        |
+0xeffff9e0: |                        |
+0xeffff9e4: |                        |
+0xeffff9e8: |                        |
+0xeffff9ec: |                        |
+0xeffff9f0: |                        |
+0xeffff9f4: |                        |
+0xeffff9f8: |                        |
+0xeffff9fc: | i = 11                 |
+</pre></td></tr></tbody></table></center><p>
+Now, <b>array</b> is a pointer to the first element of the 10-element
+array.  Since its value is <tt>0xeffff9d0</tt>, we can draw in all ten elements
+of the array:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>0xeffff9cc: | ip = 0xeffff9fc        |
+0xeffff9d0: | array[0] = 0           |
+0xeffff9d4: | array[1] = 1           |
+0xeffff9d8: | array[2] = 2           |
+0xeffff9dc: | array[3] = 3           |
+0xeffff9e0: | array[4] = 4           |
+0xeffff9e4: | array[5] = 5           |
+0xeffff9e8: | array[6] = 6           |
+0xeffff9ec: | array[7] = 7           |
+0xeffff9f0: | array[8] = 8           |
+0xeffff9f4: | array[9] = 9           |
+0xeffff9f8: |                        |
+0xeffff9fc: | i = 11                 |
+</pre></td></tr></tbody></table></center><p>
+
+Now we know all we need to know.  Since <b>&amp;i</b> equals <b>ip</b>,
+the first line of output is "<tt>&amp;i: 0xeffff9fc.</tt>"  Next, from line
+10 of the program, we know that <b>ipp</b> equals the address of
+<b>ip</b>.  So the next line is:
+</p><pre>ipp: 0xeffff9cc, *ipp: 0xeffff9fc, **ipp: 0xb
+</pre>
+Note, that last word is <tt>0xb</tt>, and not 11, because we are printing 11 
+in hexadecimal.
+<p>
+Now, since <b>a1</b> is a pointer to <b>array[1]</b>, its value is
+<tt>0xeffff9d4</tt>.  Thus, our next line of output (after the blank line) is:
+</p><pre>a1: 0xeffff9d4, *a1: 0x1
+</pre>
+Finally, 
+the statement ``<b>a1 += 4</b>'' is pointer arithmetic.
+It sets <b>a1</b> ahead four ints.  Therefore, it adds 16 to the 
+value of <b>a1</b> -- 16 because ints are 4 bytes: 4*4 = 16.  After
+the statement it points to <b>array[5]</b>.  Therefore, the last line is
+<pre>0 1 2 3 4 500 6 7 8 9 
+</pre>
+Here is the entire output:
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>ip: 0xeffff9fc, &amp;ip: 0xeffff9cc, array: 0xeffff9d0
+
+&amp;i: 0xeffff9fc
+ipp: 0xeffff9cc, *ipp: 0xeffff9fc, **ipp: 0xb
+
+a1: 0xeffff9d4, *a1: 0x1
+0 1 2 3 4 500 6 7 8 9 
+</pre></td></tr></tbody></table></center><p>
+</p><p>
+The output can differ from machine to machine, but it totally dependent on the
+first line.  Here it is compiled in 64-bit mode on my Macbook:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./quiz</b></font>
+ip: 0x7fff5fbfdc7c, &amp;ip: 0x7fff5fbfdc70, array: 0x7fff5fbfdc30
+
+&amp;i: 0x7fff5fbfdc7c
+ipp: 0x7fff5fbfdc70, *ipp: 0x7fff5fbfdc7c, **ipp: 0xb
+
+a1: 0x7fff5fbfdc34, *a1: 0x1
+0 1 2 3 4 500 6 7 8 9 
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+At this point, I urge you to study 
+exam questions from 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/oldtests/t0.html">old
+pointer midterm exams</a>.
+Reading memory and pointers is an important 
+part of systems programming and these questions give you very good practice with it.
+
+</li></body></html>

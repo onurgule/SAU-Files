@@ -1,0 +1,674 @@
+
+<!-- saved from url=(0088)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Introduction to System Calls (I/O System 
+      Calls)</title>
+
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Introduction to System Calls (I/O System Calls)</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/">CS360</a>
+</li><li>Directory: <b>~jplank/cs360/notes/Syscall-Intro</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/lecture.html">
+    <b> http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/lecture.html </b></a>
+</li><li> September, 1996.
+</li><li> Last modification: Tue Jan 30 11:12:34 EST 2018
+</li></ul>
+
+
+
+<hr>
+<h2>System Calls</h2>
+
+When a computer is turned on, the program that gets executed first is
+called the ``<i>operating system</i>.''  It controls pretty much all activity 
+in the computer.  This includes who logs in, how disks are used, how
+memory is used, how the CPU is used, and how you talk with other computers.
+In this class, we focus on the Unix operating system, which is pervasive 
+these days.
+<p>
+
+The way that programs talk to the operating system is via ``<i>system
+calls</i>.'' A system call looks like a procedure call (see below),
+but it's different -- <b>it is a request to the operating system to
+perform some activity</b>.  
+
+</p><p>
+System calls are expensive.  While a procedure call can usually be 
+performed in a few machine instructions, a system call requires the
+computer to save its state, let the operating system take control 
+of the CPU, have the operating system perform some function, have the
+operating system save its state, and then have the operating system
+give control of the CPU back to you.  This concept is important, and 
+will be seen time and time again in this class.
+
+</p><hr>
+<h2>System Calls for I/O</h2>
+
+There are 5 basic system calls that Unix provides for file I/O.
+<pre>        1.  int open(char *path, int flags [ , int mode ] );
+        2.  int close(int fd);
+        3.  ssize_t read(int fd, void *buf, size_t count);
+        4.  ssize_t write(int fd, const void *buf, size_t count);
+        5.  off_t lseek(int fd, off_t offset, int whence);
+
+</pre>
+You'll note that they look like regular procedure calls.  This is how
+you program with them -- like regular procedure calls.  However, you
+should know that they are different: A system call makes a request to
+the operating system.  A procedure call just jumps to a procedure
+defined elsewhere in your program.  That procedure call may itself
+make a system call (for example, <b>fopen()</b> calls <b>open()</b>), 
+but it is a different call.  
+<p>
+The reason the operating system controls I/O is for safety -- the
+computer must ensure that if my program has a bug in it, then it
+doesn't crash the system, and it doesn't mess up other people's
+programs that may be running at the same time or later.  Thus, 
+whenever you do disk or screen or network I/O, you must go through
+the operating system and use system calls.
+</p><p>
+These five system calls are defined fully in their man pages (do 
+'<b>man -s 2 open</b>', '<b>man -s 2 close</b>', etc).  All those
+irritating types like <b>ssize_t</b> and <b>off_t</b> are ints and
+longs.  They used to all be ints, but as machines and files have
+grown, so have they.
+
+</p><hr>
+<h2>Open</h2>
+
+Open makes a request to the operating system to use a file.  The
+'<b>path</b>' argument specifies what file you would like to use, and the
+'<b>flags</b>' and '<b>mode</b>' arguments specify how you would like to use it.
+If the operating system approves your request, it will return a
+``<i>file descriptor</i>'' to you.  This is a non-negative integer.  If it
+returns -1, then you have been denied access, and you have to check
+the value of the variable "<b>errno</b>" to determine why.  (That or use
+<b>perror()</b> -- see the 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/lecture.html">basic terminology lecture notes</a>).
+<p>
+All actions that you will perform on files will be done through the
+operating system.  Whenever you want to do file I/O directly with
+the operating system, you specify the
+file by its file descriptor.  Thus, whenever you want to do file I/O
+on a specific file, you must first open that file to get a file
+descriptor. 
+</p><p>
+Example: 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/o1.c">
+o1.c</a></b>
+opens the file 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/in1.txt">in1.txt</a></b>
+for reading, and prints the value
+of the file descriptor.  If you haven't copied over the file <b>in1.txt</b>,
+then it will print -1, since <b>in1.txt</b> does not exist.  If 
+<b>in1.txt</b> does exist,
+then it will print 3, meaning that the <b>open()</b> request has been granted
+(i.e. a non-negative integer was returned).
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;fcntl.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  int fd;
+
+  fd = open("in1.txt", O_RDONLY);
+  printf("%d\n", fd);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+</p><p>
+Note the value of '<b>flags</b>' -- the man page for 
+<b>open()</b> will give you a description of the flags and how they work.
+They are also described in 
+<b><a href="file://usr/include/fcntl.h">fcntl.h</a></b>, which can 
+be found in the directory <tt> /usr/include</tt>. (Note that 
+<b>fcntl.h</b> merely includes
+<b><a href="file://usr/include/sys/fcntl.h">
+/usr/include/sys/fcntl.h</a></b>, so you'll have to look at that
+file to see what <b>O_RDONLY</b> and all really mean).
+</p><p>
+Here are a few examples of calling <b>o1</b>.  Initially, I have a file called <b>in1.txt</b>
+in my directory, so the <b>open()</b> call is successful, returning 3.  I then rename it to <b>tmp.ctxt</b>,
+and now the <b>open()</b> call fails, return -1.  I rename it back, and the <b>open()</b> 
+call succeeds again, returning 3:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>ls -l in1.txt</b></font>
+-rw-r--r--  1 plank  staff  22 Jan 31 12:50 in1.txt
+UNIX&gt; <font color="darkred"><b>./o1 </b></font>
+3                                      <font color="blue"> The open call succeeds here.</font>
+UNIX&gt; <font color="darkred"><b>mv in1.txt tmp.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o1</b></font>
+-1                                     <font color="blue"> The open call fails here.</font>
+UNIX&gt; <font color="darkred"><b>mv tmp.txt in1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o1</b></font>
+3                                      <font color="blue"> The open call succeeds again.</font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+
+
+Example:
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/o2.c">
+o2.c</a></b>
+tries to open the file "<b>out1.txt</b>" for writing.  That fails
+because <b>out1.txt</b> does not exist already.  Here's the code --
+you'll note that it uses <b>perror()</b> to print why the error occurred.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;fcntl.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int main()
+{
+  int fd;
+
+  fd = open("out1.txt", O_WRONLY);
+  if (fd &lt; 0) {
+    perror("out1.txt");
+    exit(1);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run it, <b>out1.txt</b> doesn't exist, and it fails.  We create <b>out1.txt</b> and
+it succeeds, but since we didn't do anything with it, nothing happens to the file.  
+If we change its protection to be read-only, then the <b>open()</b> call fails due to
+file protection.  We then delete <b>out1.txt</b>, and <b>o2</b> fails again:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 12:50 out2.txt
+UNIX&gt; <font color="darkred"><b>./o2</b></font>
+out1.txt: No such file or directory
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; out1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  3 Jan 31 13:13 out1.txt
+-rw-r--r--  1 plank  staff  0 Jan 31 12:50 out2.txt
+UNIX&gt; <font color="darkred"><b>./o2</b></font>
+UNIX&gt; <font color="darkred"><b>cat out1.txt</b></font>
+Hi
+UNIX&gt; <font color="darkred"><b>chmod 0400 out1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o2</b></font>
+out1.txt: Permission denied
+UNIX&gt; <font color="darkred"><b>chmod 0644 out1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>rm out1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o2</b></font>
+out1.txt: No such file or directory
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+In order to open a new file for
+writing, you should open it with <b>(O_WRONLY | O_CREAT | O_TRUNC)</b> as
+the <b>flags</b> argument.  The binary-or is how you aggregate these arguments
+(they are each integers with a different bit set, so the binary-or combines them all).
+<ul>
+<li> <b>O_CREATE</b> says to create the file if it doesn't exist already.
+</li><li> <b>O_TRUNC</b> say that if the file does exist, to "truncate" it to zero bytes, erasing
+what was there.
+</li></ul>
+See <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/o3.c"> o3.c</a></b>
+for an example:  
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/o3.c">o3.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;fcntl.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  int fd;
+
+  fd = open("out2.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd &lt; 0) {
+    perror("o3");
+    exit(1);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+Below, I run <b>o3</b> in various situations -- you can see that if the file doesn't
+exist, it creates it.  If the file does exist, then it truncates it:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 12:50 out2.txt
+UNIX&gt; <font color="darkred"><b>./o3</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:15 out2.txt
+UNIX&gt; <font color="darkred"><b>rm out2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+ls: out2.txt: No such file or directory
+UNIX&gt; <font color="darkred"><b>./o3</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:16 out2.txt
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; out2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  3 Jan 31 13:16 out2.txt
+UNIX&gt; <font color="darkred"><b>./o3</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:16 out2.txt
+UNIX&gt; <font color="darkred"><b>echo "Hi Again" &gt; out2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>chmod 0400 out2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-r--------  1 plank  staff  9 Jan 31 13:16 out2.txt
+UNIX&gt; <font color="darkred"><b>./o3</b></font>
+o3: Permission denied
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-r--------  1 plank  staff  9 Jan 31 13:16 out2.txt
+UNIX&gt; <font color="darkred"><b>chmod 0644 out2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o3</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l out2.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+Finally, the '<b>mode</b>' argument should only be used if you are creating
+a new file.  It specifies the protection mode of the new file.  <tt>0644</tt>
+is the most typical value -- it says "I can read and write it;
+everyone else can only read it."  The zero in <tt>0644</tt> says to interpret
+the number in octal.  (Later, when you learn about the <b>umask</b>, you'll
+use a different <b>mode</b>, but for now, we'll use <tt>0644</tt>).
+<p>
+You can open the same file more than once.  You will get a different
+<b>fd</b> each time.  If you open the same file for writing more than once
+at a time, you may get bizarre results. 
+</p><hr>
+<h2>Close</h2>
+
+<b>Close()</b> tells the operating system that you are done with a 
+file descriptor.
+The OS can then reuse that file descriptor.  The program
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/c1.c">c1.c</a></b>
+shows some 
+examples with opening and closing the file <b>in1.txt</b>.  You should look at
+it carefully, as it opens the file multiple times without closing it, which is
+perfectly legal in Unix.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+
+int main()
+{
+  int fd1, fd2;
+
+  <font color="blue">/* First open in1.txt twice for reading.  Print out the file descriptors. */</font>
+
+  fd1 = open("in1.txt", O_RDONLY);
+  if (fd1 &lt; 0) { perror("c1"); exit(1); }
+
+  fd2 = open("in1.txt", O_RDONLY);
+  if (fd2 &lt; 0) { perror("c1"); exit(1); }
+
+  printf("Opened the file in1.txt twice:  Fd's are %d and %d.\n", fd1, fd2);
+
+  <font color="blue">/* Close the file descriptors. */</font>
+
+  if (close(fd1) &lt; 0) { perror("c1"); exit(1); }
+  if (close(fd2) &lt; 0) { perror("c1"); exit(1); }
+
+  printf("Closed both fd's.\n");
+
+  <font color="blue">/* Open in1.txt again, to see that it will reuse the first file descriptor. */</font>
+
+  fd2 = open("in1.txt", O_RDONLY);
+  if (fd2 &lt; 0) { perror("c1"); exit(1); }
+  
+  printf("Reopened in1.txt into fd2: %d.\n", fd2);
+
+  <font color="blue">/* Close the file descriptor twice.  The second causes an error, which usually
+     goes unnoticed, because programmers rarely look at the return value of close(). */</font>
+
+  if (close(fd2) &lt; 0) { perror("c1"); exit(1); }
+
+  printf("Closed fd2.  Now, calling close(fd2) again.\n");
+  printf("This should cause an error.\n\n");
+
+  if (close(fd2) &lt; 0) { perror("c1"); exit(1); }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./c1</b></font>
+Opened the file in1.txt twice:  Fd's are 3 and 4.
+Closed both fd's.
+Reopened in1.txt into fd2: 3.
+Closed fd2.  Now, calling close(fd2) again.
+This should cause an error.
+
+c1: Bad file descriptor
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h2>Read</h2>
+
+<b>Read()</b> tells the operating system to read "<b>size</b>" 
+bytes from the file opened
+in file descriptor "<b>fd</b>", and to put those bytes into the location pointed
+to by "<b>buf</b>".  It returns how many bytes were actually read.  Consider
+the code in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/r1.c">r1.c</a></b>.  
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  char *c;
+  int fd, sz;
+
+  <font color="blue">/* Allocate 100 bytes, and then open in1.txt: */</font>
+
+  c = (char *) malloc(100 * sizeof(char));
+  fd = open("in1.txt", O_RDONLY);
+  if (fd &lt; 0) { perror("r1"); exit(1); }
+
+  <font color="blue">/* Read ten bytes from the file.  Print the return value, 
+     add the NULL character, and print the bytes as a string. */</font>
+
+  sz = read(fd, c, 10);
+  printf("called read(%d, c, 10).  returned that %d bytes  were read.\n", fd, sz);
+  c[sz] = '\0';
+  printf("Those bytes are as follows: %s\n", c);
+
+  <font color="blue">/* Now, read 99 bytes and do the same thing.  You'll note that since there 
+     were only 12 more bytes in the file, that read() returns 12.  Also, you'll
+     note that read() does not NULL terminate anything.  It simply reads the
+     bytes.  So you need to NULL terminate before printing. */</font>
+
+  sz = read(fd, c, 99);
+  printf("called read(%d, c, 99).  returned that %d bytes  were read.\n", fd, sz);
+  c[sz] = '\0';
+  printf("Those bytes are as follows: %s\n", c);
+
+  <font color="blue">/* As with freeing memory, this is unnecessary, since we are exiting.
+     The operating system will make sure that open files are closed when
+     the process exits. */</font>
+
+  close(fd);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+
+When executed, you get the following:
+</p><pre>UNIX&gt; <font color="darkred"><b>./r1</b></font>
+called read(3, c, 10).  returned that 10 bytes  were read.
+Those bytes are as follows: Jim Plank
+
+called read(3, c, 99).  returned that 12 bytes  were read.
+Those bytes are as follows: Claxton 221
+
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+There are a few things to note about this program.  First, <b>buf</b>
+should point to valid memory.  In <b>r1.c</b>, this is achieved by
+<b>malloc()</b>-ing space for <b>c</b> Alternatively, I could have
+declared <b>c</b> to be a static array with 100 characters:
+<pre>  char c[100];
+</pre>
+Second, I null terminate <b>c</b> after the <b>read()</b> calls to ensure
+that <b>printf()</b> will understand it.  This is important -- in text files,
+there are no NULL characters.  When <b>read()</b> reads them, it does not
+NULL terminate.  If you are going to use the characters as strings in C, you'll
+need to NULL terminate them yourself.
+<p>
+Third, when  <b>read()</b> returns 0, then the end of file has been reached.
+When you are reading from a file, if <b>read()</b> returns fewer bytes
+than you requested, then you have reached the end of the file as well.  
+This is what happens in the second <b>read()</b> in <b>r1.c</b>.
+</p><p>
+Fourth, note that the 10th character in the first <b>read()</b> call 
+and the 12th character in the second are both
+newline characters.  That is why you get two newlines in the <b>printf()</b>
+statement.  One is in <b>c</b>, and the other is in the <b>printf()</b>
+statement.
+</p><p>
+To reiterate, the read call does <i>not</i> read a NULL character.  It simply reads bytes from the
+file, and the file does not contain any NULL characters.   This is why you have to put the
+NULL character explicitly into your string.  Let's take a look at a similar program, which
+doesn't NULL terminate (<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/r2.c">r2.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;string.h&gt;
+
+int main()
+{
+  char c[100];
+  int fd;
+
+  strcpy(c, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  fd = open("in1.txt", O_RDONLY);
+  if (fd &lt; 0) { perror("r1"); exit(1); }
+
+  read(fd, c, 10);
+  printf("%s\n", c);
+
+  read(fd, c, 99);
+  printf("%s\n", c);
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Because I didn't NULL terminate after reading, <b>printf()</b> prints every character
+of <tt>c</tt> until it encounters the NULL character after <tt>'Z'</tt>.  That's why you
+get the stray uppercase letters at the end of each <b>printf()</b> statement:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./r2</b></font>
+Jim Plank
+KLMNOPQRSTUVWXYZ
+Claxton 221
+MNOPQRSTUVWXYZ
+UNIX&gt;
+</pre>
+
+
+<hr>
+<h2>Write</h2>
+
+<b>Write()</b> is just like <b>read()</b>, only it writes the bytes 
+instead of reading them.
+It returns the number of bytes actually written, which is almost 
+invariably "<b>size</b>".
+<p>
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/w1.c">
+w1.c</a></b>
+writes the string <b>"cs360\n"</b> to the file <b>out3.txt</b>.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;fcntl.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  int fd, sz;
+
+  fd = open("out3.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd &lt; 0) { perror("r1"); exit(1); }
+
+  sz = write(fd, "cs360\n", strlen("cs360\n"));
+
+  printf("called write(%d, \"cs360\\n\", %ld).  it returned %d\n",
+         fd, strlen("cs360\n"), sz);
+
+  close(fd);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>w1</b></font>
+called write(3, "cs360\n", 6).  it returned 6
+UNIX&gt; <font color="darkred"><b>cat out3</b></font>
+cs360
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You should think about different combinations of <b>O_CREAT</b> and <b>O_TRUNC</b>, and their
+effect on <b>write</b>.  In particular, take a look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/w2.c">w2.c</a></b>.  This lets you specify the combination of <b>O_WRONLY</b>,
+<b>O_CREAT</b> and <b>O_TRUNC</b> that you use in your <b>open()</b> call:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;fcntl.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char **argv)
+{
+  int fd, sz, flags, len;
+
+  if (argc != 3) {
+    fprintf(stderr, "usage: w2 w|wc|wt|wct input-word\n");
+    exit(1);
+  }
+
+  <font color="blue">/* Figure out what the "flags" argument will be to the open() call. */</font>
+
+  if (strcmp(argv[1], "w") == 0) {
+    flags = O_WRONLY;
+  } else if (strcmp(argv[1], "wc") == 0) {
+    flags = (O_WRONLY | O_CREAT);
+  } else if (strcmp(argv[1], "wt") == 0) {
+    flags = (O_WRONLY | O_TRUNC);
+  } else if (strcmp(argv[1], "wct") == 0) {
+    flags = (O_WRONLY | O_CREAT | O_TRUNC);
+  } else {
+    fprintf(stderr, "Bad first argument.  Must be one of w, wc, wt, wct.\n");
+    exit(1);
+  }
+
+  <font color="blue">/* Open the file with the given flags. */</font>
+
+  fd = open("out3.txt", flags, 0644);
+  if (fd &lt; 0) { perror("open"); exit(1); }
+
+  len = strlen(argv[2]);
+  sz = write(fd, argv[2], len);
+  
+  <font color="blue">/* Write the input word to the file. */</font>
+
+  printf("called write(%d, \"%s\", %d).  It returned %d\n", fd, argv[2], len, sz);
+
+  close(fd);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Take a look at all of the following executions of the program.  You should be able 
+to explain them all.  You should also notice that there is no newline in the write
+call, which is why the resulting file has no newline in it.  There is also no NULL
+character being written to the file, because you are writing <b>strlen()</b> bytes,
+which does not include the NULL character:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>ls out*.txt</b></font>
+out2.txt
+UNIX&gt; <font color="darkred"><b>w2 w Hi</b></font>
+open: No such file or directory
+UNIX&gt; <font color="darkred"><b>ls out*.txt</b></font>
+out2.txt
+UNIX&gt; <font color="darkred"><b>w2 wc ABCDEFG</b></font>
+called write(3, "ABCDEFG", 7).  it returned 7
+UNIX&gt; <font color="darkred"><b>ls out*.txt</b></font>
+out2.txt	out3.txt
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+-rw-r--r--  1 plank  staff  7 Jan 31 13:50 out3.txt
+UNIX&gt; <font color="darkred"><b>cat out3.txt</b></font>
+ABCDEFGUNIX&gt; <font color="darkred"><b></b></font>       <font color="blue">There is no newline in the string.</font>
+UNIX&gt; <font color="darkred"><b>w2 w XYZ</b></font>
+called write(3, "XYZ", 3).  it returned 3
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+-rw-r--r--  1 plank  staff  7 Jan 31 13:51 out3.txt
+UNIX&gt; <font color="darkred"><b>cat out3.txt</b></font>
+XYZDEFGUNIX&gt; <font color="darkred"><b>w2 wc ---</b></font>    <font color="blue">The XYZ overwrote the first three characters.</font>
+called write(3, "---", 3).  it returned 3
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+-rw-r--r--  1 plank  staff  7 Jan 31 13:51 out3.txt
+UNIX&gt; <font color="darkred"><b>cat out3.txt</b></font>
+---DEFGUNIX&gt; <font color="darkred"><b>w2 wt abcde</b></font>     <font color="blue">Since we didn't specify O_TRUNC, it left the file intact.</font>
+called write(3, "abcde", 5).  it returned 5
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+-rw-r--r--  1 plank  staff  5 Jan 31 13:52 out3.txt
+UNIX&gt; <font color="darkred"><b>cat out3.txt</b></font>
+abcdeUNIX&gt; <font color="darkred"><b>rm out3.txt</b></font>       <font color="blue">It truncated the file.  We didn't need O_CREAT because the file already exists.</font>
+UNIX&gt; <font color="darkred"><b>w2 wt efghi</b></font>
+open: No such file or directory
+UNIX&gt; <font color="darkred"><b>ls -l out*.txt</b></font>
+-rw-r--r--  1 plank  staff  0 Jan 31 13:17 out2.txt
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h2>Lseek</h2>
+
+All open files have a "<i>file pointer</i>" associated with them.  When the file
+is opened, the file pointer points to the beginning of the file.  As the
+file is read or written, the file pointer moves.  For example, in <b>r1.c</b>,
+after the first read, the file pointer points to the 11th byte in <b>in1.txt</b>.
+You can move the file pointer manually with <b>lseek()</b>.  The 'whence' 
+variable
+of <b>lseek</b> specifies how the seek is to be done -- from the beginning of the
+file, from the current value of the pointer, and from the end of the file.
+The return value is the offset of the pointer after the lseek.  Look 
+at <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/l1.c">
+l1.c</a></b>
+It does a bunch of seeks on the file <b>in1.txt</b>.  Trace it and make
+sure it all makes sense.  How did I know to include <b>sys/types.h</b> and 
+<b>unistd.h</b>?  I typed "<b>man -s 2 lseek</b>".
+
+<hr>
+<h2>Standard Input, Standard Output, and Standard Error</h2>
+
+Now, every process in Unix starts out with three file descriptors predefined and open:
+<ul>
+<li>        File descriptor 0 is standard input.
+</li><li>        File descriptor 1 is standard output.
+</li><li>        File descriptor 2 is standard error.
+</li></ul>
+Thus, when you write a program, you can read from standard input, using
+<b>read(0, ...)</b>, and write to standard output using <b>write(1, ...)</b>.
+<p>
+Armed with that information, we can write a very simple <b>cat</b> program (one that copies standard
+input to standard output) with one line: (this is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Syscall-Intro/simpcat.c"> simpcat.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;unistd.h&gt;
+
+int main()
+{
+  char c;
+
+  while (read(0, &amp;c, 1) == 1) write(1, &amp;c, 1);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+You'll note, because I am only calling the system calls <b>read()</b> and <b>write()</b>,
+I don't need to include <tt>stdio.h</tt> or <tt>stdlib.h</tt>.
+
+</p><pre>UNIX&gt; <font color="darkred"><b>simpcat &lt; in1.txt</b></font>
+Jim Plank
+Claxton 221
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</body></html>

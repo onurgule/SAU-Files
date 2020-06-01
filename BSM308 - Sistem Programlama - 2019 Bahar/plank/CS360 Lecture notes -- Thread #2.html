@@ -1,0 +1,470 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Thread #2</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Thread #2</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Thread2</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/lecture.html
+</b></a>
+</li><li> Last modified: <i>
+Tue Apr 12 11:12:55 EDT 2016
+</i>
+</li></ul>
+<hr>
+
+In this lecture, we cover race conditions and mutexes.
+
+<p>
+</p><hr>
+<h3>Race conditions</h3>
+
+A race condition is when a piece of code, with multiple units of execution (such as threads),
+has a piece of data which can be read and written in multiple, unspecified, orders.
+Race conditions are typically bad.  I say "typically," because sometimes they won't matter.
+However, usually a race condition in your code is going to be a bug eventually, so it is a
+good idea to know how to recognize race conditions, and how to use synchronization 
+data structures (such as mutexes and condition variables) to avoid them, while still 
+allowing a good degree of parallelism.
+<p>
+Take a look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/race1.c">race1.c</a></b>.  Its explanation is inline with the code:
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/race1.c">race1.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* This program forks off two threads which share an integer,    
+   on which there is a race condition. */</font>
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;pthread.h&gt;
+
+<font color="blue">/* This is information shared by the two threads. */</font>
+
+typedef struct {
+  int i;
+  int die;
+} Shared_Info;
+
+<font color="blue">/* This is information which will be unique to each thread (SI is shared) */</font>
+
+typedef struct {
+  int id;
+  Shared_Info *SI;
+} Info;
+
+<font color="blue">/* Here's the thread code -- pretty simple. */</font>
+
+void *thread(void *x)
+{
+  Info *I;
+ 
+  I = (Info *) x;
+
+  while (!I-&gt;SI-&gt;die) I-&gt;SI-&gt;i = I-&gt;id;
+  return NULL;
+}
+
+<font color="blue">/* The main code sets up the shared and unique info, then forks off two threads.
+   It then sleeps for two seconds and prints out the shared variable, si.i.
+   Finally, it calls pthread_join() to wait for the two threads to die, and
+   prints out the shared variable again. */</font>
+
+int main(int argc, char **argv)
+{
+  pthread_t tids[2];
+  Shared_Info si;
+  Info I[2];
+  void *retval;
+
+  <font color="blue">/* Set up the data to send to the threads. */</font>
+
+  I[0].id = 0;
+  I[0].SI = &amp;si;
+
+  I[1].id = 1;
+  I[1].SI = &amp;si;
+
+  si.die = 0;
+  
+  <font color="blue">/* Create the two threads and sleep */</font>
+
+  if (pthread_create(tids, NULL, thread, I) != 0) { perror("pthread_create"); exit(1); }
+  if (pthread_create(tids+1, NULL, thread, I+1) != 0) { perror("pthread_create"); exit(1); }
+  sleep(2);
+
+  <font color="blue">/* Tell the threads to die, then print the shared info. */</font>
+
+  si.die = 1;
+  printf("%d\n", si.i);
+
+  <font color="blue">/* Wait for the threads to die and print out the shared info again. */</font>
+
+  if (pthread_join(tids[0], &amp;retval) != 0) { perror("pthread_join"); exit(1); }
+  if (pthread_join(tids[1], &amp;retval) != 0) { perror("pthread_join"); exit(1); }
+  printf("%d\n", si.i);
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Ok -- this program forks off two threads.  Each thread has its own <b>Info</b> struct,
+which contains an id unique to the thread -- either 0 or 1.  The <b>Info</b> struct also
+has a pointer to a <b>Shared_Info</b> struct, which is shared between the two threads.
+The <b>Shared_Info</b> struct has two variables -- <b>i</b>, which each thread is going to
+repeatedly overwrite with its id, and <b>die</b>, which each thread checks, and when it is
+one, the threads exit.
+</p><p>
+Ask yourself the following question: <i>Where are the <b>Info</b> and <b>Shared_Info</b> structs
+stored?  Heap or stack?  If stack, whose stack?</i>
+</p><p>
+The answer is that they are stored on the main thread's stack.  There is no restriction on 
+where threads can access memory -- a pointer is a pointer, and if it points to another thread's
+stack, so be it!
+</p><p>
+It should be pretty clear that this program has a race condition.  The two threads are wontonly
+overwriting <b>I-&gt;SI-&gt;i</b> without any synchronization.  If I asked you what the output of
+this program will be, you have to say that you don't really know.  It can be one of four
+things:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./race1</b></font>
+0
+1
+UNIX&gt; <font color="darkred"><b>./race1</b></font>
+1
+0
+UNIX&gt; <font color="darkred"><b>./race1</b></font>
+0
+0
+UNIX&gt; <font color="darkred"><b>./race1</b></font>
+1
+1
+UNIX&gt;
+</pre>
+The shell script 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/r1.sh">r1.sh</a></b> runs it 100 times, putting the output of each run on a single
+line.  After taking the 200 seconds to run the shell script, you can see that all outputs
+have occurred:
+
+<pre>UNIX&gt; <font color="darkred"><b>sh r1.sh &gt; r1-output.txt</b></font>
+UNIX&gt; <font color="darkred"><b>grep '0 0' r1-output.txt | wc</b></font>
+      26      52     104
+UNIX&gt; <font color="darkred"><b>grep '0 1' r1-output.txt | wc</b></font>
+      55     110     220
+UNIX&gt; <font color="darkred"><b>grep '1 0' r1-output.txt | wc</b></font>
+      10      20      40
+UNIX&gt; <font color="darkred"><b>grep '1 1' r1-output.txt | wc</b></font>
+       9      18      36
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>
+This is most definitely a race condition.  Is it a bad one?  Not really, because this program
+doesn't do anything but demonstrate a race condition.  Let's look at a more complex race 
+condition:
+
+</p><hr>
+<h3>Race2.c: A more complex race condition.</h3>
+
+Look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/race2.c"><b>race2.c</b></a>.
+This is another pretty simple program.  The command line arguments call for
+the user to specify the number of threads, a string size and a number
+of iterations.  Then the program does the following.  It allocates
+an array of <b>stringsize</b> characters.  Then it forks off <b>nthreads</b>
+threads, passing each thread its id, the number of iterations, and 
+the character array.  Each thread loops for the
+specified number of iterations.  At each iteration, it fills in the
+character array  with one character -- thread 0 uses 'A', thread 1 uses
+'B' and so on.  At the end of an iteration, the thread prints out the
+character array.  So, if we call it with the arguments 4, 4, 1, we'd
+expect the following output:
+<pre>UNIX&gt; <font color="darkred"><b>./race2 4 4 1</b></font>
+Thread 0: AAA
+Thread 1: BBB
+Thread 2: CCC
+Thread 3: DDD
+UNIX&gt; 
+</pre>
+Similarly, the following make sense:
+<pre>UNIX&gt; <font color="darkred"><b>./race2 4 4 2</b></font>
+Thread 0: AAA
+Thread 0: AAA
+Thread 1: BBB
+Thread 1: BBB
+Thread 2: CCC
+Thread 2: CCC
+Thread 3: DDD
+Thread 3: DDD
+UNIX&gt; <font color="darkred"><b>./race2 4 30 2</b></font>
+Thread 0: AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Thread 0: AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Thread 1: BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Thread 1: BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Thread 2: CCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+Thread 2: CCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+Thread 3: DDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+Thread 3: DDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+UNIX&gt; 
+</pre>
+
+Unfortunately, that output is not 
+guaranteed.  The reason is that 
+threads can be preempted anywhere.  In particular,
+they may be preempted in the middle of the <b>for()</b> loop, or
+in the middle of the <b>printf()</b> statement.  This can lead to 
+strange output.  For example, try the following:
+<pre>UNIX&gt; <font color="darkred"><b>./race2 2 70 200000 | grep 'AB'</b></font>
+</pre>
+This searches for output lines where the character 'A' is followed by a B.
+When I ran this, I got:
+
+<pre>UNIX&gt; <font color="darkred"><b>./race2 2 70 200000 | grep 'AB'</b></font>
+Thread 0: AAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Thread 1: AAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+UNIX&gt; 
+</pre>
+
+This shows two instances where thread 0 was interrupted by thread 1, which had
+been interrupted in the middle of its <b>for</b> loop.  When thread 1 resumed, 
+it overwrote the string with B's.
+<p>
+So, this program too has a race condition, this time with the shared array <b>s</b>.  
+The output above is particularly confusing, which is often what happens with race 
+conditions.
+</p><p>
+When you program with threads, you must pay attention to shared memory.  If
+more than one thread can modify the shared memory, then you often need 
+to protect the memory so that wierd things do not happen to the memory.
+</p><p>
+In our <b>race2</b> program, we can "fix" the race condition by enforcing
+that no thread can be interrupted by another thread when it is modifying
+and printing <b>s</b>.  This can be done with a <b>mutex</b>, sometimes
+called a "lock" or sometimes a "binary semaphore."  There are three
+procedures for dealing with mutexes in pthreads:
+</p><pre>int pthread_mutex_init(pthread_mutex_t *mutex, NULL);
+int pthread_mutex_lock(pthread_mutex_t *mutex);
+int pthread_mutex_unlock(pthread_mutex_t *mutex);
+</pre>
+<p>
+All three return 0 on success and somethine else if they fail.
+</p><p>
+You create a mutex with <b>pthread_mutex_init()</b>.  You have to
+have allocated memory for it ahead of time (i.e.
+<b>pthread_mutex_init()</b> does not call <b>malloc()</b>.  Then any
+thread may lock or unlock the mutex.  When a thread locks the mutex,
+no other thread may lock it.  If a thread calls
+<b>pthread_mutex_lock()</b> while the mutex is locked, then the
+thread will block until the mutex is unlocked.  Only one thread may
+lock the mutex at a time.
+</p><p>
+<i><b><font color="darkgreen">I want to point out here, that pthread_mutex_lock() does not actively "lock"
+other threads.  Instead, it locks a data structure, which can be shared among the
+threads.  The locking and unlocking of the data structure makes synchronization guarantees,
+which are very important to avoiding race conditions.  However, I don't want you to get into
+the habit of thinking that pthread_mutex_lock() actively blocks other threads, or "locks them
+out."  It doesn't -- it locks a data structure, and when other threads try to lock the 
+same data structure, they block.  Please reread this paragraph.</font></b></i>
+</p><p>
+So, we "fix" the program with 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/race3.c"><b>race3.c</b></a>.  You'll notice that a thread locks 
+the mutex just before modifying <b>s</b> and it unlocks the mutex 
+just after printing <b>s</b>.  This fixes the program so that the output
+makes sense:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>race3 4 4 1</b></font>
+Thread 0: AAA
+Thread 1: BBB
+Thread 2: CCC
+Thread 3: DDD
+UNIX&gt; <font color="darkred"><b>race3 4 4 2</b></font>
+Thread 0: AAA
+Thread 0: AAA
+Thread 2: CCC
+Thread 2: CCC
+Thread 1: BBB
+Thread 1: BBB
+Thread 3: DDD
+Thread 3: DDD
+UNIX&gt; <font color="darkred"><b>race3 4 70 1</b></font>
+Thread 0: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Thread 1: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Thread 2: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+Thread 3: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+UNIX&gt; <font color="darkred"><b>race3 2 70 100000 | grep AB</b></font>     <font color="blue">This call will never have any output because of the mutex.</font>
+UNIX&gt; 
+</pre>
+
+<h3>Terse advice on mutexes</h3>
+
+One of the challenges in dealing with synchronization primitives is to get
+what you want without constricting the threads system too much.   For 
+example, in your <b>jtalk_server</b> program, you will have to have a 
+data structure that holds all of the current connections.  When someone
+attaches to the socket, you add the connection to that data structure.
+When someone quits his/her <b>jtalk</b> session, then you delete the
+connection from the data structure.  And when someone sends a line to
+the server, you will traverse the data structure, and send the line
+to all the connections.  You will need to protect the data structure
+with a mutex.  For example, you do not want to be traversing the
+data structure and deleting a connection at the same time.  One thing
+you want to think about is how to protect the data structure, but 
+at the same time not cause too many threads to block on the mutex if
+they really don't have to.  We'll talk more about this later.
+
+<hr>
+<h2>Preemption</h2>
+
+<font color="red"><b>Unfortunately, we no longer use Solaris-based systems, and POSIX threads on 
+Linux are preemptive.  So, the text below no longer applies, and is not required
+reading for CS360.  However, I leave it here because it is still interesting, especially
+for those of you studying user/system level threads in your Operating Systems class.</b></font>
+
+<p>
+
+The previous lecture notes talked a bit about preemption.  Here is some
+more specific information about preemption in Solaris.  It is kind of
+confusing, but once you understand all the details, you'll see that 
+the Solaris thread system is very well designed.
+
+</p><p>
+There are two kinds of threads in Solaris: user-level threads, and 
+system-level threads.  The distinction between the two is kind of 
+confusing, but I'll try to enlighten you.  User-level threads 
+exist solely in the running process -- they have no operating system
+support.  That means that if a program has many user-level threads,
+it looks the same to the operating system as a ``normal'' Unix program
+with just one thread.  In Solaris, user-level threads are non-preemptive.
+In other words, when a thread is running, it will not be interrupted by
+another user-level thread unless it voluntarily blocks, through a 
+call such as <b>pthread_exit()</b> or <b>pthread_join()</b>.
+</p><p>
+When one thread stops executing and another starts, we call that
+a <i>thread context switch</i>.  To restate the above then, user
+level threads only context switch when they voluntarily block.  If you
+think about it, you can implement thread context switching with 
+<b>setjmp()/longjmp()</b>.  What this means is that you don't need the
+operating system in order to do thread context switching.  This in turn
+means that context switching between user-level threads can be very 
+fast, since there are no system calls involved.
+</p><p>
+So what is a system-level thread?  It is a unit of execution as seen
+by the operating system.  Standard non-threaded Unix programs are each
+managed by a separate system-level thread.  The operating system performs
+<i>time-slicing</i> by periodically interrupting the system-level thread
+that is currently running, saving its state, and running a different
+system-level thread.  This is how you can have multiple programs running
+simultaneously.  Such an action is also called <i>context switching</i>.
+</p><p>
+When you call <b>pthread_create()</b>, you create a 
+new <i>user-level</i> thread that is managed by the same system-level
+thread as the calling thread.  These two threads will execute non-preemptively
+in relation to each other.  In fact, whenever a collection of user-level
+threads is serviced by the same system-level thread, they all execute
+non-preemptively in relation to each other.  All of the 
+programs in the
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Threads1/lecture.html">previous threads lecture</a> work
+in this way.
+</p><p>
+Let's look at a few more.  First, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/preempt1.c"><b>preempt1.c</b></a>.  
+This is a program that forks off two threads, each of which runs
+an infinite loop.  When you run it:
+</p><pre>UNIX&gt; <font color="darkred"><b>preempt1</b></font>
+thread 0.  i =          0
+thread 0.  i =          1
+thread 0.  i =          2
+thread 0.  i =          3
+thread 0.  i =          4
+thread 0.  i =          5
+...
+</pre>
+You'll see that only thread 0 runs.  (If you can't kill this with
+control-c, go into another window and kill the process with the <b>kill</b>
+command).  The reason that thread 1 never runs is that thread 0 never
+voluntarily gives up the CPU.  This is called <i>starvation</i>.
+<p>
+Now, you can bind different user-level threads to different system-level
+threads.  This means that if one user-level thread is running, then
+at some point the operating system will interrupt it and run another
+user-level thread.  This is because the two user-level threads are
+bound to different system level threads.  
+</p><p>
+One way to bind a user-level thread to a different system level thread
+is to call <b>pthread_create()</b> in a different way.  Look at
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/preempt2.c"><b>preempt2.c</b></a>.    You'll see that you give
+an ``attribute'' to <b>pthread_create()</b> that says ``create this
+thread with a different system-level thread.''  Now when you run it, you'll
+see that the two threads interleave -- every now and then, the running thread
+is preempted, and the other thread gets to run:
+</p><pre>UNIX&gt; <font color="darkred"><b>preempt2</b></font>
+thread 0.  i =          0
+thread 1.  i =          0
+thread 0.  i =          1
+thread 1.  i =          1
+thread 1.  i =          2
+thread 0.  i =          2
+thread 0.  i =          3
+thread 1.  i =          3
+thread 0.  i =          4
+thread 1.  i =          4
+thread 0.  i =          5
+thread 1.  i =          5
+</pre>
+Now, here's the tricky part of Solaris.  If a thread makes a blocking 
+system call, then if there are other user-level threads bound to the
+same system-level thread, a new system-level thread is created and 
+the blocking thread is bound to it.  What this does is let the other
+user-level threads run while the thread is blocked.  
+<p>
+This is a fundamental difference of Solaris and older operating
+systems such as SunOS (the precursor to Solaris).  SunOS allows
+only one system-level thread per process.  Therefore, if a user-level
+thread makes a blocking system call in SunOS, all threads block until
+the system call completes.  This is a drag.  The design in Solaris is
+very nice.
+</p><p>
+So, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/preempt3.c"><b>preempt3.c</b></a>.    First, you should see
+that the threads are created as user-level threads bound to the 
+same system-level thread.  Next, you'll see that the
+thread 0 first reads a character from standard input
+before beginning its loop.  This is a blocking system call.  Therefore,
+it results this threads being bound to a separate system threads
+from the main thread and thread 1.  Therefore, while it blocks, thread
+1 can run.  Go ahead and run it:
+</p><p>
+</p><pre>UNIX&gt; <font color="darkred"><b>preempt3</b></font>
+Thread 0: stopping to read
+thread 1.  i =          0
+thread 1.  i =          1
+thread 1.  i =          2
+thread 1.  i =          3
+..
+</pre>
+So, thread 0 is blocked, and thread 1 is running.  They are thus
+bound to separate system threads.  Now, type <b>RETURN</b>, and thread
+0 will start up again, and you'll see that they interleave as in 
+<b>preempt2</b>:
+<pre>...
+thread 1.  i =          3
+                                <b>( RETURN was typed here )</b>
+Thread 0: Starting up again
+thread 0.  i =          0
+thread 1.  i =          4
+thread 0.  i =          1
+thread 1.  i =          5
+thread 0.  i =          2
+thread 1.  i =          6
+thread 0.  i =          3
+...
+</pre>
+
+That's user/system level threads and preemption in a nutshell.  Go over these
+examples again if you are confused.
+
+</body></html>

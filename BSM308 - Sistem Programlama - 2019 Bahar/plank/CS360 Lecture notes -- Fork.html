@@ -1,0 +1,506 @@
+
+<!-- saved from url=(0079)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Fork</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Fork</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Fork</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/lecture.html
+</b></a>
+</li><li> Original notes: Probably 1996.
+</li><li> Last modification:
+Tue Mar 20 12:12:06 EDT 2018
+</li></ul>
+<hr>
+
+<hr>
+<h1>Getpid, getppid</h1>
+
+A <i>process</i> is an executing 
+instance of a program.  In Unix, you can make a listing of all the
+processes that you are currently running with the <b>ps</b> command.  
+Here's an example on my MacBook Pro in 2012:
+
+<pre>UNIX&gt; <font color="darkred"><b>ps x</b></font>
+  PID   TT  STAT      TIME COMMAND
+  107   ??  Ss     1:01.26 /sbin/launchd
+  111   ??  U      7:43.22 /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  112   ??  S      5:26.09 /System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer
+  117   ??  S      0:00.06 /usr/sbin/pboard
+  119   ??  S      1:43.76 /System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATS.framework/Support/fontd
+  124   ??  S      0:23.31 /usr/libexec/UserEventAgent -l Aqua
+  131   ??  S      0:13.61 /System/Library/CoreServices/AirPort Base Station Agent.app/Contents/MacOS/AirPort Base Station Agent -l
+  283   ??  S      0:48.32 /System/Library/Services/AppleSpell.service/Contents/MacOS/AppleSpell -psn_0_167977
+  791   ??  S      0:06.79 /Applications/iTunes.app/Contents/MacOS/iTunesHelper.app/Contents/MacOS/iTunesHelper -psn_0_286790
+ 9500   ??  S      0:05.05 /usr/bin/ssh-agent -l
+10131   ??  R      2:47.86 /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal -psn_0_25864361
+26080   ??  S      0:00.01 /usr/libexec/ApplicationFirewall/Firewall
+54614   ??  S      2:16.93 /Applications/Mail.app/Contents/MacOS/Mail -psn_0_26052823
+55508   ??  S      0:00.87 /System/Library/Image Capture/Support/Image Capture Extension.app/Contents/MacOS/Image Capture Extension
+55511   ??  S      6:01.32 /Applications/iTunes.app/Contents/MacOS/iTunes -psn_0_26093793
+55554   ??  S      0:11.89 /Applications/Preview.app/Contents/MacOS/Preview -psn_0_26114278
+57032   ??  S      1:37.95 /Applications/Safari.app/Contents/MacOS/Safari -psn_0_26339613
+59738   ??  S      2:14.87 /Applications/OpenOffice.org.app/Contents/MacOS/soffice -psn_0_26700149
+59908   ??  SNs    0:00.60 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdwor
+60122   ??  S      0:02.33 /System/Library/PrivateFrameworks/WebKit2.framework/WebProcess.app/Contents/MacOS/WebProcess /System/Lib
+60323   ??  S      0:00.29 /System/Library/CoreServices/Apple80211Agent.app/Contents/MacOS/Apple80211Agent -psn_0_26777992
+84097   ??  Ss     0:06.57 /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper -uuid 316BFEA2-505A-4
+85810   ??  S     11:08.25 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+93979   ??  S     18:17.94 /Applications/Adobe Photoshop CS3/Adobe Photoshop CS3.app/Contents/MacOS/Adobe Photoshop CS3 -psn_0_2489
+93983   ??  Ss     0:08.07 /Library/Application Support/FLEXnet Publisher/Service/11.03.005/FNPLicensingService -r
+60317 s000  Ss     0:00.02 login -pfq plank /bin/tcsh
+60318 s000  S      0:00.04 -tcsh
+60335 s000  S+     0:00.12 vi lecture.html
+60348 s001  Ss     0:00.01 login -pfq plank /bin/tcsh
+60349 s001  S      0:00.03 -tcsh
+60358 s001  R+     0:00.00 ps x
+UNIX&gt;
+</pre>
+
+If you try "ps x", you should see something like the above.  
+The first column of
+numbers are the "Process ID" numbers, which are called "pid"s.  Every 
+process has a non-negative pid, which is unique to that process on that
+machine while the process is executing.  There are two special processes
+with pids 0 and 1: the scheduler and the <b>init</b> program (on my Mac, <b>init</b>
+is called <b>launchd</b>).  You can see
+them using <b>ps aux</b>:
+(on some machines, you'll see the <b>init</b> process as "<b>/etc/init</b>", 
+and the scheduler as "<b>sched</b>".  Also, some machines use different
+options for <b>ps</b> -- if "<b>ps aux</b>" doesn't work, try 
+"<b>ps -ef</b>").
+<pre>UNIX&gt; <font color="darkred"><b>ps aux</b></font>
+USER       PID  %CPU %MEM      VSZ    RSS   TT  STAT STARTED      TIME COMMAND
+...
+plank    93979   0.7  2.3   925224 192684   ??  S    Mon02PM  18:19.27 /Applications/Adobe Photoshop CS3/Adobe Photoshop CS3.app/Co
+root        40   0.5  0.0  2460588   1120   ??  Ss    3Feb12  27:40.23 /usr/libexec/hidd
+plank    10131   0.4  0.3  2803060  23696   ??  R    Tue11AM   2:49.99 /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal
+root         1   0.1  0.0  2475280   1004   ??  Ss    3Feb12  44:36.79 /sbin/launchd
+plank    60318   0.0  0.0  2439404   1220 s000  S     4:27PM   0:00.04 -tcsh
+root     60317   0.0  0.0  2436216   1592 s000  Ss    4:27PM   0:00.02 login -pfq plank /bin/tcsh
+...
+UNIX&gt;
+</pre>
+These processes are always running while the machine is running.
+
+<p>Every process has a "parent" process.  This is
+the process that created it.  You can get your
+pid and your parent's pid by using the <b>getpid()</b>
+and <b>getppid()</b> commands.  The program 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/showpid.c"><b>showpid.c</b></a>
+is a simple program that prints out its pid, and its
+parent's pid: 
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  printf("My pid = %d.  My parent's pid = %d\n", getpid(), getppid());
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Each time you run it, it will show a different pid, but the same parent
+pid:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./showpid</b></font>
+My pid = 854.  My parent's pid = 381
+UNIX&gt; <font color="darkred"><b>./showpid</b></font>
+My pid = 855.  My parent's pid = 381
+UNIX&gt; <font color="darkred"><b>./showpid</b></font>
+My pid = 856.  My parent's pid = 381
+UNIX&gt; <font color="darkred"><b>./showpid</b></font>
+My pid = 857.  My parent's pid = 381
+UNIX&gt; <font color="darkred"><b>ps x</b></font>
+...
+  381 p2 S     0:01 -sh (csh)
+...
+UNIX&gt;
+</pre>
+
+As you can see, the <b>csh</b> is the parent of each of these.  This
+is because you typed the commands into the <b>csh</b>, which then created
+the <b>showpid</b> processes.
+
+<hr>
+<h1>Fork</h1>
+
+<p>In Unix, all processes are created with the
+system call <b>fork()</b>.  This is <i>without exception</i>.
+What <b>fork()</b> does is the following:
+
+</p><p>It creates a new process which is a copy of the
+calling process.  That means that it copies the
+caller's memory (code, globals, heap and stack),
+registers, and open files.  The calling process
+returns from <b>fork()</b> with the pid of the newly
+created process (which is called the "child"
+process.  The calling process is called the
+"parent" process).  The newly created process, as
+it is a duplicate of the parent, also returns
+from the <b>fork()</b> call (this is because it is a
+duplicate -- it has the same memory and
+registers, and thus the same stack pointer, frame
+pointer, and program counter, and thus has to
+return from the <b>fork()</b> call).  It returns with a
+value of zero.  This is how you know what process
+you're in when <b>fork()</b> returns. 
+
+</p><p>Look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/simpfork.c"><b>simpfork.c</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  int i;
+
+  printf("simpfork: pid = %d\n", getpid());
+  i = fork();
+  printf("Did a fork.  It returned %d.  getpid = %d.  getppid = %d\n",
+    i, getpid(), getppid());
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+
+When it is executed, the following happens:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./simpfork</b></font>
+simpfork: pid = 914
+Did a fork.  It returned 915.  getpid = 914.  getppid = 381
+Did a fork.  It returned 0.  getpid = 915.  getppid = 914
+UNIX&gt;
+</pre>
+
+<p>So, what is going on?  When <b>simpfork</b> is executed,
+it has a pid of 914.  Next it calls <b>fork()</b>
+creating a duplicate process with a pid of 915.
+The parent gains control of the CPU, and returns
+from <b>fork()</b> with a return value of the 915 --
+this is the child's pid.  It prints out this
+return value, its own pid, and the pid of <b>csh</b>,
+which is still 381.  Then it exits.  Next, the child gets the CPU
+and returns from <b>fork()</b> with a value of 0.  It
+prints out that value, its pid, and the pid of
+the parent. 
+
+</p><p>Note, there is no guarantee which process gains
+control of the CPU first after a <b>fork()</b>.  It
+could be the parent, and it could be the child.
+When I executed <b>simpfork</b> a second time, the child
+got control first:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./simpfork </b></font>
+simpfork: pid = 928
+Did a fork.  It returned 0.  getpid = 929.  getppid = 928
+Did a fork.  It returned 929.  getpid = 928.  getppid = 381
+UNIX&gt;
+</pre>
+
+(On some machines, it does appear that the child always gets control
+first, but you should not rely on such a fact when writing code).
+
+<hr>
+
+Now, look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/simpfork2.c"><b>simpfork2.c</b></a>.  It calls
+<b>fork()</b>, and has the parent exit immediately.  The child calls
+<b>sleep(5)</b>, which makes it sleep for 5 seconds, and then it prints out
+its pid, and its parent's pid.  What is subtle about this?  Well, by
+the time the child wakes up from sleeping, the parent has exited,
+and its process is no longer.  Thus, <b>getppid()</b> can't return the old
+value of the parent's pid, as that pid is no longer valid.  What Unix
+does in these cases is transfer the parentage of the child's program.
+Specifically, when the parent of a program exits, the <b>init</b> program
+(pid 1) becomes its parent.  Thus, when the child prints out its
+parent after sleeping, it prints out pid 1: 
+
+<pre>UNIX&gt; <font color="darkred"><b>./simpfork2</b></font>
+Child.  getpid() = 1301, getppid() = 1300
+Parent exiting now
+UNIX&gt; <font color="darkred"><b>After sleeping.  getpid() = 1301, getppid() = 1</b></font>
+</pre>
+
+Note that the <b>"UNIX&gt;"</b> prompt returns once the parent returns, even
+though the child is still running.  This is because <b>csh</b> waits only for
+the parent to complete, not for any other processes.  
+<p>
+The name for a child process whose parent has exited is an <i>orphan</i>.  Sometimes
+you'll hear that "orphans are inherited by <b>init</b>."  That means that when a process'
+parent exits, <b>init</b> becomes its new parent.
+
+
+</p><hr>
+
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/simpfork3.c"><b>Simpfork3.c</b></a>
+is a simple program to show that the parent's
+address space is indeed copied to the child
+during the fork.  After the fork, each process
+has memory locations for <b>j</b> (a local variable) and <b>K</b> (a global
+variable).  Thus, when the
+child changes <b>j</b> to 201 and <b>K</b> to 301, it only
+affects its values of <b>j</b> and <b>K</b>, and not the
+parent's: 
+
+<pre>UNIX&gt; <font color="darkred"><b>./simpfork3</b></font>
+Before forking: j (Address 0x7ffc767e88b8) = 200.   K (Address 0x601048) = 300
+Child after:    j (Address 0x7ffc767e88b8) = 201.   K (Address 0x601048) = 301
+Parent after:   j (Address 0x7ffc767e88b8) = 200.   K (Address 0x601048) = 300
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You'll note that <b>j</b> and <b>K</b> have the same addresses in the parent
+and the child.  But these are <i>different</i> memory locations on the machine, because
+the operating system and hardware cooperate so that addresses that are relative
+to a process are translated at runtime to other addresses on the machine.  That
+is why the two processes have the same addresses, but different memory locations
+and different values.
+
+Interestingly, if we redirect the output of <b>./simpfork3</b> to a file, we
+see the following behavior:
+
+<pre>UNIX&gt; <font color="darkred"><b>./simpfork3 &gt; output.txt</b></font>
+UNIX&gt; <font color="darkred"><b>cat output.txt</b></font>
+Before forking: j (Address 0x7ffdb989bd88) = 200.   K (Address 0x601048) = 300
+Child after:    j (Address 0x7ffdb989bd88) = 201.   K (Address 0x601048) = 301
+Before forking: j (Address 0x7ffdb989bd88) = 200.   K (Address 0x601048) = 300
+Parent after:   j (Address 0x7ffdb989bd88) = 200.   K (Address 0x601048) = 300
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+When redirecting output to a terminal,
+<b>stdout</b> is buffered line by line -- that is, once
+you do a <b>putchar('\n')</b> or equivalent, the buffer
+is written to standard output with a "<b>write(1,
+...)</b>".  However, when <b>stdout</b> is redirected to a
+file (or a pipe), the stdio library buffers on a coarser
+scale -- not writing until some large buffer
+(probably 4K or 8K characters) is full.  Thus, at
+the time of the <b>fork()</b> call, the "<b>Before forking:</b>"
+string has not been written to <b>fd</b>=1.  Instead,
+it has been buffered in the standard I/O library.
+That buffer is part of <b>simpfork3</b>'s address space,
+and is thus <i>copied</i> to the child process when
+<b>fork()</b> is called.  Thus, when the bytes are
+finally flushed from the buffer, the "<b>Before
+forking: ...</b>" string is written to the file
+twice.  This is an important thing to realize.
+It looks strange, but has a logical explanation.  Remember
+this, because if you try to debug and are getting weird
+duplicate output, the reason may be because the standard I/O
+buffer is not getting flushed.
+<p>
+The same thing happens when you redirect through a pipe:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./simpfork3 | cat</b></font>
+Before forking: j (Address 0x7ffc19ab1738) = 200.   K (Address 0x601048) = 300
+Child after:    j (Address 0x7ffc19ab1738) = 201.   K (Address 0x601048) = 301
+Before forking: j (Address 0x7ffc19ab1738) = 200.   K (Address 0x601048) = 300
+Parent after:   j (Address 0x7ffc19ab1738) = 200.   K (Address 0x601048) = 300
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+<p>
+To fix this, call <b>fflush(stdout)</b> before calling <b>fork()</b>.
+That makes the standard I/O library do the appropriate <b>write()</b>
+call, flushing the buffer, and now an empty buffer gets copied to the child process.
+</p><hr>
+
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/simpfork4.c"><b>Simpfork4.c</b></a>
+shows how open files are shared across <b>fork()</b> calls.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i;
+  int seekp;
+  int fd;
+  char *s1;
+  char s2[1000];
+
+  <font color="blue">/* Open a file for writing, and then call fork(). */</font>
+
+  fd = open("tmpfile.txt", O_WRONLY | O_TRUNC | O_CREAT, 0666);
+
+  s1 = "Before forking\n";
+  write(fd, s1, strlen(s1));
+
+  i = fork();
+
+  <font color="blue">/* Delay the parent by a second, so that the child runs first. */</font>
+
+  if (i &gt; 0) {
+    sleep(1);  
+    s1 = "Parent";
+  } else {
+    s1 = "Child";
+  }
+
+  <font color="blue">/* Print the file's seek pointer. 
+     Do a write, and print the seek pointer again. */</font>
+
+  seekp = lseek(fd, 0, SEEK_CUR);
+  printf("%s: After forking, before writing: Seek pointer = %d\n", s1, seekp);
+
+  sprintf(s2, "%s: After forking.\n", s1);
+  write(fd, s2, strlen(s2));
+
+  seekp = lseek(fd, 0, SEEK_CUR);
+  printf("%s: After forking, after  writing: Seek pointer = %d\n", s1, seekp);
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Specifically, all open file descriptors are duplicated.  Thus, the
+file opened for writing in <b>simpfork4.c</b> is open in both the 
+parent and
+child processes.  Note that the open file is the same -- when one
+writes to the end of the file, the seek pointer is changed in both
+the parent and the child.  This is because both processes point to
+the same open file structure in the operating system.  If the two did
+not share the same open file pointer, then the parent's write would
+overwrite the child's write.  
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./simpfork4</b></font>
+Child: After forking, before writing: Seek pointer = 15
+Child: After forking, after  writing: Seek pointer = 37
+Parent: After forking, before writing: Seek pointer = 37
+Parent: After forking, after  writing: Seek pointer = 60
+UNIX&gt; <font color="darkred"><b>cat tmpfile.txt</b></font>
+Before forking
+Child: After forking.
+Parent: After forking.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+
+<p>I will go over more on sharing file descriptors in the <b>dup</b> lecture.
+</p><hr>
+<h3>Fork Bombs</h3>
+
+A fork bomb is a loop of <b>fork()</b> calls that has gone out of control.  It
+is hard to deal with, because when you make too many <b>fork()</b> calls, the operating
+system will make subsequent <b>fork()</b> calls fail, and then your shell cannot call
+<b>fork()</b> to launch a program to kill the rogue processes.
+<p>
+To give you a little practice, try these two programs.  First, 
+look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/forkbomb1.c">forkbomb1.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i;
+  int fv;
+
+  for (i = 0; i &lt; 10; i++) {
+    fv = fork();
+    printf("Process: %8d -- i = %d\n", getpid(), i);
+    if (fv == 0) exit(0);
+  }
+  return 0;
+} 
+</pre></td></tr></tbody></table></center><p>
+</p><p>
+
+This isn't a fork-bomb -- it just shows one process creating 10 processes.
+If I asked you on a test how many lines of output this program produces, your
+answer should be 20 -- 10 for the process calling <b>fork()</b>, and one for
+each of the ten child processes:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./forkbomb1</b></font>
+Process:    60731 -- i = 0
+Process:    60731 -- i = 1
+Process:    60731 -- i = 2
+Process:    60733 -- i = 1
+Process:    60731 -- i = 3
+Process:    60732 -- i = 0
+Process:    60731 -- i = 4
+Process:    60731 -- i = 5
+Process:    60731 -- i = 6
+Process:    60734 -- i = 2
+Process:    60731 -- i = 7
+Process:    60735 -- i = 3
+Process:    60731 -- i = 8
+Process:    60731 -- i = 9
+Process:    60737 -- i = 5
+Process:    60736 -- i = 4
+Process:    60738 -- i = 6
+Process:    60740 -- i = 8
+Process:    60739 -- i = 7
+Process:    60741 -- i = 9
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+There are some interesting features of the output -- the operating system schedules processes,
+so sometimes the main process executes for a few iterations before the children get to (e.g.
+the first three lines).  Moreover, once multiple children have been created, they can be
+executed in any order.  For example, process 60740 (i=8) executes before process 60739 (i=7), even
+though process 60739 was created first.
+
+<p>
+The true fork bomb is in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/forkbomb2.c">forkbomb2.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i;
+  int fv;
+
+  for (i = 0; i &lt; 4; i++) {
+    fv = fork();
+    printf("Process: %8d -- i = %d\n", getpid(), i);
+    fflush(stdout);
+  }
+} 
+</pre></td></tr></tbody></table></center><p>
+
+On the first iteration, the parent calls <b>fork()</b>, so there are two processes
+printing out i=0.  Now each of those two processes iterates and call <b>fork()</b>,
+so there are four processes with i=1.  Similarly, there are 8 processes with i=2 and
+16 with i=3.  Exponential blow-up.  These kinds of programs can happen (see the next
+lecture), so be aware of them.  If you iterate too many times, the operating system
+will start denying the <b>fork()</b> calls, and you are in trouble......
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./forkbomb2</b></font>
+Process:    61802 -- i = 0
+Process:    61802 -- i = 1
+Process:    61802 -- i = 2
+Process:    61803 -- i = 0
+Process:    61802 -- i = 3
+Process:    61803 -- i = 1
+Process:    61803 -- i = 2
+Process:    61803 -- i = 3
+UNIX&gt; Process:    61809 -- i = 3     <font color="darkred"><b>(The parent is done here)</b></font>    
+Process:    61804 -- i = 1
+Process:    61804 -- i = 2
+Process:    61804 -- i = 3
+Process:    61810 -- i = 2
+Process:    61810 -- i = 3
+Process:    61811 -- i = 3
+Process:    61812 -- i = 3
+Process:    61805 -- i = 2
+Process:    61805 -- i = 3
+Process:    61813 -- i = 3
+Process:    61806 -- i = 3
+Process:    61807 -- i = 1
+Process:    61808 -- i = 2
+Process:    61807 -- i = 2
+Process:    61808 -- i = 3
+Process:    61814 -- i = 2
+Process:    61815 -- i = 3
+Process:    61807 -- i = 3
+Process:    61814 -- i = 3
+Process:    61816 -- i = 3
+Process:    61817 -- i = 3
+</pre>
+</body></html>

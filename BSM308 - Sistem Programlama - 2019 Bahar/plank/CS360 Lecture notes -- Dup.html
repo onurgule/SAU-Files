@@ -1,0 +1,455 @@
+
+<!-- saved from url=(0078)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Dup</title>
+</head><body><h1>CS360 Lecture notes -- Dup</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Dup</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/lecture.html">
+    http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/lecture.html</a>
+</li><li> Original Notes: Sometime in the 1990's.
+</li><li> Last Modification:
+Tue Mar 29 13:01:36 EDT 2016
+</li></ul>
+
+
+<hr>
+<h1>Open files</h1>
+
+<p>The operating system (OS) has four kinds of data structures for files:
+
+</p><ul>
+<li> <b><font color="darkblue">File table.</font></b> There is one of these for each process that is running.  File
+     descriptors are indices into these tables.  For example, if I am process 1234,
+     and I say <b>printf("Hi\n"); fflush(stdout);</b>, then the standard I/O library
+     will make a call to "<b>write(1, ...)</b>."  To service this write, the operating
+     system will look at entry 1 in the file table for process 1234.
+<p>
+</p></li><li> <b><font color="darkblue">File table entry</font></b> -- this is what the file tables point to.  In other words, when 
+     I call <b>write(1, ...)</b>, the operating system will look at entry 1 in my process' 
+     file table, and the information at which it's looking is held in a "file table entry."
+       This contains information like whether it allows reads or writes, plus 
+       the current lseek pointer,
+       and a pointer to a "vnode" (see below).  
+<p>
+       When you start your program,
+       the OS has three file table entries defined for you -- one each 
+       for stdin, stdout,
+       stderr, which are pointed to by entries 0, 1 and 2 in the file table.  
+       Each time you call <b>open()</b>, a new file table entry is 
+       created for you in the OS, and an entry in the file table is set to this entry.
+       The index of the entry is returned as a file descriptor.
+
+</p></li><li> <b><font color="darkblue">vnode</font></b> -- There is one of these for each physical file that has been 
+       opened (plus there are vnodes for devices like the screen and the keyboard).
+       It contains a information like the file's size and how many file table entries
+       point to it.  For files, it contains the "inode" of the file -- see below for that.
+
+<p>
+</p></li><li> <b><font color="darkblue">inode</font></b> -- There is one of these for each file on disk.
+       It contains all the information returned by <b>stat()</b>, plus information on where
+       to find the file on disk.
+</li></ul>
+
+The difference between a vnode and an inode is where each is located and
+when each is valid.  Inodes are located on disk and are always valid because
+they contain information that is always needed, such as ownership and
+protection.  Vnodes are located in the operating system's memory, and 
+only exist when a file is opened.  However, just one vnode exists for
+every physical file that is opened.
+
+<p>So, look at the following program (I don't have this program in a file -- it is the
+beginning of 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs1.c">fs1.c</a></b>).
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int fd1, fd2;
+
+  fd1 = open("file1", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  fd2 = open("file1", O_WRONLY);
+}
+</pre></td></tr></tbody></table></center><p>
+
+What has happened?  The OS has created two
+file table entries, one for each <b>open()</b> call, but
+only one vnode.  This is because there is only
+one file.  Both file table entries point to the
+same vnode, but they each have different seek
+pointers.  The state of the system is as pictured:
+
+</p><p></p><center><table border="0"><tbody><tr><td><img src="./CS360 Lecture notes -- Dup_files/Two-Opens.jpg"></td></tr></tbody></table></center><p>
+
+Now, suppose we write to these file descriptors:
+(This is file 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs1.c"><b>fs1.c</b></a>) 
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int fd1, fd2;
+
+  fd1 = open("file1", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  fd2 = open("file1", O_WRONLY);
+
+  write(fd1, "Jim\n", strlen("Jim\n"));
+  write(fd2, "Plank\n", strlen("Plank\n"));
+
+  close(fd1);
+  close(fd2);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Then what will happen?  Well, the first <b>write()</b>
+call will write the string <b>"Jim\n"</b> into <b>file1</b>.
+Then the second <b>write()</b> call will overwrite it
+with <b>"Plank\n"</b>.  This is because each fd points
+to its own file table entry, which has its own
+lseek pointer, and thus the first <b>write()</b> does not
+update the lseek pointer of the <b>fd2</b>: 
+
+</p><p></p><center><table border="0"><tbody><tr><td><img src="./CS360 Lecture notes -- Dup_files/Two-Opens-2.jpg"></td></tr></tbody></table></center><p>
+
+</p><p>To make this more clear, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs1a.c"><b>fs1a.c</b></a>
+prints out the
+values of each fd's seek pointer at each step of
+the program.  As you can see, even though the two
+fd's are for the same file, since they each have
+their own file table entry, they each have their
+own seek pointer:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./fs1</b></font>
+UNIX&gt; <font color="darkred"><b>cat file1</b></font>
+Plank
+UNIX&gt; <font color="darkred"><b>./fs1a</b></font>
+Before writing Jim:   lseek(fd1, 0, 1): 0.  lseek(fd2, 0, 1): 0
+Before writing Plank: lseek(fd1, 0, 1): 4.  lseek(fd2, 0, 1): 0
+After writing Plank:  lseek(fd1, 0, 1): 4.  lseek(fd2, 0, 1): 6
+UNIX&gt; <font color="darkred"><b>cat file1</b></font>
+Plank
+UNIX&gt;
+</pre>
+
+<hr>
+<h1>Dup()</h1>
+
+The system call <b>dup(int fd)</b> duplicates a
+file descriptor <b>fd</b>.  What this does is return a
+second file descriptor that points to the same
+file table entry as <b>fd</b> does.  So now you can
+treat the two file descriptors as identical. 
+
+<p>Look at an alteration of <b>fs1.c</b> (in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs2.c"><b>fs2.c</b></a>).
+Instead of calling <b>open()</b> to initialize <b>fd2</b>, it
+calls <b>dup(fd1)</b>.  Thus, after the first write, the
+lseek pointer of <b>fd2</b> has been updated to reflect
+the write to <b>fd1</b> -- this is because the two file
+descriptors point to the same file table entry. 
+
+</p><p>Thus, after running <b>fs2.c</b>, the file "<b>file2</b>"
+should say <b>"Jim\nPlank\n"</b>.  Like <b>fs1a.c</b>, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs2a.c"><b>fs2a.c</b></a>
+prints out the lseek pointers of <b>fd1</b> and <b>fd2</b> at
+each step.  As you can see, the <b>write()</b> to <b>fd1</b>
+updates the lseek pointer for <b>fd2</b>: 
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./fs2</b></font>
+UNIX&gt; <font color="darkred"><b>cat file2</b></font>
+Jim
+Plank
+UNIX&gt; <font color="darkred"><b>./fs2a</b></font>
+Before writing Jim:   lseek(fd1, 0, 1): 0.  lseek(fd2, 0, 1): 0
+Before writing Plank: lseek(fd1, 0, 1): 4.  lseek(fd2, 0, 1): 4
+After writing Plank:  lseek(fd1, 0, 1): 10.  lseek(fd2, 0, 1): 10
+UNIX&gt; <font color="darkred"><b>cat file2 </b></font>
+Jim
+Plank
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p></p><center><table border="0"><tbody><tr><td><img src="./CS360 Lecture notes -- Dup_files/Dupd.jpg"></td></tr></tbody></table></center><p>
+
+</p><p> When <b>fork()</b> is called, <b>all file descriptors
+are duplicated, as if dup() were called.</b>
+Thus, look at the following program
+(<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3.c"><b>fs3.c</b></a>):
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3.c">fs3.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  char s[1000];
+  int i, fd;
+
+  fd = open("file3", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+  i = fork();
+  sprintf(s, "fork() = %d.\n", i);
+  write(fd, s, strlen(s));
+  close(fd);
+  return 0;
+}
+
+</pre></td></tr></tbody></table></center><p>
+
+What should happen?  Well, whichever process gets
+control of the CPU first after the <b>fork()</b> will
+write <b>s</b> to <b>file3</b>.  Then the other process will
+append its string <b>s</b> to <b>file3</b>.  For example: 
+
+</p><pre><pre>UNIX&gt; <font color="darkred"><b>./fs3</b></font>
+UNIX&gt; <font color="darkred"><b>cat file3</b></font>
+fork() = 0.
+fork() = 22107.
+UNIX&gt; <font color="darkred"><b>./fs3</b></font>
+UNIX&gt; <font color="darkred"><b>cat file3</b></font>
+fork() = 0.
+fork() = 22110.
+UNIX&gt; <font color="darkred"><b>./fs3</b></font>
+UNIX&gt; <font color="darkred"><b>cat file3</b></font>
+fork() = 22113.
+fork() = 0.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</pre>
+
+This is because the file descriptor <b>fd</b> is duplicated across 
+<b>fork()</b>
+calls.  Were it not duplicated, but instead re-opened, then one <b>write()</b>
+would overwrite the other.
+
+<p>Perhaps you're thinking, ``He opened a file and then called <b>fork()</b>.
+Does he have to worry about that buffer copying problem that was in the <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Fork/lecture.html">Fork
+Lecture notes?</a>''
+The answer is no, because I'm using <b>write()</b>, which is a system call,
+and there is no buffering.  You have to worry about the buffering problem
+when the standard I/O library is being used, and the buffer is not empty
+when <b>fork()</b> is called.  For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3a.c"><b>fs3a.c</b></a> and
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3b.c"><b>fs3b.c</b></a>.
+They use <b>fprintf()</b> instead of <b>write()</b>.  With 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3a.c"><b>fs3a.c</b></a>, the <b>fork()</b> call is made before any
+<b>fprintf()</b> statement, so there is no problem with buffering (because the
+buffer is empty when <b>fork()</b> is called). With
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/fs3b.c"><b>fs3b.c</b></a>, I make a <b>fprintf()</b> call before the
+<b>fork()</b> call, so the buffer is copied by the <b>fork()</b> call, and
+you get two lines that say "The is file3.":
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./fs3a</b></font>
+UNIX&gt; <font color="darkred"><b>cat file3</b></font>
+fork() = 0.
+fork() = 3716.
+UNIX&gt; <font color="darkred"><b>./fs3b</b></font>
+UNIX&gt; <font color="darkred"><b>cat file3</b></font>
+This is file3
+fork() = 3719.
+This is file3
+fork() = 0.
+UNIX&gt;
+</pre>
+
+<hr>
+<h1>Dup2()</h1>
+
+<b>Dup2()</b> is a system call that dups an open file descriptor so
+that the result is a desired file descriptor.  
+
+<pre>int dup2(int fd1, int fd2)
+
+     With dup2(), fd2 specifies the  desired  value  of  the  new
+     descriptor.   If  descriptor  fd2  is  already in use, it is
+     first deallocated as if it were closed by close(2V).
+</pre>
+
+<b>Dup2()</b> is most often used so that you can redirect standard 
+input or output.  When you call <b>dup2(fd, 0)</b> and the <b>dup2()</b>
+call is successful, then whenever your program reads from standard 
+input, it will read from <b>fd</b>.  Similarly, when you call 
+<b>dup2(fd, 1)</b> and the <b>dup2()</b>
+call is successful, then whenever your program writes to standard output, 
+it will write to <b>fd</b>.
+
+<p>For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/dup2ex.c"><b>dup2ex.c</b></a>.
+This opens the file <b>file4</b> for writing, and then uses <b>dup2</b>
+to redirect standard output to that file.  It then writes to standard output in
+a variety of ways:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int fd;
+  char *s;
+
+  fd = open("file4", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+
+  if (dup2(fd, 1) &lt; 0) { perror("dup2"); exit(1); }
+
+  printf("Standard output now goes to file4\n");
+
+  close(fd);
+
+  printf("It goes even after we closed file descriptor %d\n", fd);
+
+  putchar('p'); putchar('u'); putchar('t'); putchar('c'); putchar('h');
+  putchar('a'); putchar('r'); putchar(' '); putchar('w'); putchar('o');
+  putchar('r'); putchar('k'); putchar('s'); putchar('\n');
+
+  s = "And fwrite\n";
+
+  fwrite(s, sizeof(char), strlen(s), stdout);
+
+  fflush(stdout); 
+
+  s = "And write\n";
+  write(1, s, strlen(s));
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+When it's done, you'll see
+that everything has gone into <b>file4</b>:
+</p><pre>UNIX&gt; <font color="darkred"><b>./dup2ex</b></font>
+UNIX&gt; <font color="darkred"><b>cat file4</b></font>
+Standard output now goes to file4
+It goes even after we closed file descriptor 3
+putchar works
+And fwrite
+And write
+UNIX&gt;
+</pre>
+Why did I make the <b>fflush()</b> call in <b>dup2ex.c</b>?  Take it out
+and see.  Make sure that you can explain this.
+
+<p>
+The program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/dup2ex2.c">dup2ex2.c</a></b> puts a <b>printf()</b> statement at the
+beginning of the program:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int fd;
+  char *s;
+
+  <font color="red">printf("Printing this before we open anything.\n");</font>
+
+  /* Same as before.... */
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>
+
+I'm doing this again to highlight buffering in the standard I/O library.  If we run this 
+program with standard output going to the screen, then the first <b>printf()</b> statement goes to the
+screen, and the remainder to <b>file4</b>.  This is because the standard I/O library flushes
+the buffer after every newline when the output is to the screen:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./dup2ex2</b></font>
+Printing this before we open anything.
+UNIX&gt; <font color="darkred"><b>cat file4</b></font>
+Standard output now goes to file4
+It goes even after we closed file descriptor 3
+putchar works
+And fwrite
+And write
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+However, if we redirect standard output to a file, then the standard I/O library does not
+flush the buffer until either the buffer is full, or the program exits.  For that reason,
+the first string does not go to the screen, but instead it goes to the buffer.  The buffer
+doesn't get flushed until <i>after</i> the <b>dup2()</b> call, so <i>all</i> of the output
+goes to <b>file4</b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>./dup2ex2 &gt; file5</b></font>
+UNIX&gt; <font color="darkred"><b>cat file5</b></font>
+UNIX&gt; <font color="darkred"><b>cat file4</b></font>
+Printing this before we open anything.
+Standard output now goes to file4
+It goes even after we closed file descriptor 3
+putchar works
+And fwrite
+And write
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+I've been over this buffering phenomenon a lot.  Make sure you understand it.
+
+
+
+<hr>
+<h3>You'll want to read this for <b>jsh1</b></h3>
+
+Now, suppose you want to execute, for example, "<b>cat &lt; f1 &gt; f2</b>" 
+by calling <b>fork()</b>, <b>exec()</b> and
+<b>dup2()</b> instead of doing it from the shell.
+You can do this in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dup/catf1f2.c"><b>catf1f2.c</b></a>.
+This opens <b>f1</b> for reading on <b>stdin</b>
+(fd 0), and <b>f2</b> for writing on <b>stdout</b> (fd 1).  
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* This program executes /bin/cat with stdin coming from f1, and stdout
+   going to f2.  This is all done with fork, exec, and dup: */</font>
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;sys/wait.h&gt;
+
+int main(int argc, char **argv, char **envp)
+{
+  int fd1, fd2;
+  int dummy;
+  char *newargv[2];
+
+  <font color="blue">/* In the child, first open f1 and then dup it to file descriptor zero. */</font>
+
+  if (fork() == 0) {
+    fd1 = open("f1", O_RDONLY);
+    if (fd1 &lt; 0) {
+      perror("catf1f2: f1");
+      exit(1);
+    }
+  
+    if (dup2(fd1, 0) != 0) {
+      perror("catf1f2: dup2(f1, 0)");
+      exit(1);
+    }
+    close(fd1);
+  
+    <font color="blue">/* In the child, next open f2 and then dup it to file descriptor one. */</font>
+
+    fd2 = open("f2", O_WRONLY | O_TRUNC | O_CREAT, 0644);
+    if (fd2 &lt; 0) {
+      perror("catf1f2: f2");
+      exit(2);
+    }
+  
+    if (dup2(fd2, 1) != 1) {
+      perror("catf1f2: dup2(f2, 1)");
+      exit(1);
+    }
+    close(fd2);
+
+    <font color="blue">/* Set up the argv array, and call execve(). */</font>
+ 
+    newargv[0] = "cat";
+    newargv[1] = (char *) 0;
+
+    execve("/bin/cat", newargv, envp);
+    perror("execve(bin/cat, newargv, envp)");
+    exit(1);  
+
+  <font color="blue">/* The parent merely waits for the child to exit. */</font>
+
+  } else {
+    wait(&amp;dummy);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>Study this program closely, because you will find it greatly helpful
+in the <b>jsh</b> lab.
+</p></body></html>

@@ -1,0 +1,805 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Signals</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Signals</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Signals</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/lecture.html">
+    <b>
+ http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/lecture.html
+</b></a>
+</li><li> Most recently revised:<i>
+Tue Apr  3 13:00:00 EDT 2018
+</i>
+</li></ul>
+<hr>
+
+<h1>Signals</h1>
+
+<p>Signals are complex flow-of-control operations.  A signal is an
+interruption of the program of some sort.  For example, when you press
+<b>CNTL-C</b>, that sends the <b>SIGINT</b> signal to your program.
+When you press <b>CNTL-\</b>, that sends the <b>SIGQUIT</b> signal to
+your program.  When you generate a segmentation violation, that sends
+the <b>SIGSEGV</b> signal to your program.  
+
+</p><p>Your program has various ways of dealing with
+signals.  By default, there are certain actions
+that take place.  For example, which you press
+<b>CNTL-C</b> or <b>CNTL-\</b>, the program usually exits.  
+That is the default action for <b>SIGINT</b> and <b>SIGQUIT</b>.  
+When you get a segmentation violation, your program
+spits out an error message, potentially creates a core dump, and
+then exits.  That is the default
+<b>SIGSEGV</b>. 
+
+</p><p>You can redefine what happens when you get these
+signals, which allows you to write very flexible
+programs.  Internally, when a signal is
+generated, the operating system takes over from
+the currently running program.  It saves the
+current state of the program on the stack.  Then,
+it calls an "interrupt handler" for the specific
+signal.  For example, the default interrupt
+handlers for <b>SIGINT</b> and <b>SIGQUIT</b> cause the program to exit.
+The default interrupt handler for <b>SIGSEGV</b>
+prints and error, potentially causes the program to dump core, and then
+exits.  If the interrupt handler for a signal calls
+<b>return</b>, then what happens is that the operating
+system takes over again, and restores the program
+from the state that it has saved on the stack.
+The program resumes from where it left off.
+
+</p><p>You can use the <b>signal()</b> function to define
+interrupt handlers for signals.  As always, read
+the man page: <b>man signal</b>.
+
+</p><p>For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh1.c"><b>sh1.c</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;signal.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+void cntl_c_handler(int dummy)
+{
+  signal(SIGINT, cntl_c_handler);
+  printf("You just typed cntl-c\n");
+}
+
+int main()
+{
+  int i, j;
+
+  signal(SIGINT, cntl_c_handler);
+
+  for (j = 0; j &lt; 2000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>What this does is set up a signal handler for
+<b>SIGINT</b>.  Now, when the user presses <b>CNTL-C</b>, the
+operating system will save the current execution
+state of the program, and then execute
+<b>cntl_c_handler</b>.  When <b>cntl_c_handler</b> returns, the
+operating system resumes the program from where
+it was interrupted.  Thus, when you run <b>sh1</b>, each
+time you type <b>CNTL-C</b>, it will print <b>"You just typed cntl-c"</b>, 
+and the program will continue.  It
+will exit by itself in 10 seconds or so. 
+
+</p><p>The signal handler should follow the prototype of <b>cntl_c_handler</b>.
+In other words it should return a <b>(void)</b> (i.e. nothing), and should
+accept an integer argument, even if it will not use the argument.
+Otherwise, <b>gcc</b> will complain to you.
+
+</p><p>Also, note that I make a <b>signal()</b> call in the signal handler.
+On some systems, if you do <i>not</i> do this, then it will reinstall
+the default signal handler for <b>CNTL-C</b> once it has handled the
+signal.  On some systems, you don't have to make the extra <b>signal()</b>
+call.  Such is life in the land of multiple Unix's.
+
+</p><hr>
+<p>You can handle each different signal with a call
+to <b>signal()</b>.  For example, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh1a.c"><b>sh1a.c</b></a>
+defines different
+signal handlers for <b>CNTL-C</b> (which is <b>SIGINT</b>),
+and <b>CNTL-\</b> (which is <b>SIGQUIT</b>).  They print out
+the values of <b>i</b> and <b>j</b> when the signal is
+generated.  Note that <b>i</b> and <b>j</b> must be global
+variables for this to work.  This is one example
+when you have to use global variables.
+
+</p><p>Try this out by compiling the program and then running it, and pressing
+<b>CNTL-C</b> and <b>CNTL-\</b> a bunch of times:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sh1a</b></font>
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 2 and i is 539943
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 2 and i is 919180
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 4 and i is 413031
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 5 and i is 20458
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 6 and i is 73316
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 6 and i is 683034
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 7 and i is 292244
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 13 and i is 738661
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 14 and i is 789583
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 16 and i is 42225
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 16 and i is 209458
+<font color="darkred"><b>^C</b></font>You just typed cntl-c.  j is 17 and i is 260584
+<font color="darkred"><b>^\</b></font>You just typed cntl-\.  j is 19 and i is 982514
+UNIX&gt;
+</pre>
+
+<p>You can also catch the segmentation violation signal.  One 
+of those CS legends is that some grad student used to 
+put the following into his code:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;signal.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+void segv_handler(int dummy)
+{
+  signal(SIGINT, sint_handler);
+  fprintf(stderr, "nfs server not responding, still trying\n");
+  while(1) ;
+}
+
+int main()
+...
+  signal(SIGSEGV, segv_handler();
+
+  rest of the code
+}
+</pre></td></tr></tbody></table></center><p>
+
+This is so that if he was demo-ing his code, and a segmentation violation
+occured (which always seems to happen when you're demo-ing code), it 
+would look like the network had frozen.  Very clever.  (I.e. look at
+and run 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh1b.c"><b>sh1b.c</b></a>.
+It should cause a segmentation violation, but instead
+looks like the network is hanging).  Note also that <b>CNTL-C</b> is disabled, since that's
+what happens when NFS hangs.
+
+</p><hr>
+<h1>Alarm()</h1>
+
+<p>Another use of signal handlers is the "alarm
+clock" that Unix provides.  Read the man page for
+<b>alarm()</b>.  What <b>alarm(n)</b> does is
+return, and then <b>n</b> seconds later, it will cause
+the <b>SIGALRM</b> signal to occur.  If you have set a
+signal handler for it, then you can catch the
+signal, and do whatever it is that you wanted to
+do.  For example, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh2.c"><b>sh2.c</b></a>
+is like 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh1.c"><b>sh1.c</b></a>, only it
+prints out a message after the program has
+executed 3 seconds.  <b>alarm()</b> is
+approximate -- it's not exactly 3 seconds, but
+we'll consider it close enough for the purposes
+of this class.  
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sh2</b></font>
+Three seconds just passed: j = 1245.  i = 287469
+UNIX&gt;
+</pre>
+
+Finally, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh3.c"><b>sh3.c</b></a>
+shows how you can get Unix to send you <b>SIGALRM</b> every second.
+It's just a tweak to 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh2.c"><b>sh2.c</b></a>
+where you have the alarm handler call alarm
+to make Unix generate <b>SIGALRM</b> one second after the current one.  
+I'll include the code below:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int i, j, seconds;
+
+void alarm_handler(int dummy)
+{
+  seconds++;
+  printf("%d second%s just passed: j = %4d.  i = %6d\n", seconds,
+     (seconds == 1) ? " " : "s", j, i);
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+}
+
+int main()
+{
+  seconds = 0;
+
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  for (j = 0; j &lt; 2000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><font color="darkred"><b>./sh3</b></font></font>
+1 second  just passed: j =  398.  i = 804296
+2 seconds just passed: j =  804.  i = 487960
+3 seconds just passed: j = 1210.  i = 977119
+4 seconds just passed: j = 1605.  i = 627513
+5 seconds just passed: j = 1997.  i = 468054
+UNIX&gt;
+</pre>
+
+On some systems, when you are in a signal handler for one signal, 
+you cannot process that same signal again until the handler returns.  
+On other systems, you can handle that same signal again.
+For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh4.c"><b>sh4.c</b></a> -- here's the code for the signal
+handlers:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Put a while loop into the alarm handler, to see if it
+   can catch SIGALRM while it's in the alarm handler. */</font>
+
+int i, j;
+
+void cntl_bs_handler(int dummy)
+{
+  printf("SIGQUIT generated: j = %d.  i = %d\n", j, i);
+  signal(SIGQUIT, cntl_bs_handler);
+}
+
+void alarm_handler(int dummy)
+{
+  printf("One second has passed: j = %d.  i = %d\n", j, i);
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+  while(1);
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p><b>Alarm_handler()</b> has an infinite loop in it, meaning that
+it never returns.   The program runs for a second, and then <b>SIGALRM</b>
+is generated, and <b>alarm_handler()</b> is entered.  It goes into
+an infinite loop, and one second later, <b>SIGALRM</b> is generated
+again.  Depending on your version of Unix, different things may happen.
+For example, on my Macbook in 2018, I got the following:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sh4</b></font>
+One second has passed: j = 476.  i = 853593
+<font color="blue">(and it hangs)</font>
+</pre>
+
+In other words, the signal was to be ignored until
+you return from <b>alarm_handler()</b>, which of course never happened.
+
+<p>Here was the output on Solaris in something like 1996:
+
+</p><pre>UNIX&gt; <font color="darkred"><font color="darkred"><b>sh4</b></font></font>
+One second has passed: j = 7.  i = 697646
+One second has passed: j = 7.  i = 697646
+One second has passed: j = 7.  i = 697646
+One second has passed: j = 7.  i = 697646
+...
+</pre>
+
+In other words, you could catch <b>SIGALRM</b> from <b>SIGALRM</b>.
+
+Which output does your operating system produce?
+<p>
+You can generate and handle other signals reliably whether in a signal
+handler or not.  For example, when
+you press <b>CNTL-\</b> in <b>sh4.c</b>, it gets caught properly 
+whether the program 
+or the <b>alarm_handler()</b> is running -- give it a try.
+
+Here's an interesting question -- when <b>SIGALRM</b> is generated, and I'm 
+in the alarm handler code, is the signal simply ignored, or is it queued until
+the alarm handler returns?  Here's a program,
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh5.c">sh5.c</a></b>),
+that tests this:  
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int i, j;
+
+void alarm_handler(int dummy)
+{
+  printf("One second has passed: j = %d.  i = %d\n", j, i);
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  for (; j &lt; 2000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+}
+
+int main()
+{
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  for (j = 0; j &lt; 2000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+When you run this program, here's the output: 
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sh5</b></font>
+One second has passed: j = 521.  i = 723701
+One second has passed: j = 2000.  i = 1000000
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Here's what happened:
+
+<ul>
+<li> The <b>main()</b> runs until <b>j</b>=521 and <b>i=723701</b>.
+</li><li> <b>SIGALRM</b> is generated, and the alarm handler runs, calling <b>alarm(1)</b> and 
+     then continuing to update <b>j</b> and <b>i</b>.  
+</li><li> One second later, <b>SIGALRM</b> is generated again, but since the alarm handler is
+     running, it is queued in the operating system.
+</li><li> When the first alarm handler returns, <b>SIGALRM</b> is delivered to the program, and
+    the alarm handler is called for a second time.  It prints that <b>j</b> is 2000, and 
+    <b>i</b> is 1000000, and returns; it calls <b>alarm(1)</b> again, and then returns.  
+</li><li> <b>Main()</b> then returns, and the program returns.  
+</li></ul>
+
+<p>Finally, you can send any signal to a program
+with the <b>kill</b> command.  Read the man page.
+Signal number 9 (<b>SIGKILL</b>) cannot be caught by
+your program, meaning that you cannot write a
+signal handler for it.  This is nice because if
+you mess up writing a signal handler, then "<b>kill -9</b>" 
+is the only way to kill the program.  
+
+</p><hr>
+<h3>Alarm() and exec</h3>
+
+Here's another interesting question: If you call <b>alarm(2)</b>, and then 
+you call <b>execlp</b> or one of its variants, then your memory is overwritten
+by a new program, and the <b>execlp()</b> call doesn't return (because it can't).
+Does the <b>SIGALRM</b> signal still get delivered?
+
+<p>
+Here is a simple program 
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/call_exec.c">call_exec.c</a></b>)
+to answer that question:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  alarm(2);
+  execl("sh1", "sh1", NULL);
+  perror("execl");
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+It calls <b>alarm(2)</b>, and then <b>execl</b> for the program <b>sh1</b> -- this is the program
+that only catches <b>SIGINT</b>.  When we run this, we see that <b>sh1</b> is indeed killed by 
+<b>SIGLARM</b>:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./call_exec</b></font>
+<font color="blue">(Two seconds pass)</font>
+Alarm clock
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h3>SIGPIPE and the Stdio Library</h3>
+
+When you write to a file descriptor that has no read end, the <b>SIGPIPE</b> signal will
+be generated.  If uncaught, it will kill your program.  Unfortunately, since the operating
+system often does its own buffering of writes, you don't usually generate <b>SIGPIPE</b>
+as soon as you should.  It usually comes later.  This can prove difficult to handle.
+<p>
+Let's take a look at the interaction of <b>SIGPIPE</b> and the standard I/O library, since
+that's usually where you are when <b>SIGPIPE</b> is generated.  Take a look at
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sigpipe_1.c">sigpipe_1.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  int i;
+  char *s = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
+
+  i = 0;
+  while (1) {
+    if (fputs(s, stdout) == EOF) {
+      fprintf(stderr, "Died on iteration %d on fputs\n", i);
+      exit(0);
+    }
+    if (fflush(stdout) != 0) {
+      fprintf(stderr, "Died on iteration %d on fflush\n", i);
+      exit(0);
+    }
+    fprintf(stderr, "Iteration %d done\n", i);
+    i++;
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+We're going to pipe this program into "<b>head -n 1</b>."  You would think that
+this would generate <b>SIGPIPE</b> on the second <b>fflush()</b>, since <b>head</b>
+will exit after reading the first line.  However, we get something different from
+what we expect (the exact output will of course differ from machine to machine and
+even from run to run):
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sigpipe_1 | head -n 1</b></font>
+Iteration 0 done
+Iteration 1 done
+...
+Iteration 2414 done
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+Iteration 2415 done
+Iteration 2416 done
+UNIX&gt; <font color="darkred"><b>./sigpipe_1 | head -n 1</b></font>
+Iteration 0 done
+Iteration 1 done
+...
+Iteration 2094 done
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+Iteration 2095 done
+Iteration 2096 done
+UNIX&gt; 
+</pre>
+
+Since we don't get an error statement, we can assume that <b>SIGPIPE</b> was generated
+and killed the process.  
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sigpipe_2.c">sigpipe_2.c</a></b> catches the signal and ignores it:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;signal.h&gt;
+
+void sigpipe_handler(int dummy)
+{
+  fprintf(stderr, "Ignoring Sigpipe()\n");
+  signal(SIGPIPE, sigpipe_handler);
+}
+
+int main()
+{
+  int i;
+  char *s = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
+
+  signal(SIGPIPE, sigpipe_handler);
+  i = 0;
+  while (1) {
+    if (fputs(s, stdout) == EOF) {
+      fprintf(stderr, "Died on iteration %d on fputs\n", i);
+      exit(0);
+    }
+    if (fflush(stdout) != 0) {
+      fprintf(stderr, "Died on iteration %d on fflush\n", i);
+      exit(0);
+    }
+    fprintf(stderr, "Iteration %d done\n", i);
+    i++;
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Now, we see that <b>SIGPIPE</b> is indeed generated.  Better yet, when we 
+ignore it, the subsequent <b>fflush()</b> fails:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sigpipe_2 | head -n 1</b></font>
+Iteration 0 done
+Iteration 1 done
+...
+Iteration 2469 done
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+Ignoring Sigpipe()
+Died on iteration 2470 on fflush
+UNIX&gt; 
+</pre>
+
+(When you run this, you may find that it fails on <b>fputs()</b> instead of <b>fflush()</b>).
+<p>
+With this information, you should take the following statement as
+gospel in your Lab 9:
+
+</p><ul>
+<i>When the read end of a pipe or socket goes away, <b>fputs()</b> and <b>fflush()</b> will
+not generate <b>SIGPIPE</b> immediately.  The bytes are buffered in the operating system and
+will be thrown away eventually.  However, the standard I/O calls will return without error
+for a while.  Eventually, they will return with errors and they may or may not 
+generate <b>SIGPIPE</b>.  Your best bet is to catch and ignore <b>SIGPIPE</b> and always
+test return values for determine when the read end of the pipe has gone away.
+</i>
+</ul>
+
+Since <b>head</b> is most likely written with the stdio library, it performs buffering too,
+so perhaps it's not surprising that <b>SIGPIPE</b> is not generated for many iterations.
+However, were the operating system not buffering, the output of <b>sigpipe_2 | head -n 1</b>
+would be deterministic (it would always be the same).
+<p>
+To hammer this home further, check out
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/instaclose.c">instaclose.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main()
+{
+  close(0);
+  sleep(1);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+This does no reading from standard input before closing it.  When we call it, we still get 
+nondeterministic output:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sigpipe_2 | instaclose</b></font>
+Iteration 0 done
+...
+Iteration 46 done
+Ignoring Sigpipe()
+Died on iteration 47 on fflush
+UNIX&gt; <font color="darkred"><b>./sigpipe_2 | instaclose</b></font>
+Ignoring Sigpipe()
+Died on iteration 0 on fflush
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Obviously, the operating system does buffering.
+
+<hr>
+<h3>Of Compilers, Optimization, and the ``volatile'' keyword</h3>
+
+When optimization is enabled in the compiler, it performs quite a bit 
+of analysis, turning the program into one that produces equivalent
+output, but runs faster.  Sometimes, you have no clue what the optimizer
+does, but you should be prepared to be mystified.  Let's go back to
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh3.c">sh3.c</a></b>
+as an example.  When we run it without optimization, the alarm handler
+is executed every second, printing out the value of <b>i</b> and <b>j</b>.
+
+<pre>UNIX&gt; <font color="darkred"><b>./sh3</b></font>
+1 second  just passed: j =  398.  i = 804296
+2 seconds just passed: j =  804.  i = 487960
+3 seconds just passed: j = 1210.  i = 977119
+4 seconds just passed: j = 1605.  i = 627513
+5 seconds just passed: j = 1997.  i = 468054
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Let's compile it with optimization and run it, to see what happens:
+
+<pre>UNIX&gt; <font color="darkred"><b>gcc -O3 sh3.c</b></font>
+UNIX&gt; <font color="darkred"><b>a.out</b></font>
+UNIX&gt; <font color="darkred"><b>time ./a.out</b></font>
+0.010u 0.000s 0:00.00 0.0%	0+0k 0+0io 0pf+0w
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Man, that was fast -- it seems too fast.  Back of the hand: we should be 
+iterating 2,000,000,000 times.  At roughtly 2 Ghz, that should be taking
+roughly a second, not 0.01 seconds.  Something's amiss.  
+<p>
+What's going on is that the compiler's analysis has figured out that the
+loops don't do anything, so it has deleted them.
+</p><p>
+Let's make the compiler keep the loops.  How about putting this after the loop:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  printf("%d %d\n", j, i);
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>gcc -O3 sh3a.c</b></font>
+UNIX&gt; <font color="darkred"><b>time ./a.out</b></font>
+2000 1000000
+0.010u 0.000s 0:00.00 0.0%	0+0k 0+0io 0pf+0w
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Dang it!  That's a smart compiler.  Ok -- one more try in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh3b.c">sh3b.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int i, j, seconds;
+
+void alarm_handler(int dummy)
+{
+  seconds++;
+  printf("%d second%s just passed: j = %4d.  i = %6d\n", seconds,
+     (seconds == 1) ? " " : "s", j, i);
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+}
+
+int main()
+{
+  int k;
+  seconds = 0;
+
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  for (j = 0; j &lt; 2000; j++) {
+    for (i = 0; i &lt; 1000000; i++) k = 1-k;
+  }
+  printf("%d %d %d\n", j, i, k);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>gcc -O3 sh3b.c</b></font>
+UNIX&gt; <font color="darkred"><b>time ./a.out</b></font>
+1 second  just passed: j =    0.  i =      0
+2000 1000000 0
+1.630u 0.000s 0:01.62 100.6%	0+0k 0+0io 0pf+0w
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+There -- the compiler's not smarter than I am!!!!  But now we have another 
+problem -- <b>i</b> and <b>j</b> are zero.  That can't be right.
+I won't make you look through the assembler, but what has happened is that
+the compiler has cached <b>i</b> and <b>j</b> into registers during <b>main()</b>,
+and thus their in-memory values remain 0 and 1 while <b>main()</b> is running.
+<p>
+The solution to this is rather inelegant.  You need to preface the declarations
+of <b>i</b> and <b>j</b> with the keyword <b>volatile</b>.  That's not a natural
+keyword to me, but that tells the compiler that it needs to store <b>i</b> and <b>j</b>
+in memory because the program's control flow may be weird.  That's done in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sh3c.c">sh3c.c</a></b>:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>gcc -O3 sh3c.c</b></font>
+UNIX&gt; <font color="darkred"><b>time ./a.out</b></font>
+1 second  just passed: j =  482.  i = 913429
+2 seconds just passed: j =  965.  i = 918621
+3 seconds just passed: j = 1420.  i = 631626
+4 seconds just passed: j = 1902.  i = 823540
+2000 1000000 0
+4.210u 0.000s 0:04.20 100.2%	0+0k 0+0io 0pf+0w
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You'll note that the program takes 2.5 times longer to run, since <b>i</b> and <b>j</b>
+can't be cached in registers anymore.  
+<p>
+Remember <b>volatile</b> when you learn <b>setjmp/longjmp</b> -- the same types of
+problems can occur.
+
+</p><hr>
+<h3>sort_compare.c - Alternating selection and insertion sort</h3>
+
+I typically don't get to this in class, but it's here in case you're interested.  The
+program <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/sort_compare.c">sort_compare.c</a></b> generates two identical
+random arrays, and sorts one of them with selection sort, and the other with insertion
+sort.  At each main loop, it checks a variable called <b>switch_algorithms</b>, which,
+if set, changes the algorithm from insertion to selection, and back again.
+
+<p>
+And of course, we use <b>alarm()</b> and an alarm handler to set <b>switch_algorithms</b>
+to one every second.  This is what causes the program to change algorithms every second:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;time.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+int switch_algorithms;        <font color="blue">/* This will be set to one by the alarm handler. */</font>
+int selection_index;          <font color="blue">/* The index of selection sort. */</font>
+int insertion_index;          <font color="blue">/* The index of insertion sort. */</font>
+
+<font color="blue">/* The alarm handler sets switch_algorithms to one, prints out the two 
+   indices, and then sets up SIGLARM to be generated again in another second. */</font>
+
+void alarm_handler(int dummy)
+{
+  switch_algorithms = 1;
+  printf("Selection_index: %10d        - Insertion_index: %10d\n", selection_index, insertion_index);
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+}
+
+<font color="blue">/* This generates two identical integer arrays, sorts one by
+   selection sort and the other by insertion sort.  */</font>
+
+int main(int argc, char **argv)
+{
+  int *array1, *array2;
+  int size;
+  int i, j, tmp, best;
+
+  if (argc != 2) {
+    fprintf(stderr, "usage: sort_compare size\n");
+    exit(1);
+  }
+  size = atoi(argv[1]);
+  array1 = (int *) malloc(sizeof(int) * size);
+  array2 = (int *) malloc(sizeof(int) * size);
+    
+  for (j = 0; j &lt; size; j++) {
+    array1[j] = rand();
+    array2[j] = array1[j];
+  }
+
+  <font color="blue">/* Set the two indices, and set it so that SIGLARM 
+     is generated in a second.  */</font>
+
+  selection_index = 0;
+  insertion_index = 0;
+
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  <font color="blue">/* While one of the sorts is not complete: */</font>
+
+  while (selection_index &lt; size || insertion_index &lt; size) {
+
+    <font color="blue">/* First do selection sort on array1, checking the switch_algorithms
+       variables at each interation of the main loop. */</font>
+
+    switch_algorithms = 0;
+    while (!switch_algorithms &amp;&amp; selection_index &lt; size) {
+      best = selection_index;
+      for (j = selection_index+1; j &lt; size; j++) {
+        if (array1[j] &lt; array1[best]) best = j;
+      }
+      tmp = array1[best];
+      array1[best] = array1[selection_index];
+      array1[selection_index] = tmp;
+      selection_index++;
+    }
+
+    <font color="blue">/* Second, do insertion sort on array2, checking the switch_algorithms
+       variables at each interation of the main loop. */</font>
+
+    switch_algorithms = 0;
+    while (!switch_algorithms &amp;&amp; insertion_index &lt; size) {
+      tmp = array2[insertion_index];
+      for (j = insertion_index-1; j &gt;= 0 &amp;&amp; array2[j] &gt; tmp; j--) array2[j+1] = array2[j];
+      j++;
+      array2[j] = tmp;
+      insertion_index++;
+    }
+  }
+
+  printf("Done\n");
+  <font color="blue">// for (i = 0; i &lt; size; i++) printf("%10d %10d\n", array1[i], array2[i]);</font>
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Here it is running -- as anticipated, insertion sort is faster than selection sort!
+</p><pre>UNIX&gt; <font color="darkred"><b>./sort_compare 100000</b></font>
+Selection_index:       4105        - Insertion_index:          0
+Selection_index:       4106        - Insertion_index:      37329
+Selection_index:       8470        - Insertion_index:      37330
+Selection_index:       8471        - Insertion_index:      53547
+Selection_index:      13072        - Insertion_index:      53548
+Selection_index:      13073        - Insertion_index:      65847
+Selection_index:      17895        - Insertion_index:      65848
+Selection_index:      17896        - Insertion_index:      76009
+Selection_index:      22439        - Insertion_index:      76010
+Selection_index:      22440        - Insertion_index:      84657
+Selection_index:      27613        - Insertion_index:      84658
+Selection_index:      27614        - Insertion_index:      92883
+Selection_index:      33545        - Insertion_index:      92884
+Selection_index:      33780        - Insertion_index:     100000
+Selection_index:      40346        - Insertion_index:     100000
+Selection_index:      47631        - Insertion_index:     100000
+Selection_index:      54766        - Insertion_index:     100000
+Selection_index:      63555        - Insertion_index:     100000
+Selection_index:      76395        - Insertion_index:     100000
+Done
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</body></html>

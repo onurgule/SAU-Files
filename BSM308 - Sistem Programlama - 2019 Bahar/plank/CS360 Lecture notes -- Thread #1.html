@@ -1,0 +1,648 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Thread #1</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Thread #1</h1>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Thread1</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/lecture.html
+</b></a>
+<hr>
+<i>Last revised: 
+Mon Apr  9 16:08:21 EDT 2018
+</i>
+<hr>
+
+Threads programming is a paradigm of programming that is very powerful
+and natural.  In a nutshell, threads let you have multiple processing
+units, called ``threads'' that cooperate via shared memory.  
+
+<hr>
+<h2>Why threads?</h2>
+
+There are many reasons to program with threads.  In the context of this
+class, there are two important ones:
+<ol>
+<li> They allow you to deal with asynchronous events synchronously and
+     efficiently.
+</li><li> They allow you to get parallel performance on a shared-memory
+     multiprocessor.
+</li></ol>
+
+You'll find threads to be a big help in writing an operating system. 
+Therefore, by learning threads here, you get a leg up on your OS class
+(that is, if they make you write an operating system....).
+
+<hr>
+
+<h2>What are threads?</h2>
+
+What are threads?  Threads are often called "lightweight processes".
+Whereas a typical process in Unix consists of CPU state (i.e. registers),
+memory (code, globals, heap and stack), and OS info (such as open 
+files, a process ID, etc), in a thread system
+there is a larger entity, called a "task", a "pod", or sometimes
+a "heavyweight process."
+
+<p>The task consists of a memory (code, globals, heap), OS info, and
+threads.  Each thread is a unit of execution, which consists of a 
+stack and CPU state (i.e. registers).  Multiple threads resemble
+multiple processes, except that multiple threads within a task use
+the same code, globals and heap.  Thus, while two processes in Unix
+can only communicate through the operating system (e.g. through files,
+pipes, or sockets), two threads in a task can communicate through
+memory.  
+
+</p><p>When you program with threads, you assume that they execute 
+simultaneously.  In other words, it should appear to you as if each
+thread is executing on its own CPU, and that all the threads share
+the same memory.
+
+</p><p>There are various primitives that a thread system must provide.
+Let's start with two basic ones.  In this initial discussion, I
+am talking about a generic thread system.  We'll talk about specific
+ones (such as POSIX) later.
+
+</p><ul>
+<pre><li> tcb thread_fork(procedure, arguments);
+</li></pre>
+<p>
+    This says to create a new thread which runs the given procedure
+    with the given arguments.  Sometimes the arguments are omitted, and
+    sometimes only one argument (a <b>(void *)</b>) is allowed.  It returns
+    a pointer to the new thread (which I'll call a thread control block or 
+    TCB).
+
+</p><pre><li> thread_join(tcb)
+</li></pre>
+<p>
+    This says to wait for the thread represented by <b>tcb</b> to 
+    finish executing.  Often <b>thread_join()</b> returns an integer
+    or a <b>(void *)</b> as its exit value.  You can think of 
+    <b>thread_join()</b> as analogous to <b>wait()</b> in Unix ---
+    it waits for the specified thread to complete, and gathers 
+    information about the thread's exit status.
+</p></ul>
+
+<hr>
+<h2>Posix threads</h2>
+
+On most Unix machines, there is a thread system that you can use.  
+It is called ``Posix threads.'' 
+To make use of Posix threads in your program, you need to have the
+following include directive:
+<pre>#include &lt;pthread.h&gt;
+</pre>
+
+And you have to link <b>libpthread.a</b> to your object files.  (i.e. if your
+program is in <b>main.c</b>, you need to do the following to make your thread
+executable):
+
+<pre>UNIX&gt; <font color="darkred"><b>gcc -c main.c</b></font>
+UNIX&gt; <font color="darkred"><b>gcc -o main main.o -lpthread</b></font>
+</pre>
+
+You can use pthreads with <b>g++</b> too.
+There's a lot of junk in the <b>pthread</b> library.  
+You can read about it in the
+various man pages.  Start with ``<b>man pthread</b>''.   
+The two basic primitives defined above are the following in Posix
+threads:
+
+<pre>     int pthread_create(pthread_t *new_thread_ID,
+                        const pthread_attr_t *attr,
+                        void * (*start_func)(void *), 
+                        void *arg);
+
+     int pthread_join(pthread_t target_thread, 
+                      void **status);
+</pre>
+
+This isn't too bad, and not too far off from my generic description 
+above.  Instead of returning a pointer to a thread control block, 
+<b>pthread_create()</b>
+has you pass the address of one, and it fills it in.  
+Don't worry about the <b>attr</b> argument -- just use NULL.
+Then <b>func</b> is
+the function, and <b>arg</b> is the argument to the function, which is
+a <b>(void *)</b>.  When <b>pthread_create</b> returns, the TCB is
+in <b>*new_thread_ID</b>, and the new thread is running <b>func(arg)</b>.
+
+<p><b>pthread_join()</b> has you specify a thread, and give a pointer to
+a <b>(void *)</b>.  When the specified thread exits, the <b>pthread_join()</b>
+call will return, and <b>*status</b> will be the return or exit value of
+a thread.
+
+</p><p>In all the Posix threads, calls, an integer is returned.  If zero, 
+everything went ok.  Otherwise, an error has occurred.  As with system
+calls, it is always good to check the return values of these calls to
+see if there has been an error.  In my code here in the lecture
+
+</p><p>How does a thread exit?  By calling <b>return</b> or <b>pthread_exit()</b>.
+
+</p><p>Ok, so check out the following program (in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/hw.c">hw.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<font color="blue">/* This is the procedure called by the thread.  I'm ignoring the argument
+   (which is specified to be NULL in the pthread_create() calls. */</font>
+
+void *printme()
+{
+  printf("Hello world\n");
+  return NULL;
+}
+
+int main()
+{
+  pthread_t tcb;
+  void *status;
+
+  <font color="blue">/* Create one thread, which prints Hello World. */</font>
+
+  if (pthread_create(&amp;tcb, NULL, printme, NULL) != 0) {
+    perror("pthread_create");
+    exit(1);
+  }
+  
+  <font color="blue">/* Wait for that thread to exit, and then exit. */</font>
+
+  if (pthread_join(tcb, &amp;status) != 0) { 
+    perror("pthread_join"); 
+    exit(1); 
+  }
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Try copying <b>hw.c</b> to your home area, compiling it, and running it.
+It should print out <b>``Hello world''</b>.
+
+</p><hr>
+<h2>Forking multiple threads</h2>
+
+Now, look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/print4.c"><b>print4.c</b></a>.  
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+<font color="blue">/* Printme's argument is a (void *), which we know is actually an 
+   (int *), pointing to the integer id of the thread, which is set
+    up in main(). */</font>
+
+void *printme(void *ip)
+{
+  int *i;
+
+  i = (int *) ip;
+  printf("Hi.  I'm thread %d\n", *i);
+  return NULL;
+}
+
+int main()
+{
+  int i, ids[4];
+  pthread_t tids[4];
+  void *retval;
+
+  <font color="blue">/* Fork off four "printme" threads, setting the argument to
+     be a pointer to the thread's integer id. */</font>
+
+  for (i = 0; i &lt; 4; i++) {
+    ids[i] = i;
+    if (pthread_create(tids+i, NULL, printme, ids+i) != 0) {
+      perror("pthread_create");
+      exit(0);
+    }
+  }
+
+  <font color="blue">/* Join with the four threads. */</font>
+
+  for (i = 0; i &lt; 4; i++) {
+    printf("Trying to join with thread %d\n", i);
+    if (pthread_join(tids[i], &amp;retval) != 0) { perror("join"); exit(1); }
+    printf("Joined with thread %d\n", i);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+This forks off 4 threads that print out <b>``Hi.  I'm thread n''</b>, 
+where <b>n</b> goes from zero to three.  The main thread calls <b>pthread_join()</b>
+so that it waits for all four threads to exit before it exits.  This should give you a
+good idea of how multiple threads can co-exist in the same process.
+</p><p>
+</p><p>Here's the output of a call to <b>print4.c</b>:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./print4</b></font>
+Trying to join with tid 0
+Hi.  I'm thread 0
+Hi.  I'm thread 1
+Hi.  I'm thread 2
+Hi.  I'm thread 3
+Joined with tid 0
+Trying to join with tid 1
+Joined with tid 1
+Trying to join with tid 2
+Joined with tid 2
+Trying to join with tid 3
+Joined with tid 3
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Here's what happened: The <b>main()</b> program got control
+after forking off the four threads.  It called <b>pthread_join</b> for
+thread zero and blocked.  Then thread zero got control, printed its line,
+and exited.  Next came threads one, two and three.  When they finished,
+the <b>main()</b> thread got control again and since thread zero was done,
+its <b>pthread_join()</b> call returned.  Then it made the <b>pthread_join()</b>
+calls for threads one, two and three, all of which returned since these 
+threads were done.  When <b>main()</b> returned, all the threads are done,
+and the program exited.
+<p>
+Now, that's not the only possible output of the program.  In particular, here
+are three more runs of the program, which all have different outputs:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./print4</b></font>
+Hi.  I'm thread 0
+Hi.  I'm thread 1
+Hi.  I'm thread 2
+Trying to join with tid 0
+Joined with tid 0
+Trying to join with tid 1
+Joined with tid 1
+Trying to join with tid 2
+Joined with tid 2
+Trying to join with tid 3
+Hi.  I'm thread 3
+Joined with tid 3
+UNIX&gt; <font color="darkred"><b>./print4</b></font>
+Hi.  I'm thread 0
+Hi.  I'm thread 2
+Trying to join with tid 0
+Joined with tid 0
+Trying to join with tid 1
+Hi.  I'm thread 1
+Joined with tid 1
+Trying to join with tid 2
+Joined with tid 2
+Trying to join with tid 3
+Hi.  I'm thread 3
+Joined with tid 3
+UNIX&gt; <font color="darkred"><b>./print4</b></font>
+Hi.  I'm thread 2
+Hi.  I'm thread 3
+Hi.  I'm thread 0
+Hi.  I'm thread 1
+Trying to join with tid 0
+Joined with tid 0
+Trying to join with tid 1
+Joined with tid 1
+Trying to join with tid 2
+Joined with tid 2
+Trying to join with tid 3
+Joined with tid 3
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You'll note that these are quite different.  Each of them is the result of the
+threads getting scheduled in different orders.  Let's think about this more.  
+In particular, think about what's going on after the main thread calls
+<b>pthread_create()</b> for the first time.  At that point, there are two threads -- the
+main thread and thread 0.  Either of them can run, and it's up to the operating system
+to select one.  If the operating system is managing two processors, it may choose to run 
+each thread simultaneously on a different processor.  
+<p>
+If thread 0 gets control first, you'll see the output "Hi.  I'm thread 0" first.  If
+the main thread gets control first, then it will call <b>pthread_create()</b> for thread 1,
+and you'll have three threads that can all run.  For each output above, you can derive an
+ordering of the threads that generates the output.  For example in that last output, 
+the main thread creates thread 2 before the first line of output is printed, and that line
+is printed by thread 2.  
+</p><p>
+This is simultaneously what makes threaded programs great and difficult.  They are great because
+they allow multiple threads to run at the same time (either on different processors, or on
+one processor, scheduled by the operating system).  They are difficult for the same reason.
+One of the challenged of this type of programming is allowing for the threads to do as much
+as they can simultaneously without getting yourself in trouble.
+
+</p><hr>
+<h3>exit() vs pthread_exit()</h3>
+
+In <b>pthreads</b> there are two things you should know about thread/program
+termination.  The first is that <b>pthread_exit()</b> makes a thread exit,
+but keeps the task alive, while <b>exit()</b> terminates the task.  If
+all threads (and the <b>main()</b> program should be considered a thread)
+have terminated, then the task terminates.  So, look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/p4a.c">p4a.c</a></b>.
+
+<p>Here, all threads, including the <b>main()</b> thread, exit with 
+<b>pthread_exit()</b>.  You'll see that the output is the same as 
+<b>print4</b>.
+
+</p><p>Now, look at <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/p4b.c">p4b.c</a></b>.  Here, we put a 
+<b>pthread_exit()</b> call in <b>main()</b> before making the <b>join</b>
+calls.  The output is:
+
+</p><pre>Hi.  I'm thread 0
+Hi.  I'm thread 1
+Hi.  I'm thread 2
+Hi.  I'm thread 3
+</pre>
+
+You'll note that none of the "Joining" lines were printed out because
+the main thread had exited.  However, the other threads ran just fine, and
+the program terminated when all the threads had exited.
+
+<p>
+The second thing you need to know is that
+when a forked thread returns from its initial calling procedure (e.g.
+<b>printme</b> in <b>print4.c</b>), then that is the same as calling
+<b>pthread_exit()</b>.  However, if the <b>main()</b> thread returns, then
+that is the same as calling <b>exit()</b>, and the task dies.  Take 
+a look at <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/p4c.c">p4c.c</a></b>.  This is the same as
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/print4.c">print4.c</a></b>, except for two changes:
+
+</p><ol>
+<li> The threads sleep for a second beefore printing.
+</li><li> The main thread doesn't call <b>pthread_join()</b>, and instead
+     returns from <b>main()</b> after forking the threads.
+</li></ol>
+
+When we run it, we get no output:
+
+<pre>UNIX&gt; <font color="darkred"><b>./p4c</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The reason for this is that when the main thread returns, the other four threads
+have been created, and are either sleeping, or have not executed yet.  
+When the main thread returns, the task is terminated, killing the threads.  Thus,
+they do not print anything.
+<p>
+If you change the return statement in the <b>main()</b> routine to <b>pthread_exit()</b>,
+then it does not kill the process, and the four threads run to completion.
+
+</p><p>
+Finally, look at <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/p4d.c">p4d.c</a></b>.  Here, the threads call
+<b>exit()</b> instead of <b>pthread_exit()</b>.  You'll note that the output
+is:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./p4d</b></font>
+Hi.  I'm thread 0
+Trying to join with thread 0
+UNIX&gt; 
+</pre>
+
+This is because the task is terminated by thread 0's <b>exit()</b> call.
+
+<hr>
+<h3>Preemption versus non-preemption</h3>
+
+Now, take a look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/iloop.c">iloop.c</a></b>.  Here, four threads are forked off,
+and then the <b>main()</b> thread goes into an infinite loop.  When you
+execute it, what do you think you'll see?  I can think of two answers.
+One is that you'll see nothing -- the <b>main()</b> thread spins forever,
+and the other threads don't run.  The second answer is that the <b>main()</b>
+thread will run, but the other threads will also get the CPU at some point
+and run to completion.  
+<p>
+The underlying issue here is called <i>preemption</i>.  If your thread
+system is <i>preemptive</i>, then although the <b>main</b> thread
+gets most of the CPU, the thread system interrupts it at certain 
+points (i.e. it <i>preempts</i> the <b>main()</b> thread), and runs
+the other threads.
+</p><p>
+POSIX thread systems under Solaris used to be non-preemptive.  Under 
+LINUX, they are preemptive.  So, in our labs (which are LINUX boxes), 
+<b>iloop</b> runs as follows:
+</p><pre>UNIX&gt; <font color="darkred"><b>./iloop</b></font>
+Hi.  I'm thread 0
+Hi.  I'm thread 1
+Hi.  I'm thread 2
+Hi.  I'm thread 3
+</pre>
+<p>
+There are some machines
+that have multiple CPU's attached to a single memory.  These systems
+are by nature preemptive, since different threads will actually execute
+on different CPU's.  However, whether or not a thread system is
+preemptive is an attribute that you must discern when you are programming
+for a thread system.
+</p><p>A non-preemptive thread system on a system with a single CPU (called
+a "uniprocessor") may seem useless, but in actuality it is extremely 
+useful.  
+
+</p><hr>
+<h3>Pthread_detach()</h3>
+
+Threads consume resources.  In particular, each thread executes on its own stack,
+which requires memory.  When a thread exits, the thread system has to decide whether
+to release its resources or not.  It makes that decision in one of two ways:
+<p>
+</p><ol>
+<li> If another thread calls <b>pthread_join()</b> on the thread, then upon completion
+of the <b>pthread_join()</b> call, the thread's resources are released.
+<p>
+</p></li><li> If any thread (typically the thread itself) calls <b>pthread_detach()</b> on the
+thread, then no <b>pthread_join()</b> call is required.  The thread's resources will be
+released instantly when the thread exits.  More often than not, it is what you want.
+</li></ol>
+<p>
+To call <b>pthread_detach()</b> on yourself, you call
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>pthread_detach(pthread_self());
+</pre></td></tr></tbody></table></center><p>
+</p><hr>
+<h3>Threaded Telnet, and Minitalk Done Right</h3>
+
+Threads provide the perfect framework for writing programs that deal with asynchrony.
+In particular, in our lecture notes on sockets, we had some problems writing programs that
+needed to do the following operations simultaneously:
+
+<ul>
+<li> Read standard input so that it could be written to a socket.
+</li><li> Read from the socket so that it could be written to standard output.
+</li></ul>
+
+We solved that problem by forking off processes.  With threads, you can do these simultaneous
+operations in one process.  That is often essential because you want your various 
+operaions to share information.
+<p>
+In this section, we'll first write a threaded <b>telnet</b> client.
+This is a client that will request a connection to a socket, and then
+do what we specify above -- anything typed into standard input will
+go to the socket, and anything that comes from the socket will go to
+standard output.
+</p><p>
+The program is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/th_telnet.c">th_telnet.c</a></b>, and you should study it.  The
+comments specify exactly what it is doing:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include "sockettome.h"
+
+<font color="blue">/* As input, this procedure takes an array of two FILE *'s, typecast to
+   a void *.  Let's call this array "connection."  This procedure will read
+   lines of text from from connection[0] and write them to connection[1].
+   This is convenient, because it works regardless of whether the FILE *'s 
+   are socket connections or stdin/stdout. */</font>
+
+void *process_connection(void *c)
+{
+  FILE **connection;
+  char buf[1000];
+
+  connection = (FILE **) c;
+  while (fgets(buf, 1000, connection[0]) != NULL) {
+    printf("Read: %s", buf);
+    fflush(stdout);
+    fputs(buf, connection[1]);
+    fflush(connection[1]);
+  }
+  exit(0);
+}
+
+int main(int argc, char **argv)
+{
+  int fd;
+  FILE *fin, *fout;
+  FILE *stdin_to_socket[2];
+  FILE *socket_to_stdout[2];
+  pthread_t tid;
+
+  if (argc != 3 || atoi(argv[2]) &lt;= 0) {
+    fprintf(stderr, "usage: th_telnet host port\n");
+    exit(1);
+  }
+
+  <font color="blue">/* Open a socket connection to a server, and convert the file 
+     descriptor to two FILE *'s, one for reading and one for 
+     writing. */</font>
+
+  fd = request_connection(argv[1], atoi(argv[2]));
+  fin = fdopen(fd, "r");
+  fout = fdopen(fd, "w");
+  
+  <font color="blue">/* Create arrays of FILE *'s for process_connection. */</font>
+
+  stdin_to_socket[0] = stdin;
+  stdin_to_socket[1] = fout;
+
+  socket_to_stdout[0] = fin;
+  socket_to_stdout[1] = stdout;
+
+  <font color="blue">/* Fork off a thread to read from the socket and print to standard output.
+     The main thread will read from standard input and print to the socket. */</font>
+
+  if (pthread_create(&amp;tid, NULL, process_connection, socket_to_stdout) != 0) {
+    perror("pthread_create");
+    exit(1);
+  }
+
+  (void) process_connection(stdin_to_socket);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Let's try it, using <b>alternate</b> from the Socket lecture notes as the server:
+
+</p><p></p><center><table border="3"><tbody><tr><td valign="top">
+<pre>UNIX&gt; <font color="darkred"><b>./th_telnet localhost 5555</b></font>
+<font color="darkred"><b>Hey</b></font>
+Read: Hey
+
+
+Read: Hey is for horses.
+Hey is for horses.
+<font color="darkred"><b>I hate it when people say that.  </b></font>
+Read: I hate it when people say that.  
+
+<font color="darkred"><b>So stop saying that.</b></font>
+Read: So stop saying that.
+
+Read: It is only proper.
+It is only proper.
+<font color="darkred"><b>&lt; CNTL-D &gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td><td valign="top">
+<pre>UNIX&gt; <font color="darkred"><b>./alternate localhost 5555 s</b></font>
+Connection established.  Client should start talking
+
+Hey
+<font color="darkred"><b>Hey is for horses.</b></font>
+
+
+
+
+I hate it when people say that.  
+
+
+<font color="darkred"><b>It is only proper.</b></font>
+So stop saying that.
+
+
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td></tr></tbody></table></center><p>
+
+You'll note, when the left person wrote "So stop saying that," it was read and sent along
+the socket instantly.  However, because <b>alternate</b> alternates strictly, it was not 
+read from the socket until after the second person wrote "It is only proper."  
+</p><p>
+The program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread1/real_minitalk.c">real_minitalk.c</a></b>
+has both the client and server code for a two-person talk program.  It is very much 
+like <b>th_telnet</b>, except it has code for setting up the server, and it doesn't 
+print the "Read" like like <b>th_telnet</b>.  What you should notice is that 
+it's ok for one of the two programs to type lots of input, and it works fine.  That's
+because each program has two threads -- one to handle standard input, and one to handle
+the thread.
+
+
+</p><p></p><center><table border="3"><tbody><tr><td valign="top">
+<pre>UNIX&gt; <font color="darkred"><b>./real_minitalk localhost 5555 c</b></font>
+<font color="darkred"><b>Hi</b></font>
+
+<font color="darkred"><b>I said Hi</b></font>
+
+<font color="darkred"><b>Why aren't you talking to me?</b></font>
+
+<font color="darkred"><b>Is it because I am overbearing?</b></font>
+
+
+No.  Bye
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td><td valign="top">
+<pre>UNIX&gt; <font color="darkred"><b>./real_minitalk localhost 5555 s</b></font>
+
+Hi
+
+I said Hi
+
+Why aren't you talking to me?
+
+Is it because I am overbearing?
+<font color="darkred"><b>No.  Bye</b></font>
+
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td></tr></tbody></table><p>
+
+
+
+</p><table></table></center></li></body></html>

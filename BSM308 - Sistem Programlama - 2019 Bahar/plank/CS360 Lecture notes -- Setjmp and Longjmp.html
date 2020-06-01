@@ -1,0 +1,882 @@
+
+<!-- saved from url=(0081)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Setjmp and Longjmp</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Setjmp</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">Jim Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Setjmp</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/lecture.html">
+    <b>
+ http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/lecture.html
+</b></a>
+</li><li> Latest revision:
+Fri Mar 28 11:20:57 EDT 2014
+</li></ul>
+<hr>
+
+<font color="red">
+<b>Make sure you use the makefile in the lecture note directory when 
+compiling the programs in this lecture.
+In particular, compile with compiler optimizations <i>off</i>.  I'll show some 
+of the problems that come about with optimzation at the end of the lecture notes.
+</b></font><hr>
+
+<h1>setjmp()/longjmp()</h1>
+
+<b>Setjmp()</b> and <b>longjmp()</b> are subroutines that let you 
+perform complex flow-of-control in C/Unix.  
+
+<p>One of the keys to understanding <b>setjmp()</b> and
+<b>longjmp()</b> is to understand machine layout, as
+described in the assembler and <b>malloc</b> lectures 
+of the past few weeks.
+The state of a program depends completely on the
+contents of its memory (i.e.  the code, globals,
+heap, and stack), and the contents of its
+registers.  The contents of the registers
+includes the stack pointer (<b>sp</b>), frame pointer
+(<b>fp</b>), and program counter (<b>pc</b>).  What <b>setjmp()</b> does
+is save the contents of the registers so that
+<b>longjmp()</b> can restore them later.  In this way, <b>longjmp()</b>
+``returns'' to the state of the program when <b>setjmp()</b>
+was called.  
+
+</p><p>Specifically:
+
+</p><pre>#include &lt;setjmp.h&gt;
+int setjmp(jmp_buf env);
+</pre>
+
+This says to save the current state of the
+registers into <b>env</b>.  If you look in
+<a href="file://usr/include/setjmp.h"><b>/usr/include/setjmp.h</b></a>,
+you'll see that
+<b>jmp_buf</b> is defined as: 
+
+<pre>#define _JBLEN  9
+typedef struct { int _jb[_JBLEN + 1]; } jmp_buf[1];
+</pre>
+This is an irritating way of saying that <b>jmp_buf</b> is an 
+array of <b>_JBLEN+1</b> integers.
+
+<p>So, when you call <b>setjmp()</b>, you pass it the address
+of an array of integers, and it stores the value of the
+registers in that array.  <b>Setjmp()</b> returns 0 when
+you call it in this way.  
+
+</p><pre>longjmp(jmp_buf env, int val);
+</pre>
+
+<b>Longjmp()</b> resets the registers to
+the values saved in <b>env</b>.  <i>This includes the <b>sp</b>,
+<b>fp</b> and <b>pc</b></i>.  What this means is that <b>longjmp()</b>
+doesn't return.   Instead, when you call it, you
+return as if you have just called the <b>setjmp()</b> call
+that saved <b>env</b>.  This is because the <b>pc</b> is
+restored along with the other registers.
+<b>Setjmp()</b> returns the <b>val</b> argument of <b>longjmp()</b>,
+which is not allowed to be zero (read the man
+page).  Thus, you know when <b>setjmp()</b> returns a
+non-zero value that <b>longjmp()</b> was called, and is
+returning to <b>setjmp()</b>.  
+
+<p>As an example, look at the following code (in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/sj1.c"><b>sj1.c</b></a>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;setjmp.h&gt;
+
+int main()
+{
+  jmp_buf env;
+  int i;
+
+  i = setjmp(env);
+  if (i == 10) exit(0);
+
+  printf("i = %d\n", i);
+
+  longjmp(env, i+1);
+  printf("Does this line get printed?\n");
+
+  return 0;
+}
+
+</pre></td></tr></tbody></table></center><p>
+
+When we run this, we see that this is a pretty convoluted way to print the numbers
+from 0 through 9:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./sj1</b></font>
+i = 0
+i = 1
+i = 2
+i = 3
+i = 4
+i = 5
+i = 6
+i = 7
+i = 8
+i = 9
+UNIX&gt;
+</pre>
+
+Let's walk through it.  
+First, we call <b>setjmp()</b>, and it returns 0.
+Then we call <b>longjmp()</b> with a value of 1, which
+causes the code to return from <b>setjmp()</b> with a
+value of 1.  We continue to do this until <b>setjmp()</b> finally returns 10, and
+we exit.
+
+<p><b>Setjmp()</b> and <b>longjmp()</b> are usually used so that
+if an error is detected within a long string of
+procedure calls, the error may be dealt with
+efficiently by longjmp-ing out of the procedure that catches
+the error.  This avoids having to return from each procedure can 
+test return values.   It is basically the C way of doing for example,
+"try/catch" clauses in C++.
+</p><p>
+For an example,
+look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/sj2.c"><b>sj2.c</b></a>.
+It looks to be complicated, but
+really isn't.  What happens is that there is a
+complicated series of procedure calls -- <b>proc_1</b>
+through <b>proc_4</b>.  If <b>proc_4</b>'s argument is zero,
+then it flags the error by calling <b>longjmp()</b>.
+Otherwise, things proceed normally.  As you can
+see, if you call <b>sj2</b> with all positive arguments,
+then everything is ok.  However, if you call it
+with all zeros, it will make the <b>longjmp()</b> call,
+and flag an error: 
+
+</p><pre>UNIX&gt; <font color="darkred"><b>sj2 1 2 3 4</b></font>
+proc_1(1, 2, 3, 4) = 4
+UNIX&gt; <font color="darkred"><b>sj2 0 0 0 0</b></font>
+Error -- bad value of i (0), j (0), k (0), l (0)
+UNIX&gt;
+</pre>
+
+<hr>
+Now, <b>setjmp()</b> saves all the registers, including the <b>sp</b>
+and <b>fp</b>.
+What this means is that if you return from a procedure that 
+calls <b>setjmp()</b>, then the <b>env</b> buffer of that
+<b>setjmp()</b> will no longer be valid.  Why?  Because
+that <b>env</b> buffer contains the <b>sp</b> and <b>fp</b> of the
+calling procedure.  If that procedure returns,
+then when you restore the <b>sp</b> and <b>fp</b>, the stack
+will be in a different state than before, and you
+will have an error.  For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/sj3.c"><b>sj3.c</b></a>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;setjmp.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int a(char *s, jmp_buf env)
+{
+  int i;
+
+  i = setjmp(env);
+  printf("Setjmp returned -- i = %d, 0x%lx\n", i, (unsigned long) s);
+  
+  printf("s = %s\n", s);
+  return i;
+}
+
+int b(char *s, jmp_buf env)
+{
+  printf("In B: Calling longjmp(env, i)\n");
+
+  longjmp(env, 3);
+}
+
+int main(int argc, char **argv)
+{
+  jmp_buf env;
+
+  if (a("Jim", env) != 0) exit(0);
+  b(NULL, env);
+}
+</pre></td></tr></tbody></table></center><p>
+</p><p>When we execute it, we get the following:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>sj3</b></font>
+Setjmp returned -- i = 0, 0x400836
+s = Jim
+In B: i=3.  Calling longjmp(env, i)
+Setjmp returned -- i = 3, 0x400693
+s = UH??H???
+UNIX&gt; 
+</pre>
+
+So, exactly what is happening?  When the <b>main()</b> routine is first called,
+the stack looks as follows:
+
+<pre>              Stack        
+        |----------------|
+        |                |
+        |                |
+        |                |
+        |                |
+        |                |
+        |                | &lt;-------- sp
+        | env[0]         |
+        | env[1]         |
+        | env[2]         |               pc = main
+        | env[3]         |
+        | ....           |
+        | env[8]         |
+        | other stuff    | &lt;------- fp
+        |--------------- |
+</pre>
+
+Now, <b>main()</b> calls <b>a()</b>.  First it pushes the
+arguments on the stack in reverse order, and then
+<b>jsr</b> is called, which pushes the return <b>pc</b> on the
+stack, and the old <b>fp</b>.  The <b>fp</b> and <b>sp</b> are changed
+to make an empty stack frame for <b>a()</b>: 
+
+<pre>                                     Stack        
+                               |----------------|
+                               |                |
+                               |                | &lt;--------- sp, fp
+                /------------- | old fp in main |
+                |              | old pc in main |
+                |   "Jim" &lt;--- | s = "Jim"      |
+                |         /--- | pointer to env | 
+                |         \--&gt; | env[0]         |
+                |              | env[1]         |
+                |              | env[2]         |               pc = a
+                |              | env[3]         |
+                |              | ....           |
+                |              | env[8]         |
+                \------------&gt; | other stuff    | 
+                               |--------------- |
+</pre>
+                    
+<p>The first thing that a() does is allocate room its local variable i:
+                    
+</p><pre>                                     Stack        
+                               |----------------|
+                               |                | &lt;--------- sp
+                               |      i         | &lt;--------- fp
+                /------------- | old fp in main |
+                |              | old pc in main |
+                |   "Jim" &lt;--- | s = "Jim"      |
+                |         /--- | pointer to env | 
+                |         \--&gt; | env[0]         |
+                |              | env[1]         |
+                |              | env[2]         |               pc = a
+                |              | env[3]         |
+                |              | ....           |
+                |              | env[8]         |
+                \------------&gt; | other stuff    | 
+                               |--------------- |
+</pre>
+                    
+Then it calls <b>setjmp()</b>.  This saves the current state of the registers.
+In other words, it saves the current values of
+<b>sp</b>, <b>fp</b>, and <b>pc</b>.  Now, <b>a()</b> prints "<b>i = 0</b>", 
+and "<b>s = Jim</b>", and then returns to <b>main()</b>.  Now the stack
+looks as before, except that <b>env</b> is initialized
+to the state of the machine when <b>a()</b> was called: 
+
+<pre>                                     Stack        
+                               |----------------|
+                               |                |
+                               |                | 
+                               |                |
+                               |                |
+                               |                |
+                               |                | &lt;----------- sp
+                               | env[0]         |
+                               | env[1]         |
+                               | env[2]         |               pc = main
+                               | env[3]         |
+                               | ....           |
+                               | env[8]         |
+                               | other stuff    | &lt;------------ fp
+                               |--------------- |
+</pre>
+
+Now, <b>main()</b> calls <b>b()</b>, and the stack looks as follows:
+
+<pre>                                     Stack        
+                               |----------------|
+                               |                |
+                               |                | &lt;--------- sp, fp
+                /------------- | old fp in main |
+                |              | old pc in main |
+                |              | i = 3          |
+                |         /--- | pointer to env | 
+                |         \--&gt; | env[0]         |
+                |              | env[1]         |
+                |              | env[2]         |               pc = b
+                |              | env[3]         |
+                |              | ....           |
+                |              | env[8]         |
+                \------------&gt; | other stuff    | 
+                               |--------------- |
+</pre>
+
+Then <b>longjmp()</b> is called.  The registers
+are restored to their values when <b>a()</b> called
+<b>setjmp()</b>, and the <b>pc</b> returns from <b>setjmp()</b> in <b>a()</b>.
+However, the values in the stack are the same as
+they were for <b>b()</b>: 
+
+<pre>                                     Stack        
+                               |----------------|
+                               |                | &lt;--------- sp
+                               | i = 2          | &lt;--------- fp
+                /------------- | old fp in main |
+                |              | old pc in main |
+                |              | s??    = 3     |
+                |         /--- | pointer to env | 
+                |         \--&gt; | env[0]         |
+                |              | env[1]         |
+                |              | env[2]         |               pc = a
+                |              | env[3]         |
+                |              | ....           |
+                |              | env[8]         |
+                \------------&gt; | other stuff    | 
+                               |--------------- |
+</pre>
+
+
+You should see the problem.  The stack is in a bad state.  In particular, 
+<b>a()</b> expects there to be a <b>(char *)</b> where <b>s</b> is,
+and instead, there is the integer value 3.  Thus,
+when it tries to print out <b>s</b>, it tries to find a 
+string at memory location 3, and dumps core.  
+
+<p>This is a very common bug with <b>setjmp()</b> and
+<b>longjmp()</b> -- to use them properly, you <i>CANNOT
+RETURN FROM THE PROCEDURE THAT CALLS <b>setjmp()</b></i>.  
+This is sometimes called "longjmp-ing up the stack."
+As you can see, this bug is subtle -- the stack
+frame for <b>b()</b> looks a lot like the stack frame
+for <b>a()</b>, and thus this bug might slip by
+unnoticed for a while.  
+
+</p><hr>
+
+<h1>Setjmp() and signals</h1>
+
+One of the nice things about <b>setjmp()</b> and <b>longjmp()</b> is
+that you can <b>longjmp()</b> out of a signal handler, and
+back into your program.  For example, 
+the program in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/sh4.c"><b>sh4.c</b></a> uses <b>signal()</b>,
+<b>alarm()</b> and <b>setjmp/longjmp</b> to exit a big loop after
+a period of time:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;signal.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;time.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;setjmp.h&gt;
+
+int i, j;
+long T0;
+jmp_buf Env;
+
+void alarm_handler(int dummy)
+{
+  long t1;
+
+  t1 = time(0) - T0;
+  printf("%ld second%s has passed: j = %d.  i = %d\n", t1, 
+     (t1 == 1) ? "" : "s", j, i);
+  if (t1 &gt;= 8) {
+    printf("Giving up\n");
+    longjmp(Env, 1);
+  }
+  alarm(1);
+  signal(SIGALRM, alarm_handler);
+}
+
+int main()
+{
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  if (setjmp(Env) != 0) {
+    printf("Gave up:  j = %d, i = %d\n", j, i);
+    exit(1);
+  }
+
+  T0 = time(0);
+
+  for (j = 0; j &lt; 10000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>This program <b>longjmps</b> out of
+<b>alarm_handler</b> after 8 seconds have passed, and
+then prints "<b>Gave up</b>".  Be sure you can trace
+through this program:
+</p><pre>UNIX&gt; <font color="darkred"><b>sh4</b></font>
+1 second has passed: j = 482.  i = 549695
+2 seconds have passed: j = 964.  i = 948276
+3 seconds have passed: j = 1447.  i = 322623
+4 seconds have passed: j = 1927.  i = 801765
+5 seconds have passed: j = 2410.  i = 22333
+6 seconds have passed: j = 2889.  i = 39442
+7 seconds have passed: j = 3372.  i = 219445
+8 seconds have passed: j = 3852.  i = 857985
+Giving up
+Gave up:  j = 3852, i = 857985
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>
+One issue about calling <b>longjmp()</b> from a signal handler is that
+the operating system may not realize that you have left the signal handler.
+Specifically, when you are in an alarm handler, you cannot catch SIGALRM,
+because the operating system has disabled the signal.  For example, 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/two_alarm.c">two_alarm.c</a></b> modifies <b>sh4.c</b> to 
+put a <b>while(1)</b> loop in the alarm handler:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>void alarm_handler(int dummy)
+{
+  long t1;
+
+  alarm(1);
+  signal(SIGALRM, alarm_handler);
+  t1 = time(0) - T0;
+  printf("%d second%s %s passed: j = %d.  i = %d\n", t1,
+     (t1 == 1) ? "" : "s", 
+     (t1 == 1) ? "has" : "have", j, i);
+  while(1);    <font color="blue">/* This is the only new code. */</font>
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run this, we only get one line of text because the operating system
+will not generate SIGALRM while it is in the alarm handler.
+</p><p>
+This has an interesting effect on <b>longjmp</b>.  If we <b>longjmp</b> out
+of the alarm handler, as we did in <b>sh4.c</b>, does the operating system
+know to re-enable SIGALRM?  Take a look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/two_alarm_setjmp_1.c">two_alarm_setjmp_1.c</a></b>:
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/two_alarm_setjmp_1.c">two_alarm_setjmp_1.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;time.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;setjmp.h&gt;
+
+int i, j;
+long T0;
+jmp_buf Env;
+
+void alarm_handler(int dummy)
+{
+  long t1;
+
+  alarm(1);
+  signal(SIGALRM, alarm_handler);
+  t1 = time(0) - T0;
+  printf("%ld second%s %s passed: j = %d.  i = %d\n", t1, 
+     (t1 == 1) ? "" : "s", 
+     (t1 == 1) ? "has" : "have", j, i);
+  longjmp(Env, t1);   <font color="blue">/* Instead of returning from the alarm handler, we longjmp(). */</font>
+}
+
+int main()
+{
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  if (setjmp(Env) != 0) {
+    printf("Gave up:  j = %d, i = %d\n", j, i);
+    exit(1);
+  }
+
+  T0 = time(0);
+  j = 0;
+  i = 0;
+
+  if (setjmp(Env) == 8) {
+    printf("Gave up\n");
+    exit(0);
+  };
+
+  for (; j &lt; 10000; j++) {
+    for (; i &lt; 1000000; i++) ;
+    i = 0;
+  }
+  printf("Done: Time = %ld\n", time(0)-T0);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+This is similar to <b>two_alarm.c</b>, except we <b>longjmp()</b> out of the alarm
+handler, and then continue running the code.  Its output depends on the 
+implementation of the operating system.  Here it is on <b>mamba</b> (a 
+Linux box) in 2010:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>two_alarm_setjmp_1</b></font>
+1 second has passed: j = 476.  i = 27986
+Done: Time = 21
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+As you can see, the operating system does not re-enable SIGALRM when we <b>longjmp()</b>
+out of the handler.  Here it is on my Macintosh (again in 2010):
+
+<pre>UNIX&gt; <font color="darkred"><b>two_alarm_setjmp_1</b></font>
+1 second has passed: j = 357.  i = 652488
+2 seconds have passed: j = 719.  i = 160936
+3 seconds have passed: j = 1079.  i = 682336
+4 seconds have passed: j = 1438.  i = 479525
+5 seconds have passed: j = 1797.  i = 62895
+6 seconds have passed: j = 2153.  i = 660999
+7 seconds have passed: j = 2508.  i = 813449
+8 seconds have passed: j = 2874.  i = 267243
+Gave up
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Well, that's confusing.  In its laconic way, the <b>setjmp()</b> man page helps to clear up the
+confusion:
+
+<pre>NOTES
+       POSIX  does  not specify whether setjmp() will save the signal context.
+       (In System V it will not.  In 4.3BSD it will, and there is  a  function
+       _setjmp  that  will  not.)   If  you  want  to  save  signal masks, use
+       sigsetjmp().
+</pre>
+
+What this means is that the operating system maintains "signal context" for your
+process.  These are the signals that are enabled or disabled.  On some operating
+systems (like my Macintosh), this is saved in the <b>setjmp()</b> call, and on some
+(like mamba) it is not.  For consistency, there are procedures
+<b>sigsetjmp()</b> and
+<b>siglongjmp()</b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int sigsetjmp(sigjmp_buf env, int savesigs);
+void siglongjmp(sigjmp_buf env, int val);
+</pre></td></tr></tbody></table></center><p>
+
+If you call <b>sigsetjmp()</b> with <b>savesig</b> equal to one, it will save 
+the signal context and restore it on a <b>longjmp</b> call.  That allows
+you to <b>longjmp</b> out of the alarm handler.  
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/two_alarm_setjmp_2.c">two_alarm_setjmp_2.c</a></b>
+does this and works properly on both machines:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>On mamba:<hr>
+UNIX&gt; <font color="darkred"><b>two_alarm_setjmp_2</b></font>
+1 second has passed: j = 482.  i = 490170
+2 seconds have passed: j = 965.  i = 904496
+3 seconds have passed: j = 1448.  i = 956563
+4 seconds have passed: j = 1932.  i = 66736
+5 seconds have passed: j = 2415.  i = 161513
+6 seconds have passed: j = 2898.  i = 252556
+7 seconds have passed: j = 3381.  i = 157970
+8 seconds have passed: j = 3864.  i = 264384
+Gave up
+UNIX&gt; 
+</pre></td>
+<td><pre>On my Macintosh:<hr>
+UNIX&gt; <font color="darkred"><b>two_alarm_setjmp_2</b></font>
+1 second has passed: j = 360.  i = 856876
+2 seconds have passed: j = 726.  i = 709024
+3 seconds have passed: j = 1086.  i = 962320
+4 seconds have passed: j = 1450.  i = 690055
+5 seconds have passed: j = 1808.  i = 32123
+6 seconds have passed: j = 2171.  i = 476472
+7 seconds have passed: j = 2533.  i = 270373
+8 seconds have passed: j = 2899.  i = 428252
+Gave up
+UNIX&gt;
+</pre></td>
+</tr></tbody></table></center><p>
+
+Here, mamba is faster than my Macintosh.
+
+</p><hr>
+<h1>Poor-man's Multithreading</h1>
+
+This example shows how to use <b>sigsetjmp()</b>/<b>siglongjmp</b>
+to implement a primitive kind of multithreading.  I include it 
+as a way to help you understand <b>sigsetjmp()</b>/<b>siglongjmp</b>.
+I don't recommend that you program this way.  In fact, I recommend
+that you do not program this way.  However, it's a nice way to 
+help you understand the calls.
+
+First, look at -- 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/prime_1.c">prime_1.c</a></b>:  This enumerates prime
+numbers using a very simple technique: It tests for prime number
+number <i>p</i> by checking to see if <i>p</i> is divisible by all
+numbers less than or equal to <i>sqrt(p)</i>.  If not, it is
+prime.  
+<p>
+The code is written in a "re-entrant" way -- when it is
+interrupted by SIGALRM, the alarm handler <b>siglongjmp</b>'s
+back into main, which prints out the current state of the
+generation, and then calls <b>enumerate_primes1()</b> again with
+current values.  
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;setjmp.h&gt;
+
+sigjmp_buf Env;
+void alarm_handler(int dummy)
+{
+  alarm(1);
+  signal(SIGALRM, alarm_handler);
+  siglongjmp(Env, 1);
+}
+  
+void enumerate_primes1(int *current_test, int *largest_prime)
+{
+  int i;
+
+  while(1) {
+    for(i = 2; i*i &lt;= *current_test &amp;&amp; *current_test % i != 0; i++) ;
+    if (*current_test % i != 0) *largest_prime = *current_test;
+    *current_test = *current_test + 1;
+  }
+}
+    
+main()
+{
+  int test, largest_prime;
+  int time;
+
+  test = 2;
+  largest_prime = 2;
+  
+  time = 0;
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  time += sigsetjmp(Env, 1);
+  printf("%4d   Largest Prime: %10d\n", time, largest_prime);
+  enumerate_primes1(&amp;test, &amp;largest_prime);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Once again, make sure you can trace through the code.  Here it is running.
+
+</p><pre>UNIX&gt; <font color="darkred"><b>prime_1</b></font>
+   0   Largest Prime:          2
+   1   Largest Prime:    1052287
+   2   Largest Prime:    1729841
+   3   Largest Prime:    2310593
+   4   Largest Prime:    2836727
+   5   Largest Prime:    3326567
+   6   Largest Prime:    3787877
+...
+</pre>
+
+A second program generates primes a little more efficiently.  It maintains a Dllist
+of all primes less than <i>p</i>, and then traverses that Dllist to see if <i>p</i>
+is divisible by any prime numbers that are less than or equal to <i>sqrt(p)</i>.
+The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/prime_2.c">prime_2.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;signal.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;setjmp.h&gt;
+#include "dllist.h"
+
+sigjmp_buf Env;
+
+void alarm_handler(int dummy)
+{
+  alarm(1);
+  signal(SIGALRM, alarm_handler);
+  siglongjmp(Env, 1);
+}
+  
+int is_prime(int p, Dllist l)
+{
+  Dllist tmp;
+  int i;
+
+  dll_traverse(tmp, l) {
+    i = tmp-&gt;val.i;
+    if (i*i &gt; p) return 1;
+    if (p % i == 0) return 0;
+  }
+  return 1;
+}
+
+void enumerate_primes2(int *current_test, int *largest_prime, Dllist l)
+{
+
+  while(1) {
+    if (is_prime(*current_test, l)) {
+      dll_append(l, new_jval_i(*current_test));
+      *largest_prime = *current_test;
+    }
+    *current_test = *current_test + 1;
+  }
+}
+    
+int main()
+{
+  int test, largest_prime;
+  int time;
+  Dllist l;
+
+  test = 2;
+  largest_prime = 2;
+  l = new_dllist();
+  
+  time = 0;
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  time += sigsetjmp(Env, 1);
+  printf("%4d   Largest Prime: %10d\n", time, largest_prime);
+  enumerate_primes2(&amp;test, &amp;largest_prime, l);
+}
+</pre></td></tr></tbody></table></center><p>
+
+It generates more primes than the first program:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>prime_2</b></font>
+   0   Largest Prime:          2
+   1   Largest Prime:    3262639
+   2   Largest Prime:    5595433
+   3   Largest Prime:    7650317
+   4   Largest Prime:    9531449
+   5   Largest Prime:   11299507
+   6   Largest Prime:   12981097
+....
+</pre>
+
+Finally, the program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Setjmp/prime_12.c">prime_12.c</a></b>
+alternates between the two prime number generators, giving
+each one second of time and printing out how many primes
+each generates at two second intervals.  Here's the 
+<b>main()</b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int test1, largest_prime1;
+  int test2, largest_prime2;
+  Dllist l;
+
+  test1 = 2; largest_prime1 = 2;
+  test2 = 2; largest_prime2 = 2;
+  l = new_dllist();
+  
+  time = 0;
+  signal(SIGALRM, alarm_handler);
+  alarm(1);
+
+  time += sigsetjmp(Env, 1);
+  if (time%2 == 0) {
+    printf("%4ld   EP1: %10d  EP2: %10d\n", time/2, largest_prime1, largest_prime2);
+    enumerate_primes1(&amp;test1, &amp;largest_prime1);
+  } else {
+    enumerate_primes2(&amp;test2, &amp;largest_prime2, l);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run it, we see the the second one whups up on the first one:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>prime_12</b></font>
+   0   EP1:          2  EP2:          2
+   1   EP1:    1052561  EP2:    3265061
+   2   EP1:    1729757  EP2:    5602151
+   3   EP1:    2311819  EP2:    7663367
+   4   EP1:    2839519  EP2:    9369739
+   5   EP1:    3329453  EP2:   11159677
+...
+</pre>
+
+<hr>
+<h1>There's a bug in prime_2.c and prime_12.c</h1>
+
+There's a potential bug in <b>prime_2.c</b> and <b>prime_12.c</b>.  What 
+happens if SIGALRM is generated in the middle of the <b>dll_append()</b> 
+call?  Then the list may be compromised.  While it doesn't happen in the
+examples above, it certainly can.  Just thought you should know....
+
+<hr>
+<h1>The hell of compiler optimization</h1>
+
+Try the following:
+
+<pre>UNIX&gt; <font color="darkred"><b>gcc -O -o sh4_opt sh4.c</b></font>
+UNIX&gt; <font color="darkred"><b>sh4_opt</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The compiler analyzed the main loop and decided that since it
+did nothing, it could be eliminated: 
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  for (j = 0; j &lt; 10000; j++) {
+    for (i = 0; i &lt; 1000000; i++);
+  }
+</pre></td></tr></tbody></table></center><p>
+
+While that's not a particularly bad thing, you need to be aware that 
+when the compiler optimizes, it doesn't really care about your 
+<b>setjmp()/longjmp()</b> call.s
+</p><p>
+Let's take a pathelogical example (one that drove me crazy during my 2010
+lecture, as I had optimization on by default and was not using the makefile):
+
+</p><pre>UNIX&gt; <font color="darkred"><b>make prime_12_opt</b></font>
+gcc -I/home/plank/cs360/include -O -o prime_12_opt prime_12.c /home/plank/cs360/objs/libfdr.a 
+UNIX&gt; <font color="darkred"><b>prime_12_opt</b></font>
+   0   EP1:          2  EP2:          2
+
+</pre>
+
+It hangs?  Let's explore: If we print out the value of <b>time</b> after the <b>setjmp</b>, we see something
+strange:
+
+<pre>UNIX&gt; <font color="darkred"><b>prime_12_opt</b></font>
+Time = 0
+   0   EP1:          2  EP2:          2
+Time = 1
+Time = 1
+Time = 1
+Time = 1
+...
+</pre>
+
+What????  There is an explanation.  When it optimizes, the compiler is happy to store certain 
+frequently-used variables in registers rather than on the stack.  That's where it is storing
+<b>time</b>, which means that <b>time</b> is saved during <b>setjmp()</b>, when its value is
+zero, and restored to zero at every <b>longjmp()</b> call.  Is there anything you can do about
+this?  Well, perhaps you should heed the advice of the <b>setjmp()</b> man page:
+<p>
+</p><pre>       setjmp() and sigsetjmp() make programs hard to understand and maintain.
+       If possible an alternative should be used.
+</pre>
+<p>
+So why do I teach you <b>setjmp()</b>/<b>longjmp()</b>?    First, just because you shouldn't 
+use something doesn't mean that others won't.  You should be prepared to understand <b>setjmp()</b>/<b>longjmp()</b>
+code.  Second, it's a great way to understand the interaction of registers and program state.  
+Third, it makes great dinner-time conversation.  You can thank me later....
+</p><hr>
+Seriously, you can get around the problem with the ``volatile'' keyword.  Please see the 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Signals/lecture.html">lecture notes on Signals</a> for elaboration.
+</body></html>

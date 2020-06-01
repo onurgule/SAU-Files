@@ -1,0 +1,260 @@
+
+<!-- saved from url=(0077)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval/index.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- The Jval Type</title>
+</head><body bgcolor="ffffff">
+<h1>
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360">CS360</a>
+Lecture Notes -- The Jval Type</h1>
+<li><a href="http://web.eecs.utk.edu/~jplank">James Plank</a>
+</li><li>Directory: <b>~jplank/cs360/notes/Jval</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval">
+    <b>http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval</b></a>
+</li><li>
+Tue Oct 13 10:07:44 EDT 1998
+<hr>
+
+
+<hr>
+<h2>The Jval type</h2>
+
+In 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/include/jval.h"><b>jval.h</b></a>, 
+I define a type called a <b>Jval</b>.  This is a big union:
+<pre>typedef union {
+    int i;
+    long l;
+    float f;
+    double d;
+    void *v;
+    char *s;
+    char c;
+    unsigned char uc;
+    short sh;
+    unsigned short ush;
+    unsigned int ui;
+    int iarray[2];
+    float farray[2];
+    char carray[8];
+    unsigned char ucarray[8];
+  } Jval;  
+</pre>
+
+I make use of <b>Jval</b>'s when I write generic data structures
+such as lists, and trees.  For the purposes of this class, don't worry
+about half of the fields in the union.  The only important ones are:
+<pre>    int i;
+    float f;
+    double d;
+    void *v;
+    char *s;
+    char c;
+</pre>
+The nice thing about a <b>Jval</b> is that you can hold one piece of 
+data in a <b>Jval</b>, regardless of what the type of that piece of
+data is.  Moreover, the <b>Jval</b> will always be 8 bytes.
+You use it just like the unions that were discussed in the
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs140/Notes/Unions/index.html">union lecture notes</a> from CS140.
+Take a minute to go over that
+lecture to brush yourself up on what a union is.
+
+<hr>
+<h2>Constructor functions</h2>
+
+You can of course, create and use a <b>Jval</b> by simply declaring and 
+using it.  For example:
+<pre>  Jval j;
+  
+  j.i = 4;
+</pre>
+You can freely pass <b>Jval</b>'s to and from procedure calls.  A <b>Jval</b>
+can be the return value of a procedure call.
+<p>
+<b>Jval.h</b> defines a whole bunch of prototypes for ``constructor
+functions.''  
+</p><pre>extern Jval new_jval_i(int);
+extern Jval new_jval_f(float);
+extern Jval new_jval_d(double);
+extern Jval new_jval_v(void *);
+extern Jval new_jval_s(char *);
+</pre>
+These return <b>Jval</b>'s to you when you give them arguments
+of a specific type.  For example, if you want to initialize a <b>Jval</b>
+so that it is in integer whose value is 4, you can do it as shown above, 
+or you can do:
+<pre>  Jval j;
+
+  j = new_jval_i(4);
+</pre>
+Now <b>j.i</b> will be the integer 4.  You will see later (when we get 
+to using some of the general purpose data structures) why this is convenient.
+<p>
+These ``constructor functions'' are implemented in 
+<b>jval.c</b>, and are very simple.
+For example, here is <b>new_jval_i()</b>:
+</p><pre>Jval new_jval_i(int i) {
+  Jval j;
+  j.i = i;
+  return j;
+}
+</pre>
+
+<hr><h3>A simple example</h3>
+
+Obviously, to use <b>Jval</b>'s, include <b>jval.h</b>, and then link
+with <b>libfdr.a</b> as described in the <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Libfdr">Libfdr</a>
+lecture notes..
+<p>
+As an example,
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval/jval_ex.c"><b>jval_ex.c</b></a>
+is <b>union3.c</b> from the Union lecture, converted to use <b>Jval</b>s.
+</p><p>
+You'll note that there is only one change to the code:
+the typedef:
+</p><pre>typedef struct {
+  char type;
+  Jval value;
+} Item;
+</pre>
+Since the <b>Jval</b> struct has the same 
+<b>.i</b>, <b>.f</b> and <b>.s</b> fields, the rest of the code can 
+remain unchanged.
+<p>
+As you can see, it works just fine:
+</p><pre>UNIX&gt; jval_ex
+<b>int 4
+string Jim
+float -33.2
+int -2
+int 1</b>
+Item 0: Type i -- Value: 4
+Item 1: Type s -- Value: Jim
+Item 2: Type f -- Value: -33.200001
+Item 3: Type i -- Value: -2
+Item 4: Type i -- Value: 1
+
+Sizeof(Item): 16
+UNIX&gt;
+</pre>
+
+<p>
+In 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval/jval_ex2.c"><b>jval_ex2.c</b></a>, we modify the code to use the
+constructor functions.  The main change is (and I've bold-faced the 
+new code):
+</p><pre>  int i2;
+  float f;
+
+  ..
+
+  for (i = 0; i &lt; 5; i++) {
+    if (get_line(is) != 2) exit(1); 
+
+    if (strcmp(is-&gt;fields[0], "int") == 0) {
+      array[i].type = 'i';
+      <b>if (sscanf(is-&gt;fields[1], "%d", &amp;i2) != 1) exit(1); 
+      array[i].value = new_jval_i(i2);</b>
+
+    } else if (strcmp(is-&gt;fields[0], "float") == 0) {
+      array[i].type = 'f';
+      <b>if (sscanf(is-&gt;fields[1], "%f", &amp;f) != 1) exit(1); 
+      array[i].value = new_jval_f(f);</b>
+
+    } else if (strcmp(is-&gt;fields[0], "string") == 0) {
+      array[i].type = 's';
+      <b>array[i].value = new_jval_s(strdup(is-&gt;fields[1]));</b>
+
+    } else {
+      exit(1);
+    }
+  }
+</pre>
+<p>
+</p><hr>
+<h2>A word of warning about Jval's</h2>
+
+The purpose of the <b>Jval</b> type is to make general purpose data
+structures such as dllists and red-black trees as flexible
+and efficient as possible.  You
+are <i>not</i> to use <b>Jval</b>'s in your code for any other reason.
+I will tell you when to use them.  
+<p>
+Specifically, you are not to say, use a <b>Jval</b> instead of an 
+<b>int</b> in your code just because it works.  That makes your code
+unreadable, and unreadability is majorly bad.  Here is an example
+of bad code to average all of the integers on standard input
+(in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval/badavg.c"><b>badavg.c</b></a>):
+</p><pre>main()
+{
+  Jval total;
+  Jval j;
+  Jval n;
+
+  n.i = 0;
+  total.i = 0;
+
+  while (scanf("%d", &amp;(j.i)) == 1) {
+    total.i += j.i;
+    n.i++;
+  }
+
+  total.d = ((double) total.i) / ((double) n.i);
+
+  printf("Average = %lf\n", total.d);
+}
+</pre>
+Yes, it works, and yes, it's a cute way to use <b>total</b> as both an
+<b>int</b> and a <b>double</b>.  But it is revolting -- every use of
+<b>Jval</b>'s is bad, and if you use them in ways like these, you will be
+punished.  
+<p>
+(In case you care, the code should look as in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Jval/goodavg.c"><b>goodavg.c</b></a>):
+</p><pre>main()
+{
+  int total;
+  int j;
+  int n;
+
+  n = 0;
+  total = 0;
+ 
+  while (scanf("%d", &amp;j) == 1) {
+    total += j;
+    n++;
+  }
+
+  if (n == 0) exit(1);
+
+  printf("Average = %lf\n", ((double) total)/((double) n));
+}
+</pre>
+(You can do other things to make that casting look better too).
+
+<hr>
+<h2>Accessor functions</h2>
+
+I have put accessor functions into <b>jval.h</b>/<b>jval.c</b>.  An
+accessor function simply lets you get the desired value out of a 
+<b>Jval</b> by calling a function rather than accessing the field.
+Why would you want to do this?  Well, like the constructor functions,
+it makes life easier in certain circumstances.  The accessor functions
+are:
+<pre>extern int    jval_i(Jval);
+extern long   jval_l(Jval);
+extern float  jval_f(Jval);
+extern double jval_d(Jval);
+extern void  *jval_v(Jval);
+extern char  *jval_s(Jval);
+extern char   jval_c(Jval);
+...
+</pre>
+So, for example, calling <b>jval_i(j)</b> is the same as using <b>j.i</b>.
+
+<hr>
+<h2>JNULL</h2>
+
+Finally, <b>jval.h</b> contains a global variable <b>JNULL</b>.  Use this
+when you would use <b>NULL</b> for a <b>char *</b> or <b>void *</b>.
+
+</li></body></html>

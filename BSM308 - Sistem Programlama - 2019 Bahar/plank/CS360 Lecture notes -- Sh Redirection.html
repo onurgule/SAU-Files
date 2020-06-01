@@ -1,0 +1,380 @@
+
+<!-- saved from url=(0077)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sh/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Sh Redirection</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Sh Redirection</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Sh</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sh/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sh/lecture.html
+</b></a>
+</li><li> Original lecture notes: 1999
+</li><li> Most recent modification: <i>
+Thu Feb  5 13:15:01 EST 2015
+</i>
+</li></ul>
+<hr>
+
+<font color="darkred"><i>This set of lecture notes has some forward references to 
+things that you will learn later in the semester, such as <b>dup2()</b>.  For now,
+you can ignore it when you see it.  You may want to come back later in the semster
+to reinforce your knowledge of this.</i></font>
+<hr>
+There are many different shells that people use under Unix.  Two 
+important ones are the Bourne shell (<b>sh</b>) and the C shell (<b>csh</b>).
+
+<p>
+Most people use the C shell (or Bash or tcsh or zcsh) as an
+interactive interpreter to execute programs because it has the history 
+function and some other junk.  The Bourne shell is more primitive, but 
+many people (e.g. me) like it as a scripting language because of its
+simplicity.  
+
+</p><p>
+There are lecture notes for the Bourne shell in my
+``Scripts and Utilities'' class.  You may find them at
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs494/494/notes/Sh/lecture.html"><b>http://web.eecs.utk.edu/~jplank/plank/classes/cs494/494/notes/Sh/lecture.html</b></a>.
+
+</p><p>
+What we are concerned with here are the redirection primitives.  Many 
+of these are simple, and are the same in both the Bourne shell and the
+C shell.
+
+</p><ul>
+<li> <b> &gt; f</b>: Writes standard output to the file <b>f</b>.
+</li><li> <b> &gt;&gt; f</b>: Appends standard output to the file <b>f</b>.
+</li><li> <b> &lt; f</b>: Takes standard input from the file <b>f</b>.
+</li></ul>
+
+So, for example, suppose the file 
+<b>f1</b> contains the bytes ``<b>This is f1</b>''.  The following 
+redirections should not confuse you.  In each case, ask yourself what
+should the output of the command should be:
+
+<pre>UNIX&gt; <font color="darkred"><b>cat f1</b></font>
+This is f1
+UNIX&gt; <font color="darkred"><b>cat &lt; f1</b></font>
+This is f1
+UNIX&gt; <font color="darkred"><b>&lt; f1 cat</b></font>     <font color="blue"> You can put the redirection anywhere in the command line.</font>
+This is f1
+UNIX&gt; <font color="darkred"><b>&lt; cat f1</b></font>     <font color="blue"> This is the same as f1 &lt; cat - it can't find the file "cat".</font>
+cat: No such file or directory.
+UNIX&gt; <font color="darkred"><b>cat f1 &gt; f2</b></font>
+UNIX&gt; <font color="darkred"><b>cat f2</b></font>
+This is f1
+UNIX&gt; <font color="darkred"><b>cat f1 &gt;&gt; f2</b></font>
+UNIX&gt; <font color="darkred"><b>cat f2</b></font>
+This is f1
+This is f1
+UNIX&gt; <font color="darkred"><b>&gt; f2 &lt; f1 cat</b></font>     <font color="blue">This is the same as cat &lt; f1 &gt; f2</font>
+UNIX&gt; <font color="darkred"><b>cat f2</b></font>
+This is f1
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Now, suppose there is no file <b>f3</b>.  When we say <b>cat f1 f3</b>, 
+it will print the contents of <b>f1</b> to standard output and an 
+error message to standard error.  Typically, both of these go to the screen:
+
+<pre>UNIX&gt; <font color="darkred"><b>cat f1 f3</b></font>
+This is f1
+cat: f3: No such file or directory
+UNIX&gt; 
+</pre>
+
+However, if you redirect standard output to a file, then <b>f1</b> will
+go to the file, and the error message will go to the screen.  Why?  Because
+the shell is calling <b>dup2(fd, 1)</b> to the output file, but nothing 
+for file descriptor 2:
+
+<pre>UNIX&gt; <font color="darkred"><b>cat f1 f3 &gt; f2</b></font>
+cat: f3: No such file or directory
+UNIX&gt; <font color="darkred"><b>cat f2</b></font>
+This is f1
+UNIX&gt; 
+</pre>
+
+With the C shell, you can redirect both standard output and standard 
+error to the same file by using <b> &gt;&amp; </b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>cat f1 f3 &gt;&amp; f2</b></font>
+UNIX&gt; <font color="darkred"><b>cat f2</b></font>
+This is f1
+cat: f3: No such file or directory
+UNIX&gt; 
+</pre>
+
+The Bourne shell has different primitives for dealing with standard 
+output and standard error.  Whenever you say <tt>x&gt;</tt>, it
+will redirect file descriptor <i>x</i>.  For example, another way to 
+redirect standard output to a file under the Bourne shell is:
+
+<pre>UNIX&gt; sh
+$ <font color="darkred"><b>cat f1 f3 1&gt;f2</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b>cat f2</b></font>
+This is f1
+$ <font color="darkred"><b></b></font>
+</pre>
+
+And we can redirect standard output and standard error to different
+files very easily:
+
+<pre>$ <font color="darkred"><b>cat f1 f3 1&gt;f2 2&gt;f5</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+This is f1
+$ <font color="darkred"><b>cat f5</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b></b></font>
+</pre>
+
+The shell processes these statments left to right, so I can do multiple redirections of 
+standard output, and not only will the shell allow it without complaint, the shell will
+create all of the files that you specify:
+
+<pre>$ <font color="darkred"><b>rm f2</b></font>
+$ <font color="darkred"><b>cat f1 f3 1&gt;f2 1&gt;f5</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b>cat f2</b></font>
+$ <font color="darkred"><b>cat f5</b></font>
+This is f1
+$ <font color="darkred"><b></b></font>
+</pre>
+
+
+As you can see, <b>f2</b> was created and is empty.  This
+is because it was opened for writing in the first redirection, and then 
+closed in the second redirection statement.
+
+<p>
+Can we redirect standard input multiple times?  It depends on your shell:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>echo "This is f1" &gt; f1</b></font>
+UNIX&gt; <font color="darkred"><b>echo "This is f2" &gt; f2</b></font>
+UNIX&gt; <font color="darkred"><b>sh -c "cat &lt; f1 &lt; f2"</b></font>
+This is f2
+UNIX&gt; <font color="darkred"><b>sh -c "cat &lt; f2 &lt; f1"</b></font>
+This is f1
+UNIX&gt; <font color="darkred"><b>csh -c "cat &lt; f1 &lt; f2"</b></font>
+Ambiguous input redirect.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>
+Look at what happens when try to have input and output come
+from the same file:
+
+</p><pre>$ <font color="darkred"><b>cat f2</b></font>
+This is f2
+$ <font color="darkred"><b>head f2 &gt; f2</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+$ 
+</pre>
+
+The shell does its redirection <i>before</i> executing <b>head</b>.  That
+means that <b>f2</b> is truncated before <b>head</b> is called, and when 
+<b>head</b> is called, <b>f2</b> is empty.  Therefore, <b>head</b> exits, and
+<b>f2</b> remains empty.
+<p>
+The same thing happens if you redirect <b>head's</b> standard input to the standard
+output:
+
+</p><pre>$ <font color="darkred"><b>echo "This is f2" &gt; f2</b></font>
+$ <font color="darkred"><b>head &lt; f2 &gt; f2</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+$ 
+</pre>
+
+<p>
+Now consider <tt>x&gt;y</tt> again.  If you specify <i>y</i>
+as <b>&amp;<i>n</i></b>, then it will make sure that file descriptor <i>x</i> in
+the program is identical to file descriptor <i>y</i>.  Another way of saying this
+is that: "Whatever file descriptor <i>y</i> is currently going to, now file descriptor
+<i>x</i> is going there too, and the two are identical."
+(You will learn later
+how this works with the <b>dup2()</b> system call).
+Thus, look at the following:
+
+</p><pre>$ <font color="darkred"><b>cat f1 f3 &gt; f2 2&gt;&amp;1</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+This is f1
+cat: cannot open f3
+$
+</pre>
+
+What is going on?  First, you redirect standard output to <b>f2</b>.  
+That means file descriptor 1 is going to <b>f2</b>.  Then
+the <b>2&gt;&amp;1</b> part says to make file descriptor 2 identical to 
+file descriptor 1.  This means that standard error will go to <b>f2</b> as well.
+<p>
+Again, these are processed by the shell from left to right.
+Suppose you reverse the order of the statements:
+
+</p><pre>$ <font color="darkred"><b>cat f1 f3 2&gt;&amp;1 &gt; f2</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b>cat f2</b></font>
+This is f1
+$ <font color="darkred"><b></b></font>
+</pre>
+Now, the <b>2&gt;&amp;1</b> part says to make file descriptor 2 identical to 
+file descriptor 1, which at the time the shell sees this command, is going 
+to the screen.  Next, it redirects file descriptor 1 to <b>f2</b>. 
+So, standard error goes to the screen, and standard output goes to <b>f2</b>.
+<p>
+Look at:
+</p><pre>$ <font color="darkred"><b>cat f1 f3 &gt;f2 2&gt;&amp;1 1&gt;f5</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b>cat f5</b></font>
+This is f1
+$ <font color="darkred"><b></b></font>
+</pre>
+Now, standard output first goes to <b>f2</b>, then the
+<b>2&gt;&amp;1</b> part makes standard error identical to standard output.  In other
+words, both are going to <b>f2</b>. Then 
+the <b>1&gt;f5</b> part makes standard output to to <b>f5</b>.
+Therefore, that line is equivalent to: ``<b>cat f1 f3 &gt;f5 2&gt;f2</b>.''
+<p>
+You can make use of other file descriptors if you want:
+</p><pre>$ <font color="darkred"><b>cat f1 f3 3&gt;f2 1&gt;f5 2&gt;&amp;1 1&gt;&amp;3</b></font>
+$ <font color="darkred"><b>cat f2</b></font>
+This is f1
+$ <font color="darkred"><b>cat f5</b></font>
+cat: cannot open f3
+$ <font color="darkred"><b></b></font>
+</pre>
+Figure that one out for yourself.
+<p>
+You can use this technique to do some pretty ugly stuff.  Look 
+at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sh/badbadcode.c"><b>badbadcode.c</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  char *s = "Hi!\n";
+  int i;
+  int fd;
+
+  i = write(3, s, strlen(s));
+  printf("%d\n", i);
+  if (i &lt; 0) perror("write");
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+And now check the following out.  Is this a good thing or a bad thing?
+
+</p><pre>$ <font color="darkred"><b>badbadcode</b></font>
+-1
+write: Bad file number
+$ <font color="darkred"><b>badbadcode 3&gt;f5</b></font>
+4
+$ <font color="darkred"><b>cat f5</b></font>
+Hi!
+$ <font color="darkred"><b>badbadcode 3&gt;&amp;1</b></font>
+Hi!
+4
+$ <font color="darkred"><b></b></font>
+</pre>
+
+I'd say it's a good thing, as long as you don't tell anyone about it.  In fact, I've 
+done the following to help me debug.  Suppose you have a subtle bug in a fairly 
+large piece of code.  And you'd like to create some output to help you, but you've already
+junked up standard output so much that you can't use it.  Worse, you know that the bug is
+nested in a bazillion procedure calls, and you don't want to worry about the flow of 
+control getting there or passing FILE *'s to all of those procedure calls.
+<p>
+Then, you do something like 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sh/dont_admit_i_taught_you_this.c">dont_admit_i_taught_you_this.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+
+void v(int i) 
+{ 
+  char s[100];
+
+  sprintf(s, "Here's my error message.  V was called with %d\n", i);
+  write(9, s, strlen(s));
+}
+
+void u() { printf("Blah blah blah blah blah blah.\n");  v(4); }
+void t() { printf("Blah blah blah blah blah blah.\n");  u(); }
+void s() { printf("Blah blah blah blah blah blah.\n");  u(); t(); }
+void r() { printf("Blah blah blah blah blah blah.\n");  u(); s(); }
+void q() { printf("Blah blah blah blah blah blah.\n");  u(); r(); }
+void p() { printf("Blah blah blah blah blah blah.\n");  q(); q(); v(5); }
+void o() { printf("Blah blah blah blah blah blah.\n");  p(); }
+void n() { printf("Blah blah blah blah blah blah.\n");  o(); }
+void m() { printf("Blah blah blah blah blah blah.\n");  n(); }
+void l() { printf("Blah blah blah blah blah blah.\n");  m(); }
+void k() { printf("Blah blah blah blah blah blah.\n");  l(); m(); v(6); }
+void j() { printf("Blah blah blah blah blah blah.\n");  k(); }
+void i() { printf("Blah blah blah blah blah blah.\n");  j(); }
+void h() { printf("Blah blah blah blah blah blah.\n");  i(); }
+void g() { printf("Blah blah blah blah blah blah.\n");  h(); }
+void f() { printf("Blah blah blah blah blah blah.\n");  g(); }
+void e() { printf("Blah blah blah blah blah blah.\n");  f(); v(7); }
+void d() { printf("Blah blah blah blah blah blah.\n");  e(); }
+void c() { printf("Blah blah blah blah blah blah.\n");  d(); }
+void b() { printf("Blah blah blah blah blah blah.\n");  c(); }
+void a() { printf("Blah blah blah blah blah blah.\n");  b(); v(8); }
+
+
+int main()
+{
+  a();
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+
+As you can see, <b>v()</b> is getting called a lot.  Each time it gets called, I'm 
+writing a string into file descriptor 9.  What's file descriptor 9?  Well, you can 
+determine that on the shell:
+</p><p>
+
+</p><pre>$ <font color="darkred"><b>dont_admit_i_taught_you_this &gt; /dev/null 9&gt;elog.txt</b></font>
+$ <font color="darkred"><b>cat elog.txt</b></font>
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 5
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 4
+Here's my error message.  V was called with 5
+Here's my error message.  V was called with 6
+Here's my error message.  V was called with 7
+Here's my error message.  V was called with 8
+$ <font color="darkred"><b>dont_admit_i_taught_you_this &gt; /dev/null</b></font>
+$ 
+</pre>
+
+In that last call, I didn't redirect file descriptor 9.  Therefore, the <b>write()</b>
+statement failed and returned -1.  It's like nothing happened. 
+<p>
+Remember that trick -- it may come in handy sometime.
+</p><hr>
+(Typically, at this point in the lecture, I have time leftover, so I go over some
+pointer exam questions.  Good ones are questions 3 and 5 from 2017 Midterm 1).
+</body></html>

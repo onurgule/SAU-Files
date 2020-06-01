@@ -1,0 +1,541 @@
+
+<!-- saved from url=(0081)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Prsize: recursive directory traversal</title>
+</head><body><h1>CS360 Lecture notes -- Prsize: recursive directory traversal</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Prsize</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/lecture.html
+</b></a>
+</li><li> Original lecture notes: Mid 1990's.
+</li><li> Latest revision:
+Sun Feb 11 14:59:13 EST 2018
+</li></ul>
+<hr>
+To "follow along" with these lecture notes, if you are on the lab
+machines, simply do:
+
+<pre>UNIX&gt; <font color="darkred"><b>cd /home/plank/cs360/notes/Prsize/test1</b></font>
+</pre>
+
+If you are on your own machine, then follow these instructions:
+<p>
+Pull the repo, and cd to the <tt>Prsize</tt> directory.  You'll
+need to change the makefile so that it works on your machine.  Here's
+what my makefile looks like on my home machine:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>head -n 4 makefile</b></font>
+CC = gcc
+
+CFLAGS  =       -g -I$(HOME)/include
+LIB = $(HOME)/lib/libfdr.a
+UNIX&gt; <font color="darkred"><b>make</b></font>
+gcc -g -I/home/plank/include -c prsize1.c
+gcc -g -I/home/plank/include -o prsize1 prsize1.o
+...
+UNIX&gt; 
+</pre>
+
+Next, untar the test directories.  This is because bitbucket doesn't
+do a good job of preserving soft links and directory protections:
+<pre>UNIX&gt; <font color="darkred"><b>tar xpfv test-directories.tar</b></font>
+test1/
+test1/d1/
+test1/d1/f3
+test1/f1
+test1/f2
+test2/
+test2/f4-soft
+.....
+UNIX&gt;
+</pre>
+
+Finally:
+
+<pre>UNIX&gt; <font color="darkred"><b>cd test1</b></font>
+</pre>
+
+Now, you're set up.
+
+<hr>
+This lecture covers the writing of a command <b>prsize</b>.  What
+<b>prsize</b> does is return the number of bytes taken up by all files
+reachable from the current directory (excluding soft links).  It is a
+good program as it illustrates using <b>opendir/readdir/closedir</b>,
+<b>stat</b>, recursion, building path names, and finding hard links.<p>
+
+</p><p>
+First, I wrote 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize1.c"><b>prsize1.c</b></a>.
+This prints the total size of all files in
+the current directory.  It is a simple use of <tt>stat</tt> and 
+<tt>opendir/readdir/closedir</tt>.
+Test it out on your current directory (which is <tt>test1</tt>):
+
+</p><pre>UNIX&gt; <font color="darkred"><b>../prsize1 </b></font>
+4170
+</pre>
+
+You may get a different value (e.g. on my home machine, I got 12314), but
+if you do a long listing of all files, your value should equal the sum of
+all of the file sizes.  For example:
+
+<pre>UNIX&gt; <font color="darkred"><b>ls -la</b></font>
+total 12
+drwxr-xr-x. 3 plank guest   33 Feb 11 14:00 .
+drwxr-xr-x. 7 plank guest 4096 Feb 11 14:00 ..
+drwxr-xr-x. 2 plank guest   15 Sep 23  1994 d1
+-rw-r--r--. 1 plank guest   11 Sep 23  1994 f1
+-rw-r--r--. 1 plank guest   15 Sep 23  1994 f2
+UNIX&gt; <font color="darkred"><b>echo "33 4096 + 15 + 11 + 15 + p" | dc</b></font>
+4170
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Now, the next step we'd like to take is
+to get the program to sum up the sizes of all files
+<i>reachable</i> from the current directory.  To do this, we
+need to make the program recursive.  Instead of putting all
+our code in the <b>main()</b> routine, we'll instead bundle it
+into a function, and call that function.  
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize2.c"><b>Prsize2.c</b></a>
+does this.  It provides the same functionality as <b>prsize1.c</b>,
+except that it makes a call to <b>get_size()</b> to find the size.
+Note there is no recursion yet -- that is for <b>prsize3.c</b>.
+If you test <b>prsize2</b>, you'll see that it does the same thing
+as <b>prsize1</b>. 
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize2 </b></font>
+4170
+UNIX&gt;
+</pre>
+
+Now, we want to make <b>prsize2</b> recursive.  Whenever we encounter a
+directory, we want to find out the size of everything in that
+directory, so we will call <b>get_size()</b> recursively on that directory.
+This is done in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize3.c"><b>prsize3.c</b></a>.
+Try it out:
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize3</b></font>
+prsize: Too many open files
+UNIX&gt;
+</pre>
+
+So, what's happening?  Well, to check, I put a print statement into 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize3a.c"><b>prsize3a.c</b></a>
+to see when it's making the recursive calls:
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize3a</b></font>
+Making recursive call on directory .
+Making recursive call on directory .
+Making recursive call on directory .
+Making recursive call on directory .
+....
+prsize: Too many open files
+UNIX&gt;
+</pre>
+
+Now you can see what's happening.  When enumerating files in ".", you 
+come across the file ".".  This is a directory, so you make a recursive call
+on it.  This goes into an infinite loop until you run out of open file 
+discriptors at which point <b>opendir()</b> fails.  
+To fix this, you need to check
+and see whether or not you are trying to make a recursive call to the "."
+directory.  You need to check for ".." as well.  
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize4.c"><b>Prsize4.c</b></a>
+puts in this code.  Now try it out:
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize4</b></font>
+Couldn't stat f3
+UNIX&gt;
+</pre>
+
+Ok, now what's the problem?  Well, the program is
+trying to stat <b>f3</b> in the directory <b>d1</b>, but it's not
+working in the directory <b>d1</b>.  In other words, <b>prsize4</b>
+is called from the directory
+<b>/home/plank/cs360/notes/Prsize/test1</b>, and
+makes the call "<b>exists = stat("f3", &amp;buf)</b>".  Of course
+stat is going to return -1, because there is no file
+<b>f3</b> in the directory.  Instead, we need to look for
+"<b>d1/f3</b>".  In other words, our code has a bug -- we
+need to be looking for <b>fn/de-&gt;d_name</b> in <b>get_size()</b>,
+and not just <b>de-&gt;d_name</b>.  
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize5.c"><b>Prsize5.c</b></a>
+makes this change.  
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize5</b></font>
+4235
+</pre>
+
+So, this looks ok, except there's still something wrong:
+
+<pre>UNIX&gt; <font color="darkred"><b>ls -la</b></font>
+total 12
+drwxr-xr-x. 3 plank guest   33 Feb 11 14:00 .
+drwxr-xr-x. 7 plank guest 4096 Feb 11 14:00 ..
+drwxr-xr-x. 2 plank guest   15 Sep 23  1994 d1
+-rw-r--r--. 1 plank guest   11 Sep 23  1994 f1
+-rw-r--r--. 1 plank guest   15 Sep 23  1994 f2
+UNIX&gt; <font color="darkred"><b>echo "33 4096 + 15 + 11 + 15 + p" | dc</b></font>
+4170
+UNIX&gt; <font color="darkred"><b>ls -la d1</b></font>
+total 4
+drwxr-xr-x. 2 plank guest 15 Sep 23  1994 .
+drwxr-xr-x. 3 plank guest 33 Feb 11 14:00 ..
+-rw-r--r--. 1 plank guest 17 Sep 23  1994 f3
+UNIX&gt; <font color="darkred"><b>echo "4170 15 + 33 + 17 + p" | dc</b></font>
+4235
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+As you can see, <b>prsize5</b> is counting <b>d1</b> and <b>d1/.</b> as
+separate files, and adding both of their sizes into the total.  Same
+for <b>.</b> and <b>d1/..</b> <p>
+
+This is a drag.  To be clearer, look in <b>test2</b>:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>cd ../test2</b></font>
+UNIX&gt; <font color="darkred"><b>../prsize5</b></font>
+4152
+UNIX&gt; <font color="darkred"><b>ls -lai</b></font>
+total 12
+486036031 drwxr-xr-x. 2 plank guest   34 Feb 11 14:15 .
+962309197 drwxr-xr-x. 7 plank guest 4096 Feb 11 14:00 ..
+486036512 -rw-r--r--. 2 plank guest   11 Sep 23  1994 f4
+486036512 -rw-r--r--. 2 plank guest   11 Sep 23  1994 f4-hard-link
+UNIX&gt; <font color="darkred"><b>echo "34 4096 + 11 + 11 + p" | dc</b></font>
+4152
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+The files <b>f4</b> and <b>f4-hard-link</b> are links to the same
+file, so we really shouldn't count them twice.  
+However, <b>prsize5</b> counts them as being
+different.  So, what we need is for <b>prsize</b> to be able
+to recognize hard links, and only count them once.<p>
+
+How do you recognize whether two files are links to
+the same disk file?  You use the inode number.  This
+is held in <b>buf.st_ino</b>.</p><p>
+</p><p>
+Now, the way we check for duplicate inodes is to
+maintain a rb-tree of inodes that we have seen so far.
+Before adding in the size of any file, we check to see
+if its inode is in the rb-tree.  If so, we do nothing.
+Otherwise, we add in the size, and put the inode into
+the rb-tree.  
+It is an unfortunate matter that on some systems, inodes are longs rather than ints,
+so to store them in a JRB, we use the ".l" field of the jval, and add a custom
+comparison function.
+</p><p>
+The code is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize6.c"><b>prsize6.c</b></a>.
+
+</p><pre>UNIX&gt; <font color="darkred"><b>../prsize6</b></font>
+4141                    <font color="blue">This is 11 less than before, so it's correct.</font>
+UNIX&gt; <font color="darkred"><b>cd ../test1</b></font>
+UNIX&gt; <font color="darkred"><b>../prsize6</b></font>
+4187                    <font color="blue">This is 48 less than before, so it's correct as it's not double-counting . and d1.</font>
+UNIX&gt;
+</pre>
+
+
+Now, soft links present a small problem.  Look at the <b>test3</b> directory.
+
+<pre>UNIX&gt; <font color="darkred"><b>cd ../test3</b></font>
+UNIX&gt; <font color="darkred"><b>ls -la</b></font>
+total 8
+drwxr-xr-x. 2 plank guest   55 Sep 24  1996 .
+drwxr-xr-x. 7 plank guest 4096 Feb 11 14:00 ..
+-rw-r--r--. 1 plank guest   11 Sep 23  1994 f5
+lrwxrwxrwx. 1 plank loci     2 Aug  1  2014 f5-soft-link -&gt; f5
+lrwxrwxrwx. 1 plank loci     1 Aug  1  2014 soft-link-to-. -&gt; .
+UNIX&gt; <font color="darkred"><b>../prsize6</b></font>
+Couldn't stat ./soft-link-to-./soft-link-to-./soft-link-to-./soft-link-to-.........
+prsize: Too many levels of symbolic links
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+So, what has happened?  Since we're using <b>stat()</b>,
+<b>prsize6</b> doesn't recognize soft links, and thus we have
+the same infinite loop problem as before.  It should
+be clear what we want -- instead of traversing the
+link to ".", we want <b>prsize</b> to count the size of the
+link itself (2 bytes for <b>f5-soft-link</b> and 1 byte for
+<b>soft-link-to-.</b>).  Thus, all we need to do in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize7.c"><b>prsize7.c</b></a>
+is use <b>lstat()</b> instead of <b>stat()</b>.  This gives
+information about the soft link itself, instead of the
+file to which the link points: 
+
+<pre>UNIX&gt; <font color="darkred"><b>../prsize7</b></font>
+4165
+UNIX&gt; <font color="darkred"><b>echo "55 4096 + 11 + 2 + 1 + p" | dc</b></font>
+4165
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Finally, there's one more bug in this program, and it's really subtle.  
+It has to do with open file descriptors.  First, go to the directory 
+<b>test4</b>.  Below, I use the <tt>find</tt> command to show that it is
+composed of 10 nested directories.  You can see that <b>prsize7</b> works
+just fine on it:
+
+<pre>UNIX&gt; <font color="darkred"><b>cd ../test4</b></font>
+UNIX&gt; <font color="darkred"><b>find . -print</b></font>
+.
+./1
+./1/2
+./1/2/3
+./1/2/3/4
+./1/2/3/4/5
+./1/2/3/4/5/6
+./1/2/3/4/5/6/7
+./1/2/3/4/5/6/7/8
+./1/2/3/4/5/6/7/8/9
+UNIX&gt; <font color="darkred"><b>../prsize7</b></font>
+4228
+UNIX&gt;
+</pre>
+
+The reason that it works is that our defaults typically allow for 256 open
+files per process:
+
+<pre>UNIX&gt; <font color="darkred"><b>limit | grep descriptors</b></font>
+descriptors  256 
+UNIX&gt;
+</pre>
+
+Let's use the <tt>limit</tt> command to set this number to ten instead 
+of 256.  Now, <b>prsize7</b> fails because of too many open files:
+
+<pre>UNIX&gt; <font color="darkred"><b>limit descriptors 10</b></font>
+UNIX&gt; <font color="darkred"><b>../prsize7</b></font>
+prsize: Too many open files
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+What's happening is that the recursive calls to
+<b>get_size()</b> are made in between the <b>opendir()</b> and
+<b>closedir()</b> calls.  That means that each time we make a
+recursive call, we add one to the number of open
+files.  With only ten open files (and three open to start the process),
+we run out of file descriptors when we try to open
+<tt>"./1/2/3/4/5/6/7"</tt>.
+
+<p>
+The
+solution to this is to make sure that there are no
+open files when we make the recursive call.  How do we
+do this?  When enumerating the files in a directory,
+we put all directories into a dllist, and then after
+closing the directory file, we traverse the list and
+make the recursive calls.  We need to do a
+<b>strdup()</b> when we put the directories into the
+dllist.  Why?  Think it over,
+or see what happens when you don't
+do it, and you try run the program on the <b>test5</b>
+directory.</p><p> 
+
+The correct and final version of prsize is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize8.c"><b>prsize8.c</b></a>.
+
+</p><pre>UNIX&gt; <font color="darkred"><b>../prsize8</b></font>
+4228
+UNIX&gt; <font color="darkred"><b>cd ../test5</b></font>
+UNIX&gt; <font color="darkred"><b>ls -la</b></font>
+total 4
+drwxr-xr-x. 5 plank guest   33 Sep 24  1996 .
+drwxr-xr-x. 7 plank guest 4096 Feb 11 14:00 ..
+drwxr-xr-x. 2 plank guest   15 Sep 23  1994 d1
+drwxr-xr-x. 2 plank guest   15 Sep 23  1994 d2
+drwxr-xr-x. 2 plank guest   15 Sep 23  1994 d3
+UNIX&gt; <font color="darkred"><b>ls -la d1 d2 d3</b></font>
+d1:
+total 4
+drwxr-xr-x. 2 plank guest 15 Sep 23  1994 .
+drwxr-xr-x. 5 plank guest 33 Sep 24  1996 ..
+-rw-r--r--. 1 plank guest 14 Sep 23  1994 f1
+
+d2:
+total 4
+drwxr-xr-x. 2 plank guest 15 Sep 23  1994 .
+drwxr-xr-x. 5 plank guest 33 Sep 24  1996 ..
+-rw-r--r--. 1 plank guest 40 Sep 23  1994 f2
+
+d3:
+total 4
+drwxr-xr-x. 2 plank guest 15 Sep 23  1994 .
+drwxr-xr-x. 5 plank guest 33 Sep 24  1996 ..
+-rw-r--r--. 1 plank guest 42 Sep 23  1994 f3
+UNIX&gt; <font color="darkred"><b>echo "33 4096 + 15 + 15 + 15 + 14 + 40 + 42 + p" | dc</b></font>
+4270
+UNIX&gt; <font color="darkred"><b>../prsize8</b></font>
+4270
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+As an aside, <b>find</b> has the same bug as <b>prsize7.c</b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>limit | grep descriptors</b></font>
+descriptors  10 
+UNIX&gt; <font color="darkred"><b>find . -print</b></font>
+.
+./1
+./1/2
+./1/2/3
+./1/2/3/4
+find: './1/2/3/4': Too many open files
+UNIX&gt; 
+</pre>
+
+On the flip side, <b>tar</b> handles it correctly:
+
+<pre>UNIX&gt; <font color="darkred"><b>tar cvf ~/junk.tar .</b></font>
+./
+./1/
+./1/2/
+./1/2/3/
+./1/2/3/4/
+./1/2/3/4/5/
+./1/2/3/4/5/6/
+./1/2/3/4/5/6/7/
+./1/2/3/4/5/6/7/8/
+./1/2/3/4/5/6/7/8/9/
+UNIX&gt; 
+</pre>
+
+When I first wrote this lecture, in the mid 1990's, I had <b>test4</b> have
+257 subdirectories, rather than 10.  That way, I didn't have mess with the 
+<b>limit</b> command.  Within a day, I had an email from our system administrator,
+complaining that the directory broke the system backup program.  It also
+broke <b>tar</b>.  So, I changed the directory to its current structure.
+I like to think that the good folks who write system tools fixed <b>tar</b>
+because they stumbled upon my lecture notes.  A man can dream, can't he?
+
+<hr>
+Here's 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Prsize/prsize8.c">prsize8.c</a></b>, commented for your enjoyment.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* prsize8.c
+   Jim Plank
+   Fall, 1996
+   CS360
+ */</font>
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;dirent.h&gt;
+#include &lt;sys/stat.h&gt;
+#include "jrb.h"
+#include "dllist.h"
+
+<font color="blue">/* Add a comparison function for longs, so that the jrb library can work on inodes. */</font>
+
+int long_comp(Jval v1, Jval v2)
+{
+  if (v1.l &lt; v2.l) return -1;
+  if (v1.l &gt; v2.l) return 1;
+  return 0;
+}
+
+<font color="blue">/* This procedure returns the number of bytes in files that are
+   reachable from fn.  It does not double-count hard links to
+   the same file, and it counts the size of soft links, not the 
+   files to which they point. */</font>
+
+int get_size(char *fn, JRB inodes)
+{
+  DIR *d;
+  struct dirent *de;
+  struct stat buf;
+  int exists;
+  int total_size;
+  char *s;
+  Dllist directories, tmp;
+
+  <font color="blue">/* Open the directory for reading. */</font>
+
+  d = opendir(fn);
+  if (d == NULL) {
+    perror("prsize");
+    exit(1);
+  }
+ 
+  <font color="blue">/* We use s to store file names that are of the form 
+     "directory/filename" -- the maximum length filename is
+     256 bytes, so this makes sure that the buffer s is 
+     big enough. */</font>
+
+  total_size = 0;
+  directories = new_dllist();
+  s = (char *) malloc(sizeof(char)*(strlen(fn)+258));
+
+  <font color="blue">/* Read each filename in the current directory.  
+     Construct s as "directory/filename" and call lstat to
+     get the inode information about the file. */</font>
+
+  for (de = readdir(d); de != NULL; de = readdir(d)) {
+    sprintf(s, "%s/%s", fn, de-&gt;d_name);
+    exists = lstat(s, &amp;buf);
+    if (exists &lt; 0) {
+      fprintf(stderr, "Couldn't stat %s\n", s);
+      exit(1);
+
+    <font color="blue">/* Look up the inode in the inodes tree.  If it's there,
+       you ignore it, because you've seen it before.  Otherwise,
+       put it into the tree and process it. */</font>
+
+    } else {
+      if (jrb_find_gen(inodes, new_jval_l(buf.st_ino), long_comp) == NULL) {
+        total_size += buf.st_size;
+        jrb_insert_gen(inodes, new_jval_l(buf.st_ino), new_jval_i(0), long_comp);
+      }
+    }
+
+    <font color="blue">/* If the file is a directory, and not . or .., then append
+       it to the directories list so that you don't make recursive
+       calls while the directory is opened. */</font>
+
+    if (S_ISDIR(buf.st_mode) &amp;&amp; strcmp(de-&gt;d_name, ".") != 0 &amp;&amp; 
+        strcmp(de-&gt;d_name, "..") != 0) {
+      dll_append(directories, new_jval_s(strdup(s)));
+    }
+  }
+
+  <font color="blue">/* Close the directory, and then make recursive calls to all of
+     the directories.  You'll note, I free the directory name after
+     the recursive call returns.  I do this to avoid having a memory
+     leak due to the strdup() calls above. */</font>
+
+  closedir(d);
+  dll_traverse(tmp, directories) {
+     total_size += get_size(tmp-&gt;val.s, inodes);
+     free(tmp-&gt;val.s);
+  }
+   
+  <font color="blue">/* Perform final free() calls again to avoid memory leaks. */</font>
+
+  free_dllist(directories);
+  free(s);
+
+  return total_size;
+}
+
+int main()
+{
+  JRB inodes;
+
+  inodes = make_jrb();
+  printf("%d\n", get_size(".", inodes));
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+</p></body></html>

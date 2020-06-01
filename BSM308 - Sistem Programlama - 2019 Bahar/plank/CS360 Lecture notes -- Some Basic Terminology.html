@@ -1,0 +1,348 @@
+
+<!-- saved from url=(0080)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Some Basic Terminology</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Some Basic Terminology</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/">CS360</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Chap1</b>
+</li><li>Lecture notes -- html:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/lecture.html
+</b></a>
+</li><li> Original notes: Sometime in the 1990's.
+</li><li> Latest Modification:
+Tue Jan 30 09:44:36 EST 2018
+</li></ul>
+<hr>
+
+This lecture goes over some basic terms presented to you by your operating
+system.  It used to summarize Chapter 1 of the text book, but we no longer
+have a text book, so this becomes more primary reference material.
+
+<hr>
+<h2>Filesystems</h2>
+
+<b>Definition of a ``filesystem''</b>: <i>A hierarchical arrangement
+of directories.</i> <p> 
+In Unix, the root filesystem starts with "/".  However, there are 
+             other subfilesystems, that are part of the root one.  To see the
+             filesystems on your machine, type "<b>df</b>".  
+             You'll see something like:
+</p><pre>UNIX&gt; <font color="darkred"><b>df</b></font>
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/sd0a              11167    5952    4099    59%    /
+/dev/sd0g             140591   84016   42516    66%    /usr
+/dev/sd0h             171959  141421   13343    91%    /home
+-memory-               55720       0   55720     0%    /tmp
+plank:(pid130)             4       4       0   100%    /amd
+galoob:/export/sun4-sos4_1
+                      335803  313356       0   100%    /a/galoob/export/sun4-sos4_1
+cs:/var/spool/mail    221351  122607   76609    62%    /a/cs/var/spool/mail
+alphard:/canary/homes
+                      411687  293685   76833    79%    /a/alphard/canary/homes
+UNIX&gt;
+</pre>
+Each line shows a different file system.  The first entry on the line shows where
+the filesystem is, and the last shows how you access it on your machine.  For example,
+the filesystem <b>/dev/sd0g</b> is a partition on one of the disks on the machine.
+I can get to it from the directory  <tt>/usr</tt>.  The filesystem <tt>alphard:/canary/homes</tt>
+is a filesystem that is on the machine "alphard", but has been set up (probably via Sun NFS) 
+so that I can use it on my machine by going to <b>/a/alphard/canary/homes</b>.  The way that
+filesystems work changes from year to year, but usually you can parse the output of
+<b>df</b> and figure out what is going on.
+
+<hr>
+<h2>Names, Paths, Directories</h2>
+
+<ul>
+<li><b>Filename</b>:<i> The name of a file as it appears in a directory.</i>
+</li><li><b>Pathname</b>:<i> A sequence of zero or more filenames, separated by slashes.</i>
+</li></ul>
+<p>
+When you say "<b>ls -a</b>", it lists all the filenames in the current directory:
+</p><pre>UNIX&gt; <font color="darkred"><b>cd ~jplank/cs360/notes/Rbtree-1</b></font>
+UNIX&gt; <font color="darkred"><b>ls -a</b></font>
+.               jh.c            makefile        mysorti.c       mysortu2.c
+..              lecture         mysort.c        mysortu0.c      mysortu3.c
+README          lecture.html    mysort2.c       mysortu1.c      randfile
+UNIX&gt;
+</pre>
+
+(If you don't say "<b>-a</b>", it will not list filenames beginning with ".")
+Note there are two filenames that are in <i>every</i> directory:  "." and ".."
+<p>
+"." is the current directory.
+".." is the parent of the current directory.
+</p><p>
+The pwd command tells you the complete pathname of the current directory.
+The cd command moves you between directories:
+</p><pre>UNIX&gt; <font color="darkred"><b>cd ~jplank/cs360/notes/Rbtree-1</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank/cs360/notes/Rbtree-1
+UNIX&gt; <font color="darkred"><b>cd .</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank/cs360/notes/Rbtree-1
+UNIX&gt; <font color="darkred"><b>cd ..</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank/cs360/notes
+UNIX&gt; <font color="darkred"><b>cd ../../..</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home
+UNIX&gt; <font color="darkred"><b>cd ././././././.</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home
+UNIX&gt; <font color="darkred"><b>cd ..</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/
+UNIX&gt; <font color="darkred"><b>cd ..</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/
+UNIX&gt; <font color="darkred"><b>cd ..</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/
+UNIX&gt; 
+</pre>
+
+Note that the parent directory of "/" is itself.
+<p>
+</p><ul>
+<li><b>Absolute Pathname</b>:<i> A pathname starting with a slash.</i>
+</li><li><b>Relative Pathname</b>:<i> A pathname not starting with a slash.</i>
+</li><li><b>Working Directory</b>:<i> The directory to which relative pathnames are relative.</i>
+   You can see your working directory with <b>pwd</b>.
+</li><li><b>Home Directory</b>:<i> The working directory of a user when he or she first logs in.</i>
+
+</li></ul>
+
+Your home directory is also the directory that you go to when you enter <b>cd</b> with no arguments.
+   You can specify "~" on the Unix prompt, and it will be interpreted as your home directory.
+   If you specify "~<i>username</i>", then it will be interpreted as the home directory of the
+   given user.  Finally, the "$HOME" environment variable will be set to your home directory:
+<p>
+The following commands were on the lab machine <b>hydra3</b> in 2018.  They are not
+exciting commands, but perhaps you haven't seen them before:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank
+UNIX&gt; <font color="darkred"><b>cd cs360/notes</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank/cs360/notes
+UNIX&gt; <font color="darkred"><b>ls Chap1</b></font>
+ch1a.c  ch1b.c  ch1c.c  lecture.html  makefile
+UNIX&gt; <font color="darkred"><b>echo $HOME</b></font>
+/home/plank
+UNIX&gt; <font color="darkred"><b>cd ~bvz</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/bvz
+UNIX&gt; <font color="darkred"><b>cd ~</b></font>
+UNIX&gt; <font color="darkred"><b>pwd</b></font>
+/home/plank
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h2>I/O</h2>
+
+We'll go over I/O in detail later.  
+
+<hr>
+<h2>Programs and processes:</h2>
+
+<ul>
+<li><b>Program</b>:<i> A file that can be executed, either directly, or
+                through the aid of interpreters, compilers, and/or linkers.</i>
+</li><li><b>Process</b>:<i> An executing instance of a program.</i>
+</li><li><b>Process ID</b>:<i> The number given to a process by the operating system.</i>
+</li></ul>
+<p>
+</p><h3>Examples of programs:</h3>
+<p>
+</p><ul>
+<li><b>/bin/ls</b> -- this is a program that can be executed directly.
+</li><li><b>/usr/bin/vim</b> -- this is a program that can be executed directly.
+</li><li><b>/home/plank/cs360/notes/Chap1/cha1.c</b> -- this is a 
+           program that needs to be compiled in order to execute it.
+</li><li><b>/home/plank/bin/calc</b> -- this is a shell script -- it is a 
+           program that needs to be interpreted by <b>/bin/sh</b>.  
+</li></ul>
+<p>
+When you run a program, its executing instance is called a <i>process</i>.
+</p><p>
+For example, suppose you type "<b>vim
+/home/plank/cs360/notes/Chap1/ch1a.c</b>" in one window.  This
+executes the <b>vi</b> program, found in <b>/usr/bin/vim</b>.  The executing instance 
+is called a process.  If you go to another window, and type "<b>ps x</b>", it
+ will list all of the processes that you are currently executing: 
+</p><pre>UNIX&gt; <font color="darkred"><b>ps x</b></font>
+ 1394 p0 IW    0:00 xclock -geometry 100x100-0-0 -update 60
+ 1416 p0 S     0:01 twm
+ 1436 p1 IW    0:00 -sh (csh)
+ 1427 p2 IW    0:00 -sh (csh)
+ 1428 p3 IW    0:00 -sh (csh)
+ 1443 p5 S     0:01 -sh (csh)
+ 2328 p5 S     0:00 vim /home/plank/cs360/notes/Chap1/ch1a.c
+ 1444 p6 IW    0:00 -sh (csh)
+ 2329 p6 R     0:00 ps x
+UNIX&gt;
+</pre>
+Note that we can run more than one <b>vim</b> process at the same time.  Go to 
+another window and type "<b>vim /home/plank/cs360/notes/Chap1/ch1b.c</b>".
+Now when you type "<b>ps x</b>", you'll see the second process.
+<pre>UNIX&gt; <font color="darkred"><b>ps x</b></font>
+ 1394 p0 IW    0:00 xclock -geometry 100x100-0-0 -update 60
+ 1416 p0 S     0:01 twm
+ 1436 p1 IW    0:00 -sh (csh)
+ 1427 p2 S     0:00 -sh (csh)
+ 2330 p2 S     0:00 vim /home/plank/cs360/notes/Chap1/ch1b.c
+ 1428 p3 IW    0:00 -sh (csh)
+ 1443 p5 IW    0:01 -sh (csh)
+ 2328 p5 IW    0:00 vim /home/plank/cs360/notes/Chap1/ch1a.c
+ 1444 p6 S     0:00 -sh (csh)
+ 2331 p6 R     0:00 ps x
+UNIX&gt;
+</pre>
+You should understand the distinction between process and program.  
+The number in the first column of the <b>ps</b> command is the "process id".
+
+<hr>
+<h2>Error Handling</h2>
+
+Usually when an error occurs in a Unix system or library call, a special
+return value comes back, and a global variable "<b>errno</b>" is set to say 
+what the error is.  For example, suppose you try to open a file that
+does not exist: (This is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/ch1a.c">
+<b>ch1a.c</b></a>).
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;errno.h&gt;
+
+int main()
+{
+  int i;
+  FILE *f;
+
+  f = fopen("/home/plank/noexist", "r");
+  if (f == NULL) {
+    printf("f = null.  errno = %d\n", errno);
+    perror("/home/plank/noexist");
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+<b>ch1a.c</b> tries to open the file <b>/home/plank/noexist</b> 
+for reading.
+That file doesn't exist.  Thus, <b>fopen</b> returns <b>NULL</b> (read the man page for
+<b>fopen</b>), and sets <b>errno</b> to flag the error.  When you run the program, you'll
+see that <b>errno</b> was set to 2.  To see what that means, you can do one of 
+two things:
+</p><p>
+</p><ul>
+<li> 1. Look up the <b>errno</b> value in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/errno.h">
+<b>/usr/include/sys/errno.h</b></a>.
+   There you'll see the line:
+<pre>    #define ENOENT          2               /* No such file or directory */
+</pre>
+</li><li>2. Use the procedure "<b>perror()</b>" -- again, read the man page.  It prints out
+   what the errno means.  Thus, the output of <b>ch1a</b> is 
+<pre>UNIX&gt; <font color="darkred"><b>./ch1a</b></font>
+f = null.  errno = 2
+/home/plank/noexist: No such file or directory
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</li></ul>
+Suppose I create <b>/home/plank/noexist</b>, and do  <b>chmod</b> on it so that
+I can't open it for reading.  Then <b>ch1a</b> will print a different error:
+
+<pre>UNIX&gt; <font color="darkred"><b>echo "" &gt; /home/plank/noexist</b></font>
+UNIX&gt; <font color="darkred"><b>chmod 0 /home/plank/noexist</b></font>
+UNIX&gt; <font color="darkred"><b>./ch1a</b></font>
+f = null.  errno = 13
+/home/plank/noexist: Permission denied
+UNIX&gt; <font color="darkred"><b>rm -f /home/plank/noexist</b></font>
+UNIX&gt; <font color="darkred"><b>./ch1a</b></font>
+f = null.  errno = 2
+/home/plank/noexist: No such file or directory
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+This is the standard Unix interface for errors.  Learn to use <b>perror</b>.
+
+<hr>
+<h2>User Identification</h2>
+
+<li><b>User ID</b>:<i> The number given to each user by the system administrator.</i>
+<p>
+There are two ways that the system deals with identification:  User Id's
+and group id's.  We won't talk much about group id's here.  Your
+user id can be gotten by the system call "<b>getuid()</b>" -- read the man
+page.  
+</p><p>
+To print out your UID, try 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/ch1b.c">ch1b.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  printf("%d\n", getuid());
+  return 0;
+}
+
+</pre></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h2>Signals</h2>
+
+<ul>
+<li><b>Signal</b>:<i> An interruption of the program</i>.
+</li><li><b>Signal Handler</b>:<i> The mechanism by which the program may gracefully 
+       deal with signals</i>.
+</li></ul>
+<p>
+Signals are a way for asynchronous events to occur in a program.  
+For example, compile and run the program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Chap1/ch1c.c">ch1c.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  int i;
+
+  i = 0;
+  while (1) {
+    i++;
+    printf("%d\n", i);
+    fflush(stdout);
+    sleep(1);
+  }
+  return 0;
+}
+
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>
+This program implements a counter that increments itself every 5
+seconds.  Let it run for a few seconds, and then type <b>&lt; CNTL-Z &gt;</b>.  This
+sends the "STOP" signal to the program, which stops it.  You'll be
+back at the shell now.  If you type "<b>ps</b>", you'll see something like:
+</p><pre>  2483 p5 T 0:00 ch1c
+</pre>
+The "T" means that the process is not running -- it is stopped.  To
+start it, you can type "<b>fg</b>", which will send it the "START" signal.
+<p>
+Now, while it's running, type <b>&lt; CNTL-C &gt;</b> to 
+kill the program -- this sends it the "INT" signal,
+which teminates it.  Segmentation faults are also signals.  You can write
+your programs to handle signals any way you please.  This is a more
+advanced programming technique, which we will deal with later in the
+semester.
+</p></li></body></html>

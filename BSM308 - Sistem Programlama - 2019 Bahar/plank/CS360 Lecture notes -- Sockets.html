@@ -1,0 +1,737 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Sockets</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Sockets</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Sockets</b>
+</li><li>Last updated: 
+Thu Apr  5 12:14:03 EDT 2018
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/lecture.html">
+    <b>
+ http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/lecture.html
+</b></a>
+</li></ul>
+<hr>
+
+<h3>Introduction, and playing with sockets using <b>nc</b>.</h3>
+<p>
+
+</p><p>Sockets are the most general constructs for performing interprocess communication
+(usually abbreviated IPC) in Unix.  We have seen other ways of performing
+IPC.  For example, processes can communicate through files and through
+pipes.  However, both of those are limited.  For example, the only way
+that two processes can communicate through a pipe is if one process has
+been forked by the other (or both of them have a common ancestor).  
+Often we would like to have two processes
+talk with each other when they are otherwise unrelated.  For example,
+they can be created by different shells, different users, or on different
+machines.  Sockets let us do this.
+</p><p>
+
+A socket is a construct maintained and controlled by the operating system.
+You can do three basic things with a socket:
+
+</p><ol>
+<li> <b>Serve the socket:</b>  To do this, you must ask the operating system
+to allow you to serve a socket with a given <i>port</i> number.  
+If the operating system responds affirmatively, then you can:
+<p></p></li><li> <b>Listen for and accept client connections</b>: Here  you tell the operating
+system that you want to wait for clients to connect to the socket.  When they do,
+the operating system will give you a handle for the connection.  This handle will
+be a file descriptor.
+<p></p></li><li> <b>Request a connection as a client</b>: Here you tell your operating system that
+you want to request a connection to a specific port number on (potentially) a different machine.
+That machine is called the <i>host</i>.
+If a process on that host has served that socket and is accepting connections, then you will also
+receive a file descriptor for the connection.  You and the server may now talk to each
+other through your file descriptors, much like you have processes talk with each other
+over pipes.
+</li></ol>
+
+The Unix program <b>nc</b> gives you a very simple mechanism for playing with sockets.
+If you call it with the "-l" option, then it will serve a socket on that port and accept
+a connection.  You can call <b>nc</b> with a host and port number, and it will request a
+connection.  When the connection is made, the two <b>nc</b> processes may communicate 
+with each other through standard input.  Below, I show a communication with a server on 
+<b>hydra1</b> and a client on <b>hydra2</b>:
+
+<p>
+</p><center>
+<table border="3"><tbody><tr><td valign="top">
+On <b>hydra1</b><hr><pre>UNIX&gt; <font color="darkred"><b>nc -l 8888</b></font>
+
+
+Hi -- it's me, on hydra2
+
+Are you there?
+<font color="darkred"><b>Yes, but I'm leaving.</b></font>
+
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt;
+</pre></td><td valign="top">
+On <b>hydra2</b><hr><pre>
+UNIX&gt; <font color="darkred"><b>nc hydra1 8888</b></font>
+<font color="darkred"><b>Hi -- it's me, on hydra2</b></font>
+
+<font color="darkred"><b>Are you there?</b></font>
+
+
+Yes, but I'm leaving.
+
+<font color="darkred"><b>What?</b></font>
+Ncat: Broken pipe.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre></td></tr></tbody></table></center><p>
+
+There are a lot of options to <b>nc</b>, so you should play with it for a bit.
+
+</p><hr>
+<h3>Socket Rules At The University of Tennessee</h3>
+
+Unfortunately, sockets have historically been exploited for security violations, so our department
+is relatively strict about them.  You should be aware of the following:
+
+<ul>
+<li> You cannot serve a socket on our departmental machines, and connect to it from a non-departmental machine.  That includes machines that are on UT's wireless network (because those are not departmental).  If you want to serve such a socket, you'll need to talk with our IT support.  
+<p>
+</p></li><li> If you want to serve a socket on a departmental machine that can only be connected to by other departmental machines, then use a port number between 8000 and 2<sup>16</sup>-1.  The low number
+used to be 500, then 5000.  I assume it will continue to go up
+<p>
+</p></li><li> You can serve sockets on your laptops just fine, but you'll pretty much only be able to
+connect to them from clients on the same laptop.  Use "localhost" as the host.  You can probably
+do some fun stuff with your own local area networks, but you won't be able to serve sockets
+externally to them.
+<p>
+</p></li><li> The main client program that I used to use was called <b>telnet</b>.  I will talk about it
+in the lecture notes.  However, it has been deleted from our departmental machines.  The reason is that telnet's main use years ago (and I mean *years* ago) was to remotely log into machines on port 23.  However, everything was sent in the clear.  This is why ssh first came about.  It seems to me that the solution to this is to disable the servers on port 23, rather than to delete telnet, but no one asked me.
+</li></ul>
+
+
+<hr>
+This lecture focuses on programming with sockets, as implemented by
+the program <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/sockettome.c"><b>sockettome.c</b></a> (name
+provided by Harrison "Jay" Cross, a student in my CS360 class in
+2011).
+
+<p>The Unix socket interface is one of the more arcane things you'll ever
+run into.  It is for that reason that instead of using that
+directly, you'll be using the following three procedures from 
+<b>sockettome.c</b>:
+
+</p><p><i>(On some machines, you have to use some special linking options -- 
+When you make your final executable,  On others, you don't need it -- be
+prepared to be flexible when you're testing your code on multiple machines.)</i>
+
+</p><pre>int serve_socket(int port);
+		<font color="blue">/* This serves a socket on the current machine with the given 
+		   port number.  It returns an fd for that socket.  */</font>
+
+int accept_connection(int s);
+		<font color="blue">/* This accepts a connection on the given socket (i.e.
+                   it should only be called by the server).  It returns
+                   the fd for the connection.  This fd is of course r/w */</font>
+
+int request_connection(char *hn, int port);
+		<font color="blue">/* This is what the client calls to connect to a server's
+                   port.  It returns the fd for the connection. */</font>
+</pre>
+Sockets work as follows:
+
+<p>One process "serves" a socket.  By doing this, it tells the operating
+system to set up a ``port'' identified by a port number.  This is the
+handle by which other processes may connect with the serving process.
+There is a nice analogy of sockets to a telephone.  A socket is like
+a telephone, and the port number is like a telephone number.  The
+machine name is like the area code.  Thus, in order for someone to
+"call you up", they need to request a connection to your area
+code/port number, just like making a phone call.  
+
+</p><p>When you "serve" a socket, you are setting yourself up with a
+telephone and a telephone number.  The result of serving a socket is
+a file descriptor.  However, it is not a normal file descriptor upon
+which you may read and write.  Instead, the only things you can
+really do with it are close it (which tells Unix to not let other
+processes connect to that port), or accept connections on it. 
+
+</p><p>The server accepts a connection on a socket file descriptor by calling
+<b>accept_connection()</b>.  <b>Accept_connection()</b> 
+only returns when another
+process has connected to the socket.  It returns a new file
+descriptor which is the handle to the connection.  This descriptor is r/w.  
+If you <b>write()</b> to it, the bytes will go to the connected
+process, and if you <b>read()</b> from it, it will read bytes written by the
+connected process. 
+
+</p><p>Clients connect with servers by calling
+<b>request_connection()</b>.  They must specify the host and the port of the
+server, This is like initiating a phone call.  If the host/port combination is
+being server, and if the server is calling <b>accept_connection()</b>, then
+<b>request_connection()</b> returns a file
+descriptor for its end of the connection.  The client uses it like the server
+uses the file descriptor from <b>accept_connection()</b>.
+
+</p><p>Once a socket has been served, it may be connected to multiple times.
+That is, the serving process may call <b>accept_connection()</b> any number
+of times, as long as there are other processes calling
+<b>request_connection()</b> to that machine and port number.  This is kind
+of like having multiple phone lines with one telephone number.
+This will be useful when you write <b>jtalk</b> with more than two people. 
+
+</p><hr>
+Let's look at some example code.  Start with 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/serve1.c">serve1.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include "sockettome.h"
+
+<font color="blue">/* This program serves a socket on the given port, and
+   accepts a connection.  It sends the username of whoever is running the 
+   program along the connection, and then it reads a line of text, one
+   character at a time.  It prints the line and exits.  You can connect
+   to this program with nc. */</font>
+
+int main(int argc, char **argv)
+{
+  char *un, c, s[1000];
+  int port, sock, fd;
+
+  <font color="blue">/* Parse the command line and error check. */</font>
+
+  if (argc != 2) {
+    fprintf(stderr, "usage: serve1 port\n");
+    exit(1);
+  }
+
+  port = atoi(argv[1]);
+  if (port &lt; 8000) {
+    fprintf(stderr, "usage: serve1 port\n");
+    fprintf(stderr, "       port must be &gt; 8000\n");
+    exit(1);
+  }
+
+  <font color="blue">/* Serve the socket and accept the connection. */</font>
+
+  sock = serve_socket(port);
+  fd = accept_connection(sock);
+
+  <font color="blue">/* Send the username along the socket. */</font>
+
+  un = getenv("USER");
+  printf("Connection established.  Sending `Server: %s'\n", un);
+  sprintf(s, "Server: %s\n", un);
+  write(fd, s, strlen(s));
+
+  <font color="blue">/* Read a line of text, one character at a time. */</font>
+  printf("Receiving:\n\n");
+  do {
+    if (read(fd, &amp;c, 1) != 1) {
+      printf("Socket Closed Prematurely\n");
+      exit(0);
+    } else putchar(c);
+  } while (c != '\n');
+
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+</p><p><b>Serve1.c</b> takes one argument -- the port number of a 
+socket to serve.  This port number should be greater
+than 8000.  This is because smaller port numbers may be used for other
+Unix programs.
+
+</p><p><b>Serve1.c</b> serves a socket and then waits to
+accept a connection.  Once it receives that
+connection, it sends the string <b>"Server: "</b>, then
+the username of the owner of the serving process,
+and a newline to the other end of the connection.
+Then it reads bytes from the connection and
+prints them out until it gets a newline.  Once
+done, it exits.  
+
+You can test <b>serve1</b> by running a <b>nc</b> client on another machine.  
+As mentioned above, you can use
+<b>nc</b> to be a generic client that attaches to a server, then it does two things:
+</p><p>
+</p><ol> 
+<li> It reads lines from standard input and sends them along the connection.
+</li><li> It reads lines from the socket and prints them to standard output.
+</li></ol>
+
+Below, I run the server on hydra3, and the client on hydra4.  I have padded this output with
+extra lines so that you can see the timing of things relative to each other.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top">
+On hydra3:<hr>
+<pre>UNIX&gt; <font color="darkred"><b>./serve1 8888</b></font>
+
+Connection established.  Sending `Server: plank'
+Receiving:
+
+
+
+The moment I wake up, before I put on my makeup....
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td>
+<td valign="top">
+On hydra4:<hr>
+<pre>
+UNIX&gt; <font color="darkred"><b>nc hydra3 8888</b></font>
+Server: plank
+<font color="darkred"><b>The moment I wake up, before I put on my makeup....</b></font>
+Connection closed by foreign host.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td></tr></tbody></table></center><p>
+
+As you can see, the two processes connect with each other and send the bytes
+back and forth.  Easy enough.  Now, a few mundane details.  First, suppose I try to run the
+server again quickly:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./serve1 8888</b></font>
+bind(): Address already in use
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+This happens because the operating system holds the port number typically for two minutes
+before allowing you to reuse it.  Be prepared.  
+<p>
+
+If you look at that <b>do/while</b> loop above, you'll not that it's really inefficient.  It
+reads one character at a time, and we know from our experience with buffering that this is
+a bad thing.  You may want to try doing <b>read()</b>'s of larger numbers.  That's a fine thing,
+but you need to be aware that with sockets, <i>any</i> number of bytes can come back from 
+a <b>read()</b> call -- it does not necessarily have to match the corresponding <b>write()</b>
+call, or newlines, or, frankly, anything.  
+That makes it a pain to do things like reading until you receive a newline.  You may
+be tempted to the <b>do/while</b> loop above, but please resist the temptation.  There is a 
+better way, illustrated in the next program:
+</p><p>
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/serve2.c">Serve2.c</a></b> changes <b>serve1.c</b> in how it writes to the client:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Here is a new variable declaration */</font>
+  FILE *fsock;
+
+  <font color="blue"> .................</font>
+
+  <font color="blue">/* Here's the new code -- see how you can use fgets now, instead of read(). */</font>
+
+  fsock = fdopen(fd, "r");
+
+  if (fgets(s, 1000, fsock) == NULL) {
+    printf("Error -- socket closed\n");
+  } else {
+    printf("%s", s);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+<b>Fdopen()</b> is just like <b>fopen()</b>, except it takes an open
+file descriptor as an argument rather than a file.  This allows you
+to use the familiar primitives from the standard I/O library, which
+have been implemented with sockets in mind.  In particular, they do
+the proper buffering and read retrying to make sure that you read
+what you want efficiently.  In <b>serve2.c</b>, we use <b>fgets()</b>
+to read the line from the client.
+
+</p><hr>
+<h2>Adding a client</h2>
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/client1.c">Client1.c</a></b>
+is very similar to <b>serve2.c</b>.  It simply has a client connect using
+<b>request_connection()</b>.  It receives the line of text from the server and sends a line of
+its own.  Here it is working:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top">
+On hydra3:<hr>
+<pre>UNIX&gt; <font color="darkred"><b>./serve2 8888</b></font>
+Connection established.  Sending `Server: plank'
+Receiving:
+
+Client: plank
+UNIX&gt; 
+</pre>
+</td>
+<td valign="top">
+On hydra4:<hr>
+<pre>UNIX&gt; <font color="darkred"><b>./client1 hydra3 8888</b></font>
+Connection established.  Receiving:
+
+Received: Server: plank
+Sending `Client: plank' to the server
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td></tr></tbody></table></center><p>
+
+Go over both programs until you understand all this.  If you run
+"<b>client1</b>" before "<b>serve2</b>", that's ok.  It will wait until
+the socket is served.  
+
+</p><p><b>Client1</b> can be run from any machine and any user.  
+For example, 
+I got Dr. Vander Zanden to try
+this from his machine:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top">
+My output on hydra3:
+<hr>
+<pre>UNIX&gt; <font color="darkred"><b>./serve1 8001</b></font>
+
+Connection established.  Sending `Server: plank'
+Receiving:
+
+Client: bvz
+UNIX&gt;
+</pre></td><td valign="top">
+
+His output on his machine:
+<hr>
+<pre>UNIX&gt; <font color="darkred"><b>./client1 hydra3.eecs.utk.edu 8001</b></font>
+Connection established.  Receiving:
+
+Received: Server: plank
+Sending `Client: bvz' to the server
+UNIX&gt;
+</pre>
+</td></tr></tbody></table><p></p></center>
+
+
+<hr>
+<h2>Alternate</h2>
+
+Now, suppose I want to write a limited version of "talk" -- It will let
+a server/client pair establish a connection, and then alternate sending
+lines to one another.  
+This is in
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/alternate.c"><b>alternate.c</b></a>.
+Each process alternates reading a line from <b>stdin</b> and sending
+it along the socket, and then reading a line from the socket and sending
+it along <b>stdout</b>.
+
+<p>Try running <b>alternate</b> from two windows on the same machine, or from 
+two different machines, or from two different users on different machines.
+
+Here is an example of the server on hydra3 and the client on hydra4.  
+Pay attention to the part where the client writes before the server is ready
+(it's the line "While combing my hair now"), and what the output is:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top">
+On hydra3:<hr>
+<pre>UNIX&gt; <font color="darkred"><b>alternate hydra3.eecs.utk.edu 8888 s</b></font>
+
+Connection established.  Client should start talking
+
+The moment I wake up
+<font color="darkred"><b>Before I put on my make up</b></font>
+
+
+I say a little prayer for you
+
+<font color="darkred"><b>And wondering what dress to wear now</b></font>
+While combing my hair now
+UNIX&gt; 
+</pre>
+</td>
+<td valign="top">
+On hydra4:<hr>
+<pre>
+UNIX&gt; <font color="darkred"><b>alternate hydra3.eecs.utk.edu 8888 c</b></font>
+Connection established.  Client should start talking
+<font color="darkred"><b>The moment I wake up</b></font>
+
+
+Before I put on my make up
+<font color="darkred"><b>I say a little prayer for you</b></font>
+
+<font color="darkred"><b>While combing my hair now</b></font>
+
+And wondering what dress to wear now
+<font color="darkred"><b>&lt;CNTL-D&gt;</b></font>
+UNIX&gt; 
+</pre>
+</td></tr></tbody></table></center><p>
+
+
+</p><hr>
+<h2>Minitalk</h2>
+
+You'll note that <b>alternate</b> isn't totally useful.  What you'd like is
+for each end of the connection to simultaneously wait for the user to 
+type a line in on <b>stdin</b> and for a line to come in from the socket.  
+You'll be able to do that with <b>select()</b> which we'll go over next lecture.
+Until then, you can hack up a version of <b>talk()</b> which uses 4 total
+processes -- two for the client and two for the server.  One 
+client-server pair just lets the client type lines in and it prints
+it out to the server, and the other lets the server type lines in 
+and it prints it out to the client.  This is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/minitalk1.c"><b>minitalk1.c</b></a>.
+Note
+that minitalk1 <b>dups</b> the <b>fd</b> onto 0 or 1 depending on whether the 
+process is the parent or child, and then exec's cat in all four processes.
+This is a real hack, but it works -- you have the server parent 
+reading from its stdin and sending the output along the socket to the
+client child, and likewise from the client parent to the server child.
+
+<p>
+Here's the relevant code:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  .....
+
+  printf("Connection made -- input goes to remote site\n");
+  printf("                   output comes from remote site\n");
+
+  if (fork() == 0) {
+    dup2(fd, 0);
+  } else {
+    dup2(fd, 1);
+  }
+  close(fd);
+  execlp("cat", "cat", 0);
+  fprintf(stderr, "Exec failed.  Drag\n");
+  exit(1);
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>The only problem with <b>minitalk1</b> is that once one of the processes dies,
+the others don't automatically follow suit.  Think about why.
+Also think about what would happen if you swapped the parent and the child (in other
+words, if you had the parent perform <b>dup2(fd, 0)</b> and the child perform
+<b>dup2(fd, 1)</b>.  Try it to test yourself.
+</p><p>
+When you run <b>minitalk1</b>, after you finish, type "ps" and kill extraneous
+"cat" processes.
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top">
+On hydra3:<hr>
+<pre>UNIX&gt; <font color="darkred"><b>minitalk1 hydra3.eecs.utk.edu 8888 s</b></font>
+
+Connection made -- input goes to remote site
+                   output comes from remote site
+
+The moment I wake up
+
+Before I put on my make up
+<font color="darkred"><b>I say a little prayer for you</b></font>
+
+<font color="darkred"><b>&lt;CNTL-D&gt;</b></font>
+UNIX&gt; <font color="darkred"><b>ps x</b></font>
+  PID TTY      STAT   TIME COMMAND
+ 3681 ?        S&lt;     0:00 sshd: plank@pts/1
+ 3682 pts/1    S&lt;s    0:00 -csh
+ 6098 pts/1    S&lt;     0:00 cat
+ 6106 pts/1    R&lt;+    0:00 ps x
+UNIX&gt;  While combing my hair now
+And wondering what dress to wear now
+UNIX&gt; <font color="darkred"><b>kill 6098</b></font>
+</pre>
+</td>
+<td valign="top">
+On my hydra4<hr>
+<pre>
+UNIX&gt; <font color="darkred"><b>minitalk1 hydra3.eecs.utk.edu 8888 c</b></font>
+Connection made -- input goes to remote site
+                   output comes from remote site
+<font color="darkred"><b>The moment I wake up</b></font>
+
+<font color="darkred"><b>Before I put on my make up</b></font>
+
+
+I say a little prayer for you
+
+
+
+
+
+
+<font color="darkred"><b>While combing my hair now</b></font>
+<font color="darkred"><b>And wondering what dress to wear now</b></font>
+
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</td></tr></tbody></table></center><p>
+
+You can fix the problem by adding another process to the mix.  Instead of 
+forking one process, you fork two, and have them both do the <b>execlp</b>
+of <b>cat</b>.  Then you call <b>wait()</b>, and when one of the processes
+dies, you kill the other one.  That cleans up all of the processes -- try it
+for yourself!  The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/minitalk2.c">minitalk2.c</a></b> -- here's the relevant section:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  pid1 = fork();
+
+  <font color="blue">/* The first child will have standard input come from the socket. */</font>
+
+  if (pid1 == 0) {
+    dup2(fd, 0);
+
+  <font color="blue">/* Otherwise, fork again: */</font>
+
+  } else {
+    pid2 = fork();
+
+    <font color="blue">/* The second child will have standard output go to the socket. */</font>
+
+    if (pid2 == 0) {
+      dup2(fd, 1);
+
+    <font color="blue">/* The parent closes all extraneous file descriptors, and waits for
+       one child to die.  When that happens, the parent kills the other child. */</font>
+
+    } else {
+      close(fd);
+      close(0);
+      close(1);
+      p = wait(&amp;dummy);
+      kill((p == pid1) ? pid2 : pid1, SIGKILL);
+      exit(0);
+    }
+  }
+
+  <font color="blue">/* The children both close the socket fd (remember, they have each dup'd
+     this to either zero or one, and then exec cat. */</font>
+
+  close(fd);
+  execlp("cat", "cat", NULL);
+  fprintf(stderr, "Exec failed.  Drag\n");
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+</p><hr>
+<h3>A Final Minitalk - One Connection Per Direction</h3>
+
+Here's a final version of <b>minitalk</b>.  It's a good one to go over, as
+this is the kind of question I like to have you code up in class.  What
+we're going to do is have a very similar structure to the last <b>minitalk</b>,
+only now we are going to have two connections between the client and the
+server.  The client and server will each fork off two children, and then 
+each set of children will communicate exclusively with its own socket
+connection.
+
+<p>
+The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Sockets/minitalk3.c">minitalk3.c</a></b>.    I'll break it into a
+few parts.  The first part contains the headers, variable declarations
+and parses the command line:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;unistd.h&gt;
+#include "sockettome.h"
+
+int main(int argc, char **argv)
+{
+  char *hn;
+  int port, socket;   <font color="blue">/* Port number, and socket fd for server */</font>
+  int conn1, conn2;   <font color="blue">/* FD's for the two connections */</font>
+  int pid1, pid2;     <font color="blue">/* Process id's of the two children */</font>
+  int pid, dummy;;    <font color="blue">/* Used by the parent when it calls wait() */</font>
+  int id;             <font color="blue">/* ID of process -- Parent/C1/C2: 'P', '1' or '2' */</font>
+  int cs;             <font color="blue">/* 'c' or 's' - client or server */</font>
+
+  if (argc != 4) {
+    fprintf(stderr, "usage: minitalk hostname port s|c\n");
+    exit(1);
+  }
+
+  hn = argv[1];
+  port = atoi(argv[2]);
+  if (port &lt; 8000) {
+    fprintf(stderr, "usage: minitalk hostname port s|c\n");
+    fprintf(stderr, "       port must be &gt; 8000\n");
+    exit(1);
+  }
+
+}
+</pre></td></tr></tbody></table></center><p>
+
+The next part has the server serve a socket and accept two connections,
+while the client requests two connections.  When this code is done,
+the system looks as so:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Sockets_files/MT1.jpg"></td></tr></tbody></table></center><p>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Set up the connections */</font>
+
+  if (strcmp(argv[3], "s") == 0) {
+    cs = 's';
+    socket = serve_socket(port);
+    conn1 = accept_connection(socket);
+    conn2 = accept_connection(socket);
+    close(socket);
+  } else if (strcmp(argv[3], "c") == 0) {
+    cs = 'c';
+    conn1 = request_connection(hn, port);
+    conn2 = request_connection(hn, port);
+  } else {
+    fprintf(stderr, "usage: minitalk hostname port s|c\n");
+    fprintf(stderr, "       last argument must be `s' or `c'\n");
+    exit(1);
+  }
+
+</pre></td></tr></tbody></table></center><p>
+
+The last part of the code does all of the magic, having the two sets of
+children talk, each with their own connection.  Here's how it looks 
+pictorally:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Sockets_files/MT2.jpg"></td></tr></tbody></table></center><p>
+
+And here's the code that makes it happen.  As with <b>minitalk2</b>, when
+one child dies, the parent kills the other child:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Set up parent and two children.  In the parent,
+     pid1 and pid2 are the process id's of the children */</font>
+
+  pid1 = fork();
+  if (pid1 == 0) {
+    id = '1';
+  } else {
+    pid2 = fork();
+    if (pid2 == 0) {
+      id = '2';
+    } else {
+      id = 'P';
+    }
+  }
+
+  <font color="blue">/* Connect C1 of the server to C2 of the client */</font>
+
+  if (id == '1' &amp;&amp; cs == 's') dup2(conn1, 1);
+  if (id == '2' &amp;&amp; cs == 'c') dup2(conn1, 0);
+
+  <font color="blue">/* Connect C1 of the client to C2 of the server */</font>
+
+  if (id == '1' &amp;&amp; cs == 'c') dup2(conn2, 1);
+  if (id == '2' &amp;&amp; cs == 's') dup2(conn2, 0);
+
+  <font color="blue">/* Everyone (parent included) closes the connections */</font>
+
+  close(conn1);
+  close(conn2);
+
+  <font color="blue">/* Have the parent call wait, and then kill the other child */</font>
+
+  if (id == 'P') {
+    pid = wait(&amp;dummy);
+    if (pid == pid1) {
+      kill(pid2, SIGKILL);
+    } else {
+      kill(pid1, SIGKILL);
+    }
+    exit(0);
+  }
+
+  <font color="blue">/* Otherwise, have the children execlp cat */</font>
+
+  execlp("cat", "cat", NULL);
+  fprintf(stderr, "Exec failed.  Drag\n");
+  exit(1);
+}
+</pre></td></tr></tbody></table></center><p>
+</p></body></html>

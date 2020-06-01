@@ -1,0 +1,980 @@
+
+<!-- saved from url=(0080)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Dining Philosophers</title>
+</head><body bgcolor="ffffff">
+<h1>C360 Lecture notes -- Dining Philosophers</h1>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/cs360.html">CS360</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Dphil</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/lecture.html">
+    <b>http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/lecture.html</b></a>
+</li><li> My original Dining Philosopher's lecture was written in the late 1990's.
+</li><li> Complete overhaul: April, 2016
+</li><li> Latest modification: <i>
+Fri Apr 29 10:57:57 EDT 2016
+</i>
+<hr>
+
+<h1>Dining Philosophers</h1>
+
+<font color="darkred">(This lecture was originally developed for an Operating
+Systems class, so when you see references to books and labs, they are for that old class.
+When I talk about "The Book", I'm talking
+about <i>Operating Systems Concepts</i> by Silberschatz &amp; Galvin, probably one of those
+middle editions like 7.  You don't need to own the book to understand the lecture.)</font>
+
+<p>
+The dining philosophers problem is a classical synchronization problem.
+Taken at face value, it is a pretty meaningless problem, but it is
+typical of many synchronization problems that you will see when allocating
+resources in operating systems, and in parallel/distributed systems.  
+
+</p><p>
+Silberschatz &amp; Galvin has an excellent description of dining philosophers.
+I'll be a little more sketchy.
+
+</p><p>The problem is defined as follows:  There are 5 philosophers sitting
+at a round table.  Between each adjacent pair of philosophers is a chopstick.
+In other words, there are five chopsticks.  Each philosopher does two
+things: think and eat. The philosopher thinks for a while, and then 
+stops thinking and becomes hungry.  When the philosopher becomes hungry,
+he/she cannot eat until he/she owns the chopsticks to his/her left and
+right.  When the philosopher is done eating he/she puts down the chopsticks
+and begins thinking again.  
+
+</p><p>Of course, the definition of this problem always leads me to ask a 
+few questions:
+</p><ol>
+<li> If these philosophers are so smart, shouldn't they be worried about
+     communicable diseases?
+</li><li> Why chopsticks?  For some reason I envision philosophers liking soup.
+</li><li> Evidently conversing isn't in here -- why do they need to be at the
+     same table?  I'm not sure if I'd enjoy having a philosopher philosophize
+     while I'm eating.  But then again, I'm not a philosopher.
+</li><li> Shouldn't bathing be in the equation somewhere?
+</li></ol>
+
+
+<p>The challenge in the dining philosophers problem is to design a protocol
+so that the philosophers do not deadlock (i.e. every 
+philosopher has a chopstick), and so that no philosopher starves
+(i.e. when a philosopher is hungry, he/she eventually gets the 
+chopsticks).
+Additionally, our protocol should try to be as efficient as possible -- 
+in other words, we should try to minimize the time that philosophers
+spend being hungry.
+
+</p><p><i>(In case you're bored, here is that last paragraph in the
+inimitable words of <a href="http://www.cs.ucsb.edu/~rich">professor Wolski</a>,
+back when he taught at UT:
+``Since these are either
+unwashed, stubborn and deeply committed philosophers or unwashed,
+clueless, and basically helpless philosophers, there is a possibility
+for deadlock.  In particular, if all philosophers simultaneously grab
+the chopstick on their left and then reach for the chopstick on their
+right (waiting until one is available) before eating, they will all
+starve.  The challenge in the dining philosophers problem is to
+design a protocol so that the philosophers do not deadlock (i.e.  the
+entire set of philosophers does not stop and wait indefinitely), and
+so that no philosopher starves (i.e.  every philosopher eventually
+gets his/her hands on a pair of chopsticks).''</i>) 
+
+</p><hr>
+<h2>Dining Philosophers Testbed with pthreads</h2>
+
+What I've done is hack up a Dining Philosophers testbed.  I've organized
+it like a lab:
+
+<ul>
+<li> There is a header file in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil.h">dphil.h</a></b>.  This 
+defines the interface between the testbed, and solutions that you write.
+<p>
+</p></li><li> There is a driver file in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_driver.c">dphil_driver.c</a></b>.
+This defines the <b>main()</b> for instances of dining philosophers, and it
+implements the philosophers and the chopsticks.  Each philosopher has its own
+thread.
+<p>
+</p></li><li> A solution needs to include <b>dphil.h</b>, and then be compiled with 
+<b>dphil_driver.c</b>.  It must implement three procedures, which are 
+specified in <b>dphil.h</b>:
+<p>
+</p><ol>
+<li> <b>void *initialize_v(int phil_count)</b>: A solution must manage its own data.
+The only information that it gets from <b>dphil_driver.c</b> is the number of 
+philosophers, here in <b>phil_count</b>, and the id of the relevant philosopher in 
+the two calls below.  
+<p>
+A solution's data is going to be stored by <b>dphil_driver.c</b> as a <b>(void *)</b>,
+which is returned here.  The two procedures below pass the <b>(void *)</b> back to
+the solution.  This is how we allow flexibility in the solution.
+</p><p>
+</p></li><li> <b>void i_am_hungry(void *v, int philosopher)</b> -- This is called by a 
+philosopher when he/she becomes hungry.  It is called with the <b>(void *)</b>, 
+and with the philosopher's number.  The solution needs to ensure that when
+<b>i_am_hungry()</b> returns, the philosopher owns his or her two chopsticks.
+<p>
+</p></li><li> <b>void i_am_done_eating(void *v, int philosopher)</b> -- This is called by a 
+philosopher when he/she is done eating.  This is where the philosopher puts down the
+chopsticks, and perhaps does other things to implement whatever protocol is part
+of the solution.
+</li></ol>
+<p>
+</p></li><li> Finally, <b>dphil_driver.c</b> implements two procedures that solutions must call
+to handle chopsticks:
+<p>
+</p><ol>
+<li> <b>void pick_up_chopstick(int philosopher, int chopstick)</b>:  This will block
+   if the given chopstick is not available.    It also double-checks to make sure that the
+   philosopher is in the correct state (hungry) to pick up the chopstick.
+<p>
+</p></li><li> <b>void put_down_chopstick(int philosopher, int chopstick)</b>:  This also does some
+   error-checking, (e.g. that the philosopher called <b>pick_up_chopstick()</b> on the 
+   specified chopstick).  Then it ``releases'' the chopstick so that a philosopher blocked
+   waiting for the chopstick can awaken and pick it up.
+</li></ol>
+</li></ul>
+
+You call the driver as follows:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>dphil num-philosophers max-think max-eat accounting-interval seed(-1=time(0)) sleep(u|s) print(y|n)
+</pre></td></tr></tbody></table></center><p>
+
+The parameters are as follows:
+
+</p><ul>
+<li> <b>num-philosophers</b>: The problem is interesting with 5 philosophers, but it becomes more
+     interesting with more philosophers, so this is a parameter of the simulation.
+</li><li> <b>max-think</b>: Each philosopher will think for a random time between 1 and <b>max-think</b>.
+</li><li> <b>max-eat</b>: Each philosopher will eat for a random time between 1 and <b>max-eat</b>.
+</li><li> <b>accounting-interval</b>: If you specify this as a positive value, then a thread will be created
+    which reports how long each philosopher has been hungry, at the given interval.
+</li><li> <b>seed</b>: Seed for the random number generator.  Since this
+     program is threaded, it is not deterministic, even when two instances
+     have the same seed.  They will generate the same random numbers in
+     the same order, though.
+</li><li> <b>sleep</b>: If 's', then the thinking and eating times, and the accounting interval 
+     are in seconds.  If 'u', then they are in microseconds.
+</li><li> <b>print</b>: If 'y', then the program prints what the philosophers are doing.
+</li></ul>
+
+<hr>
+<h2>Solutions to the dining philosophers</h2>
+
+I have written up 8 "solutions" to this problem.  You can copy all
+of the .c files and the makefile to your own directory and try them
+out for yourself.  I have also written a <b>tcl/tk</b> program 
+named <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil.tcl">dphil.tcl</a></b>,
+which visualizes the
+output.  I'll give an example of that in the next section.
+<p>
+I have a null solution in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_0_compiles.c">dphil_0_compiles.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;pthread.h&gt;
+#include "dphil.h"
+
+<font color="blue">/* Each of these does nothing. */</font>
+
+void *initialize_v(int phil_count) { return NULL; }
+void i_am_hungry(void *v, int philosopher) {}
+void i_am_done_eating(void *v, int philosopher) {}
+</pre></td></tr></tbody></table></center><p>
+
+This will compile, but it won't run correctly, because the philosophers never pick up 
+the chopsticks.  <b>dphil_driver.c</b> will detect that something is amiss, because it checks
+the states of the chopsticks when <b>i_am_hungry()</b> returns:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_0_compiles 5 5 5 0 0 s y</b></font>
+#-Philosophers: 5
+  0 Philosopher 0 Thinking (1)
+  0 Philosopher 1 Thinking (3)
+  0 Philosopher 2 Thinking (5)
+  0 Philosopher 3 Thinking (3)
+  0 Philosopher 4 Thinking (1)
+  1 Philosopher 4 Hungry
+  1 Philosopher 0 Hungry
+  1 Philosopher 4 Error -- stick 4 state should be 4, but it is -1.
+  1 Philosopher 0 Error -- stick 0 state should be 0, but it is -1.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h2>Solution #1: (Right-Left) - Simply grabbing chopsticks</h2>
+
+The simplest solution is to have each philosopher just call <b>pick_up_chopstick()</b> on 
+his/her right chopstick, and then on the left chopstick.  The right one has the same id as
+the philosopher, and the left one is numbered <b>(id+1)%num_philosophers</b> (that may seem
+counter-intuitive, but if the philosophers are numbered clockwise around the table, that's how
+it happens).
+<p>
+Here's the code -- very simple -- in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_1_right_left.c">dphil_1_right_left.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* The only information we need is the number of philosophers.
+   This is because we have to calculate the chopstick numbers from
+   the philosopher id. */</font>
+
+typedef struct {
+  int num;
+} MyPhil;
+
+<font color="blue">/* Store the number of philosophers in the (void *). */</font>
+
+void *initialize_v(int phil_count) 
+{
+  MyPhil *p;
+
+  p = (MyPhil *) malloc(sizeof(MyPhil));
+  p-&gt;num = phil_count;
+
+  return p; 
+}
+
+<font color="blue">/* These are straightforward, simply picking up and putting down
+   chopsticks, first right, then left. */</font>
+
+void i_am_hungry(void *v, int philosopher) 
+{
+  MyPhil *p;
+
+  p = (MyPhil *) v;
+
+  pick_up_chopstick(philosopher, philosopher);
+  pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+}
+
+void i_am_done_eating(void *v, int philosopher) 
+{
+  MyPhil *p;
+
+  p = (MyPhil *) v;
+
+  put_down_chopstick(philosopher, philosopher);
+  put_down_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+}
+</pre></td></tr></tbody></table></center><p>
+
+You can run it and inspect the output -- this one goes through time steps zero through six in a 
+simple example:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_1_right_left 5 5 5 0 0 s y | head -n 50 | sed '/^ *[789]/,$d' &gt; output_D1_simple.txt</b></font>
+</pre>
+
+And here's that output file
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/output_D1_simple.txt">output_D1_simple.txt</a></b>), which I have annotated so
+that you can walk through it.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#-Philosophers: 5
+  0 Philosopher 0 Thinking (2)
+  0 Philosopher 1 Thinking (3)
+  0 Philosopher 2 Thinking (4)
+  0 Philosopher 3 Thinking (1)
+  0 Philosopher 4 Thinking (5)
+  1 Philosopher 3 Hungry                <font color="blue">| Timestep 1:</font>
+  1 Philosopher 3 Picked Up Stick 3     <font color="blue">|   Philosopher 3 get the chopsticks and eats.</font>
+  1 Philosopher 3 Picked Up Stick 4
+  1 Philosopher 3 Eating (1)
+  2 Philosopher 0 Hungry                <font color="blue">| Timestep 2:</font>
+  2 Philosopher 0 Picked Up Stick 0     <font color="blue">|   Philosopher 0 get the chopsticks and eats.</font>
+  2 Philosopher 0 Picked Up Stick 1     <font color="blue">|   Philosopher 3 puts the chopsticks down.</font>
+  2 Philosopher 0 Eating (3)       
+  2 Philosopher 3 Put Down Stick 3
+  2 Philosopher 3 Put Down Stick 4 
+  2 Philosopher 3 Thinking (3)
+  3 Philosopher 1 Hungry                <font color="blue">| Timestep 3:</font>
+  3 Philosopher 1 Blocking on Stick 1   <font color="blue">|   Philosopher 1 hungry: Blocks on chopstick 1.</font>
+  4 Philosopher 2 Hungry                <font color="blue">| Timestep 4:</font>
+  4 Philosopher 2 Picked Up Stick 2     <font color="blue">|   Philosopher 2 get the chopsticks and eats.</font>
+  4 Philosopher 2 Picked Up Stick 3     
+  4 Philosopher 2 Eating (2)
+  5 Philosopher 4 Hungry                <font color="blue">| Timestep 5:</font>
+  5 Philosopher 4 Picked Up Stick 4     <font color="blue">|   Philosopher 4 hungry:</font>
+  5 Philosopher 4 Blocking on Stick 0   <font color="blue">|      - Gets chopstick 4, blocks on 0.</font>
+  5 Philosopher 0 Put Down Stick 0      <font color="blue">|   Philosopher 0 puts the chopsticks down.</font>
+  5 Philosopher 0 Put Down Stick 1      <font color="blue">|   Philosopher 4 now gets chopstick 0 and eats.</font>
+  5 Philosopher 0 Thinking (1)          <font color="blue">|   Philosopher 1 now gets stick 1, blocks on stick 2.</font>
+  5 Philosopher 4 Picked Up Stick 0     <font color="blue">|   Philosopher 3 hungry: Blocks on 3.</font>
+  5 Philosopher 4 Eating (3)
+  5 Philosopher 1 Picked Up Stick 1
+  5 Philosopher 1 Blocking on Stick 2
+  5 Philosopher 3 Hungry
+  5 Philosopher 3 Blocking on Stick 3
+  6 Philosopher 2 Put Down Stick 2      <font color="blue">| Timestep 6:</font>
+  6 Philosopher 2 Put Down Stick 3      <font color="blue">|   Philosopher 2 puts the chopsticks down.</font>
+  6 Philosopher 2 Thinking (4)          <font color="blue">|   Philosopher 1 now gets chopstick 2 and eats.</font>
+  6 Philosopher 1 Picked Up Stick 2     <font color="blue">|   Philosopher 3 now gets chopstick 3, blocks on 4.</font>
+  6 Philosopher 1 Eating (1)            <font color="blue">|   Philosopher 0 hungry, blocks on chopstick 0</font>
+  6 Philosopher 3 Picked Up Stick 3
+  6 Philosopher 3 Blocking on Stick 4
+  6 Philosopher 0 Hungry
+  6 Philosopher 0 Blocking on Stick 0
+</pre></td></tr></tbody></table></center><p>
+
+I've written up a visualizer (<b>dphil.tcl</b>)
+for the output of the programs.   It is meant to be
+run in two ways.  The first is by piping standard output of the program into the
+visualizer.  The second is by using the program
+<b>phil_step</b> on output files.  Let me show you how <b>phil_step</b> works:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>phil_step output_D1_simple.txt | wish dphil.tcl</b></font>
+  1 Philosopher 3 Hungry
+  1 Philosopher 3 Picked Up Stick 3
+  1 Philosopher 3 Picked Up Stick 4
+  1 Philosopher 3 Eating (1)
+</pre>
+
+This will bring up a viz window, showing the philosophers in timestep 0.  Philosopher 0
+is on the top, and the philsopher numbers increase clockwise.  I don't show the
+numbers -- sorry:
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex1.jpg" width="300"></td></tr></tbody></table></center><p>
+
+<b>Phil_step</b> displays the "next" timestep from the one that is being displayed, and
+when you type RETURN, it will send that information to be displayed by the viz.  For 
+example, if you type return into the command above, it will print the next timesteps, 
+and the viz will display the current timestep.  In this case, <b>phil_step</b> shows
+what will happen in timestep 2, and the viz shows what is happening in timestep 1
+(philosopher 3 is eating).  As you can see, "thinking" is yellow, and "eating" is blue.
+
+</p><p>
+</p><center>
+<table border="3" cellpadding="5">
+<tbody><tr><td valign="top">
+<pre>  2 Philosopher 0 Hungry
+  2 Philosopher 0 Picked Up Stick 0
+  2 Philosopher 0 Picked Up Stick 1
+  2 Philosopher 0 Eating (3)
+  2 Philosopher 3 Put Down Stick 3
+  2 Philosopher 3 Put Down Stick 4
+  2 Philosopher 3 Thinking (3)
+</pre>
+</td>
+<td valign="top">
+<center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex2.jpg" width="300"></td></tr></tbody></table></center></td></tr></tbody></table>
+</center><p>
+
+Here are timesteps 2, 3, 4 and 5:
+
+</p><p></p><center><table border="3">
+<tbody><tr><td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex3.jpg" width="200"><br>
+Timestep 2:<br>
+Philosopher 3 stops eating.<br>
+Philosopher 0 gets sticks and eats.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex4.jpg" width="200"><br>
+Timestep 3:<br>
+Philosopher 1 hungry.<br>
+(Hungry is red).</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex5.jpg" width="200"><br>
+Timestep 4:<br>
+Philosopher 2 gets sticks and eats.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP-Ex6.jpg" width="200"><br>
+Timestep 5:<br>
+Philosopher 0 stops eating.<br>
+Philosopher 1 gets stick 1, blocks on stick 2.<br>
+Philosopher 4 gets sticks and eats.<br>
+Philosopher 3 hungry and blocks.</td>
+</tr></tbody></table></center><p>
+
+Now, this solution is not a good solution.  The major reason is that it can deadlock.
+We'll show that in the next section.  A secondary, very important reason is that
+philosophers spend too much time being hungry.  We can demonstrate this in 
+two ways.  The first is to use the "u" option and to look at the blocktimes.  Here
+I have the think and eat times set to random numbers up to 500 microseconds, and
+I print the hungry times after 20 seconds:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_1_right_left 5 500 500 20000000 1 u n</b></font>
+ 20.005 Total-Hungry 70.273
+ 20.005 Individual-Hungry  14.048  14.073  14.031  14.064  14.057
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; 
+</pre>
+
+We'll see that these aren't the best times.  The other way is to look at the viz when
+you have a lot of philosophers.  Here's an example to try:
+
+<pre>UNIX&gt; <font color="darkred"><b>dphil_1_right_left 25 5 5 0 0 s y | wish dphil.tcl</b></font>
+</pre>
+
+After a while when running this, I saw the following:
+
+<p></p><center><table border="3"><tbody><tr><td><a href="./CS360 Lecture notes -- Dining Philosophers_files/DP1-Bad2.jpg"><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP1-Bad2.jpg" width="300"></a></td></tr></tbody></table></center><p>
+
+You should see why this is bad -- of the 25 philosophers, 13 of them are blocked holding
+their right chopstick and waiting for their left chopstick.  (One is blocked, waiting for his
+right chopstick).  Many of these philosophers could eat with a better protocol.
+
+</p><hr>
+<h3>Solution 1A -- Deadlock</h3>
+
+With solution 1A, 
+<b>(<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_1a_right_left.c">dphil_1a_right_left.c</a>)</b>
+I have added a three second delay after grabbing the right chopstick.  You can see
+deadlock here if you set the think time under two seconds:
+
+
+<p>
+</p><center>
+<table border="3" cellpadding="5">
+<tbody><tr><td valign="top">
+<pre>UNIX&gt; <font color="darkred"><b>dphil_1a_right_left 5 2 2 0 0 s y</b></font>
+#-Philosophers: 5
+  0 Philosopher 0 Thinking (2)
+  0 Philosopher 1 Thinking (2)
+  0 Philosopher 2 Thinking (2)
+  0 Philosopher 3 Thinking (2)
+  0 Philosopher 4 Thinking (2)
+  2 Philosopher 0 Hungry
+  2 Philosopher 1 Hungry
+  2 Philosopher 2 Hungry
+  2 Philosopher 3 Hungry
+  2 Philosopher 4 Hungry
+  2 Philosopher 0 Picked Up Stick 0
+  2 Philosopher 1 Picked Up Stick 1
+  2 Philosopher 2 Picked Up Stick 2
+  2 Philosopher 3 Picked Up Stick 3
+  2 Philosopher 4 Picked Up Stick 4
+  5 Philosopher 0 Blocking on Stick 1
+  5 Philosopher 1 Blocking on Stick 2
+  5 Philosopher 3 Blocking on Stick 4
+  5 Philosopher 4 Blocking on Stick 0
+  5 Philosopher 2 Blocking on Stick 3
+</pre>
+</td>
+<td valign="top">
+<center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP1-Deadlock.jpg" width="300"></td></tr></tbody></table></center></td></tr></tbody></table>
+</center><p>
+
+
+
+</p><hr>
+<h2>Solution #2: (Even-Odd) - Even and Odd philosophers do different things</h2>
+
+One simple way to prevent deadlock is to have even-numbered
+philosophers get their chopsticks in one order, and odd-numbered
+philosophers get their chopsticks in the other order.  That prevents
+the "circular wait" requirement of deadlock.
+<p>
+This code is in:
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_2_even_odd.c">dphil_2_even_odd.c</a></b>, and here is the 
+relevant code:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Even philosophers go right-left, and odd philosophers go left-right. */</font>
+
+void i_am_hungry(void *v, int philosopher) 
+{
+  MyPhil *p;
+
+  p = (MyPhil *) v;
+
+  if (philosopher % 2 == 0) {
+    pick_up_chopstick(philosopher, philosopher);
+    pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+  } else {
+    pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+    pick_up_chopstick(philosopher, philosopher);
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run this on our "usleep" example above, we see much better blocking times:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_2_even_odd 5 500 500 20000000 1 u n</b></font>
+ 20.005 Total-Hungry 32.079
+ 20.005 Individual-Hungry   4.896   6.257   6.259   7.154   7.513
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; 
+</pre>
+
+Do you see anything odd with those individual block times?  Philosopher 0 is hungry a lot
+less than the others.  Philsophers 1 and 2 are hungry less than philosophers 3 and 4.
+Let's think about why that is true -- here is the chopstick that each philosopher tries to
+grab first:
+
+<ul>
+<li> Philosopher 0 wants chopstick 0.
+</li><li> Philosopher 1 wants chopstick 2.
+</li><li> Philosopher 2 wants chopstick 2.
+</li><li> Philosopher 3 wants chopstick 4.
+</li><li> Philosopher 4 wants chopstick 4.
+</li></ul>
+
+Now do you see why Philosopher 0 is hungry less than the others?  It's because he/she doesn't
+compete with another philosopher for the first chopstick.  If Philosopher 0 is blocked on 
+chopstick 0, it's because philosopher 4 is eating.  All of the other philosophers can block 
+on their first chopsticks, and the philosopher on whom they are blocking may not be eating.
+<p>
+Let's look at a picture of 25 philosophers running with this "solution."
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_2_even_odd 25 5 5 0 0 s y | wish dphil.tcl</b></font>
+</pre>
+
+<center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP2-SS.jpg" width="300"></td></tr></tbody></table></center><p>
+
+As you can see, there are a few instances above where philosophers could eat, but aren't
+eating.  This should give you a hint that this protocol, although it prevents deadlock,
+isn't the best.
+
+</p><hr>
+<h2>Solution #3: (Hold and Wait) - Don't grab any chopsticks unless they are both available.</h2>
+
+This is the solution proposed by Silberschatz and Galvin in their textbook.  It addresses
+the "hold and wait" requirement of deadlock -- make it so that no philosopher can pick
+up a chopstick unless both of his/her chopsticks are available.  We implement
+this in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_3_hold_and_wait.c">dphil_3_hold_and_wait.c</a></b>, with one mutex
+and one condition variable for each philosopher.  The philosophers now check both 
+chopsticks, and if either is not available, the philosopher blocks on his/her condition
+variable.  This requires philosophers to signal adjacent philosophers when they put their
+chopsticks down.  
+<p>
+Study this code if it is not straightforward to you -- this is a pretty classic use
+of condition variables.  Below, I show our data structure, and the pickup/putdown code:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>typedef struct {
+  int num;
+  pthread_mutex_t *lock;                 <font color="blue">/* This is so that you can look at the chopsticks. */</font>
+  pthread_cond_t **blocked_philosophers; <font color="blue">/* Block if either chopstick is not available. */</font>
+  int *stick_states;                     <font color="blue">/* This is how you monitor the chopsticks. */</font>
+} MyPhil;                                <font color="blue">/* 'U' means taken.  'D' means available. */</font>
+
+void i_am_hungry(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int stick1, stick2;
+
+  p = (MyPhil *) v;
+  stick1 = philosopher;
+  stick2 = (philosopher+1)%p-&gt;num;
+
+  <font color="blue">/* While either chopstick is in use, block. */</font>
+
+  pthread_mutex_lock(p-&gt;lock);
+  while (p-&gt;stick_states[stick1] == 'U' ||
+         p-&gt;stick_states[stick2] == 'U') {
+    pthread_cond_wait(p-&gt;blocked_philosophers[philosopher], p-&gt;lock);
+  }
+
+  <font color="blue">/* Now, both chopsticks are available.  
+     We hold the lock to make sure that no other philosopher gets our chopsticks
+     while we are picking up chopsticks. */</font>
+
+  pick_up_chopstick(philosopher, philosopher);
+  pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+
+  p-&gt;stick_states[stick1] = 'U';
+  p-&gt;stick_states[stick2] = 'U';
+  pthread_mutex_unlock(p-&gt;lock);
+}
+
+void i_am_done_eating(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int stick1, stick2;
+  int leftp, rightp;
+
+  p = (MyPhil *) v;
+  stick1 = philosopher;
+  stick2 = (philosopher+1)%p-&gt;num;
+  leftp = (philosopher+p-&gt;num-1)%p-&gt;num;
+  rightp = stick2;
+
+  pthread_mutex_lock(p-&gt;lock);
+  put_down_chopstick(philosopher, philosopher);
+  put_down_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+  p-&gt;stick_states[stick1] = 'D';
+  p-&gt;stick_states[stick2] = 'D';
+
+  <font color="blue">/* After we put down out chopsticks, we need to signal adjacent philosophers. */</font>
+
+  pthread_cond_signal(p-&gt;blocked_philosophers[leftp]);
+  pthread_cond_signal(p-&gt;blocked_philosophers[rightp]);
+  pthread_mutex_unlock(p-&gt;lock);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Now, you see much better hungry times:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_3_hold_and_wait 5 500 500 20000000 1 u n</b></font>
+ 20.004 Total-Hungry 29.211
+ 20.004 Individual-Hungry   5.814   5.862   5.842   5.855   5.837
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Here's a screen shot of the 25-philosopher case.  One of the features of this is that
+you'll never have a case where three philsophers in a row are blocked, or that you 
+have two adjacent blocked philosophers where one is next to a thinking philosopher.
+
+<center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP3-Ex.jpg" width="300"></td></tr></tbody></table></center>
+
+This implementation does not prevent starvation.  Consider the following sequence of
+thinking and eating:
+
+<p></p><center><table border="3">
+<tbody><tr><td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/starve-1.jpg" width="200"><br>
+Starting State:<br>
+Philosophers 0 and 2 eating.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/starve-2.jpg" width="200"><br>
+Philosopher 2 stops eating.<br>
+Philosopher 3 now eats.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/starve-3.jpg" width="200"><br>
+Philosopher 0 stops eating.<br>
+Philosopher 1 now eats.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/starve-2.jpg" width="200"><br>
+Philosopher 1 stops eating.<br>
+Philosopher 0 now eats.</td>
+<td align="center" valign="top"><img src="./CS360 Lecture notes -- Dining Philosophers_files/starve-1.jpg" width="200"><br>
+Philosopher 3 stops eating.<br>
+Philosopher 2 now eats.<br>
+Repeat; repeat; repeat.</td><td>
+</td></tr></tbody></table></center><p>
+
+If the philosophers always think and eat in this fashion, then philosopher 4 starves.
+That's because the protocol does not do anything to make sure that philosophers
+eventually get the chopsticks.
+
+</p><hr>
+<h2>Solution #4: (Global List) - You can't eat if someone before you is hungry.</h2>
+
+We now start to address starvation.  In order to do so, we need to ensure that if a
+philosopher is hungry, he or she eventually eats.  The simplest of these is
+in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_4_global_list.c">dphil_4_global_list.c</a></b>.
+In this implementation, we maintain a global queue, and whenever a philosopher is
+hungry, he/she goes onto the end of the queue.  Our invariant is that the only 
+philosopher who can eat is the one on the head of the queue.  
+<p>
+Does this mean that only one philosopher can eat?  No -- at all times, if the philosopher
+at the head of the queue can eat, he or she should eat.  That means, for example, that
+if philosophers 0, 2 and 1 become hungry in that order, 0 and 2 can eat.  On the flip
+side, if philosophers 0, 1 and 2 become hungry in that order, only 0 can eat.  
+</p><p>
+To implement this, we need to check the head of the queue at three times:
+</p><ol>
+<li> Whenever a philosopher becomes hungry.
+</li><li> Whenever a philosopher stops eating.
+</li><li> Whenever a philosopher starts eating.  
+</li></ol>
+
+The last of these happens in the following situation -- philosophers 1, 0 and 2 become 
+hungry in that order.  Philosopher 1 will eat, and when he/she is done, philosopher 0
+is on the head of the queue and will eat next.  We need to check the queue here too, because
+philosopher 2 can also eat.  If we didn't check the queue, then philosopher 2 would stay 
+there, even though he/she can eat.
+<p>
+Here is the relevant code:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Now we keep a queue of philosophers who are hungry.  If the queue isn't empty,
+   then whenever a philosopher is hungry, he/she has to go on the end of the 
+   queue.  Only the philosopher on the head of the queue can eat.   
+
+   We use a simple array to model the queue.  The queue's size is held in 
+   wq_size.  The first philosopher is at wq_head.  When you insert a philosopher
+   on the queue, then he/she goes into elelemtn (wq_head+wq_size)%num. */</font>
+
+typedef struct {
+  int num;
+  pthread_mutex_t *lock;
+  pthread_cond_t **blocked_philosophers;
+  int *stick_states;
+  int *waiting_queue;
+  int wq_head;
+  int wq_size;
+} MyPhil;
+
+void i_am_hungry(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int stick1, stick2;
+
+  p = (MyPhil *) v;
+  stick1 = philosopher;
+  stick2 = (philosopher+1)%p-&gt;num;
+
+  pthread_mutex_lock(p-&gt;lock);
+
+  <font color="blue">/* Put yourself on the queue */</font>
+
+  p-&gt;waiting_queue[(p-&gt;wq_head + p-&gt;wq_size)%p-&gt;num] = philosopher;
+  p-&gt;wq_size++;
+
+  <font color="blue">/* You can't eat until you are on the head of the queue, and your
+     chopsticks are available. */</font>
+
+  while (p-&gt;waiting_queue[p-&gt;wq_head] != philosopher ||
+         p-&gt;stick_states[stick1] == 'U' ||
+         p-&gt;stick_states[stick2] == 'U') {
+    pthread_cond_wait(p-&gt;blocked_philosophers[philosopher], p-&gt;lock);
+  }
+
+  <font color="blue">/* When you reach this part of the code, you can eat. */</font>
+
+  pick_up_chopstick(philosopher, philosopher);
+  pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+
+  p-&gt;stick_states[stick1] = 'U';
+  p-&gt;stick_states[stick2] = 'U';
+
+  <font color="blue">/* Remove yourself from the queue, and signal whoever is now on the
+     head of the queue. */</font>
+
+  p-&gt;wq_head = (p-&gt;wq_head + 1) % p-&gt;num;
+  p-&gt;wq_size--;
+  if (p-&gt;wq_size &gt; 0) {
+    pthread_cond_signal(p-&gt;blocked_philosophers[p-&gt;waiting_queue[p-&gt;wq_head]]);
+  }
+  
+  pthread_mutex_unlock(p-&gt;lock);
+}
+
+<font color="blue">/* When you're done eating, signal the philosopher on the head of the queue. */</font>
+
+void i_am_done_eating(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int stick1, stick2;
+  int leftp, rightp;
+
+  p = (MyPhil *) v;
+  stick1 = philosopher;
+  stick2 = (philosopher+1)%p-&gt;num;
+  leftp = (philosopher+p-&gt;num-1)%p-&gt;num;
+  rightp = stick2;
+
+  pthread_mutex_lock(p-&gt;lock);
+  put_down_chopstick(philosopher, philosopher);
+  put_down_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+  p-&gt;stick_states[stick1] = 'D';
+  p-&gt;stick_states[stick2] = 'D';
+  if (p-&gt;wq_size &gt; 0) {
+    pthread_cond_signal(p-&gt;blocked_philosophers[p-&gt;waiting_queue[p-&gt;wq_head]]);
+  }
+  pthread_mutex_unlock(p-&gt;lock);
+}
+</pre></td></tr></tbody></table></center><p>
+
+This does prevent starvation, but as you can imagine, it leads to much larger hungry times:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_4_global_list 5 500 500 20000000 1 u n</b></font>
+ 20.000 Total-Hungry 44.459
+ 20.000 Individual-Hungry   8.882   8.914   8.884   8.891   8.889
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The screenshot is from a run with 25 philosophers, and as you can see, we have a lot
+of blocked philosophers here -- if the head of the queue is blocked, then everyone
+can be blocked.
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP4.jpg" width="300"></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h2>Solution #5: (Take A Number) - You can't eat if your neighbors are hungrier.</h2>
+
+An obvious problem with the last solution is that a hungry philosopher across the 
+table from you can prevent you from eating.  So, here's a more localized solution.
+You can never eat if either of your neighbors is hungrier than you.
+Now, you're only limited by your neighbors (kind of...).
+<p>
+The implementation is in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_5_take_a_number.c">dphil_5_take_a_number.c</a></b>.  
+What I do here is associate a number with each philosopher.  When the 
+philosopher is thinking, his/her number is a high sentinel (0x7fffffff).
+When the philosopher is eating, his/her number is a low sentinel (-1).
+And when a philosopher becomes hungry, he/she gets a number from a counter, that
+is increased after the philosopher gets the number.
+</p><p>
+Under this system, a philosopher can only eat if he/she has a lower number than
+his/her neighbors.  Very simple.  If a philosopher can't eat, he/she blocks on 
+a conditional variable, when when a philosopher stops eating, he/she signals
+his/her neighbors.
+</p><p>
+Here's the relevant code:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* No more queue here -- each philosopher is going to "take a number" when hungry. */</font>
+
+typedef struct {
+  int num;
+  pthread_mutex_t *lock;
+  pthread_cond_t **blocked_philosophers;
+  int *phil_number;
+  int counter;
+} MyPhil;
+
+#define HIGH_SENTINEL (0x7fffffff)
+#define LOW_SENTINEL (-1)
+
+void i_am_hungry(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int leftp, rightp;
+
+  p = (MyPhil *) v;
+  leftp = (philosopher+1)%p-&gt;num;
+  rightp = (philosopher+p-&gt;num-1)%p-&gt;num;
+
+  pthread_mutex_lock(p-&gt;lock);
+
+  <font color="blue">/* Here's where I take a number. */</font>
+
+  p-&gt;phil_number[philosopher] = p-&gt;counter;
+  p-&gt;counter++;
+
+  <font color="blue">/* As long as my neighbors have a lower number than me, block. */</font>
+
+  while (p-&gt;phil_number[leftp] &lt; p-&gt;phil_number[philosopher] ||
+         p-&gt;phil_number[rightp] &lt; p-&gt;phil_number[philosopher]) {
+    pthread_cond_wait(p-&gt;blocked_philosophers[philosopher], p-&gt;lock);
+  }
+
+  pick_up_chopstick(philosopher, philosopher);
+  pick_up_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+
+  p-&gt;phil_number[philosopher] = LOW_SENTINEL;
+
+  pthread_mutex_unlock(p-&gt;lock);
+}
+
+void i_am_done_eating(void *v, int philosopher) 
+{
+  MyPhil *p;
+  int leftp, rightp;
+
+  p = (MyPhil *) v;
+  leftp = (philosopher+1)%p-&gt;num;
+  rightp = (philosopher+p-&gt;num-1)%p-&gt;num;
+
+  pthread_mutex_lock(p-&gt;lock);
+  put_down_chopstick(philosopher, philosopher);
+  put_down_chopstick(philosopher, (philosopher+1)%p-&gt;num);
+  p-&gt;phil_number[philosopher] = HIGH_SENTINEL;
+  
+  pthread_cond_signal(p-&gt;blocked_philosophers[leftp]);
+  pthread_cond_signal(p-&gt;blocked_philosophers[rightp]);
+  pthread_mutex_unlock(p-&gt;lock);
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run this, we don't see much improvement over the global queue.  
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_5_take_a_number 5 500 500 20000000 1 u n</b></font>
+ 20.000 Total-Hungry 41.099
+ 20.000 Individual-Hungry   8.232   8.191   8.211   8.222   8.243
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The global queue had a total hungry time of 44.459 seconds.  The hold-and-wait 
+solution's total hungry time was 29.211.  That seems dire, but try the viz.  You won't
+have to wait too long until you get something like this:
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP5.jpg" width="300"></td></tr></tbody></table></center><p>
+
+As you can see, philosopher 1 is blocking, even though the chopsticks are available.
+With just five philosophers, there aren't a huge number of cases where this implementation
+is better than the global queue.  If you run them both with a larger table, the difference
+is more marked:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_4_global_list 25 500 500 20000000 1 u n </b></font>
+ 19.999 Total-Hungry 361.248
+ 19.999 Individual-Hungry  14.408  14.460  14.440  ....
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b>dphil_5_take_a_number 25 500 500 20000000 1 u n </b></font>
+ 20.001 Total-Hungry 207.315
+ 20.001 Individual-Hungry   8.308   8.287   8.326  ...
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Here's my 25-philosopher screen shot.  As you can see, this protocol does not prevent multiple
+adjacent philosophers from blocking.  You can get chains of blocking philosophers, depending
+on the order in which they get hungry.
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/DP5A.jpg" width="300"></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h2>Solution #6: (Hybrid) - You can't eat if your neighbors are starving.</h2>
+
+The problem with the previous two solutions is that they are too proactive -- they
+block philosophers too much to prevent starvation.  Let's put it in another way:
+Starvation happens very rarely, but we go into very active measures to prevent it.
+What if we were more lax.
+<p>
+The last solution is just like the previous one, but instead of blocking if your neighbor
+has been hungry longer than you, you block when your neighbor is <i>really</i> hungry.
+In the code -- you block when your neighbor's number is more than 500 less than your number.
+You need to be careful with the "Eating" sentinel -- if you make it -501, and you start
+your counter at 0, then it works properly.  
+</p><p>
+I'm only going to include the changed line in <b>i_am_hungry()</b>.  The program
+is 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Dphil/dphil_6_hybrid.c">dphil_6_hybrid.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#define THRESH (5)
+...
+  while (p-&gt;phil_number[philosopher] - p-&gt;phil_number[leftp] &gt; THRESH * p-&gt;num ||
+         p-&gt;phil_number[philosopher] - p-&gt;phil_number[rightp] &gt; THRESH * p-&gt;num) {
+    pthread_cond_wait(p-&gt;blocked_philosophers[philosopher], p-&gt;lock);
+  }
+</pre></td></tr></tbody></table></center><p>
+
+Now, the performance is like the Hold-and-Wait implementation, but starvation is prevented!
+
+</p><pre>UNIX&gt; <font color="darkred"><b>dphil_6_hybrid 5 500 500 20000000 1 u n</b></font>
+ 19.999 Total-Hungry 29.107
+ 19.999 Individual-Hungry   5.802   5.785   5.834   5.822   5.864
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You'll see that the performance is superior to the previous two with 25 philosophers too:
+
+<pre>UNIX&gt; <font color="darkred"><b>dphil_6_hybrid 25 500 500 20000000 1 u n</b></font>
+ 20.004 Total-Hungry 155.495
+ 20.004 Individual-Hungry   6.240   6.168   6.241   ...
+<font color="darkred"><b>&lt;CNTL-C&gt;</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<h3>Timing Comparison</h3>
+
+Here is the comparison of the six implementations with a five-philiospher table,
+and with a 25-philosopher table, over 20 seconds.
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Dining Philosophers_files/timing.jpg" width="250"></td>
+<td><img src="./CS360 Lecture notes -- Dining Philosophers_files/timing-25.jpg" width="250"></td></tr></tbody></table></center><p>
+
+A few things of note:
+
+</p><ul>
+<li> The "global list" solution is far more punative at the 25-philosopher table than it
+is at the 5-philosopher table.  That is because a single philosopher can affect a lot more
+hungry philosophers at the 25-person table.
+</li><li> The hybrid solution is worse than the hold-and-wait solution at the 25-philosopher
+table.  One can conclude from that that there are more times that the anti-starvation
+policy comes into effect at the larger table.  We could, of course, measure that,
+but not today...
+</li></ul>
+
+<hr>
+So, what are the lessons?
+
+<ul>
+<li> First, when multiple threads or processes access multiple resources
+exclusively, you must worry about deadlock.
+<p>
+</p></li><li> Second, you must worry about starvation, and the only way to prevent
+starvation is to enforce that all threads/processes get unblocked
+every now and then.  This can be using a global queue, as in solution
+#4, or some other ordering strategy, as in solutions #5 and #6.
+Sometimes you have to be less aggressive about preventing starvation
+(as in solution #6) in order to get both good performance, and no
+starvation.
+
+<p>
+</p></li><li> Third, often you have to worry about treating all threads equally, so
+that no one thread gets more resources than the others due to your
+synchronization protocol.  This was the problem with the asymmetric
+solution.
+</li></ul>
+</li></body></html>

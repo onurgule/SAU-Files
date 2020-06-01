@@ -1,0 +1,612 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Thread #4</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Thread #4</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Thread4</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/lecture.html
+</b></a>
+</li><li> Last modified: <i>
+Tue Apr 19 13:38:32 EDT 2016
+</i>
+</li></ul>
+<hr>
+
+In this lecture, we go over a simulation program that uses the
+producer/consumer paradigm with a bounded buffer, 
+that requires monitors/condition variables.
+
+<hr>
+<h2>The Printer Simulation Problem</h2>
+
+This lecture revolves around a simulation that we will write. 
+This is a simulation of a system that has users and printers and a 
+fixed-size buffer that connects them.  In particular,
+we have <i>nusers</i> users, and <i>nprinters</i> printers.  
+We'll assume that all the printers are identical (e.g. in a machine
+room) so that when a user wants to print something out, it doesn't
+matter which printer it comes out on.  
+<p>
+Now, in our simulation, every so often, a user will decide to print
+something.  When this happens, the print job will be submitted,
+and if any printer is available, it will print the job, taking
+4 seconds a page.  If all the printers are printing something, then
+the job will be queued until one of the printers is ready.  
+The print queue will be of a fixed size (this is what makes it a
+``bounded buffer'' problem).  If the queue is full,
+then the user must wait until the queue is not full to submit the
+job.
+</p><p>
+We are going to use threads for this simulation.  
+Each user will have its own thread, and each printer will have
+its own thread.  The threads will communicate through shared
+memory.
+</p><p>
+
+</p><hr>
+<h2>printqsim</h2>
+
+This program has a specific format, which the threads lab will share.  
+There is be a header file,
+in this case
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/printqsim.h"><b>printqsim.h</b></a>,
+that defines some data structures plus some
+subroutine prototypes.  In the labs, these subroutines are 
+the ones that you have to write to make the lab work.
+<p>
+There is also a driver program, in this case
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/printqsim.c"><b>printqsim.c</b></a>.
+This defines a <b>main()</b> routine which sets up the
+threads.  Together with your definitions of the subroutines, 
+the driver program will solve the problem.  
+</p><p>
+You are <i>not</i> allowed to change either the header or driver
+files.  Instead, you are to provide a C file that defines the 
+subroutines in the header file, and when this is compiled with 
+the driver program, the resulting program solves the problem.
+</p><p>
+In this case, our job is to define <b>initialize_v()</b>,
+<b>submit_job()</b> and <b>get_print_job()</b> so that together
+with <b>printqsim.c</b>, our program performs the user/printer
+simulation correctly.
+</p><p>
+Ok, let's look at <b>printqsim.c</b>.  It takes 6 arguments:
+</p><ol>
+<li> <b>nusers</b>: The number of users.
+</li><li> <b>nprinters</b>: The number of printers.
+</li><li> <b>arrtime</b>: The average time that users will take
+                     between submitting print jobs.
+</li><li> <b>maxpages</b>: The maximum size of a print job (in pages).
+</li><li> <b>bufsize</b>: The size of the print queue.
+</li><li> <b>nevents</b>: The number of print jobs that each 
+                     user will make.
+</li></ol>
+The <b>main()</b> routine sets up a <b>Spq</b> 
+struct.  This is defined in <b>printqsim.h</b>.  Each
+user and printer thread will receive a pointer to one
+of these structs as its argument, and all information that
+the thread needs will be in this struct.  In this way,
+we won't need to use any global variables.  Each of the
+command line arguments has a field in the <b>Spq</b> struct,
+plus there are the following extra fields:
+<ul>
+<li> <b>id</b>: The user/printer's id.
+</li><li> <b>starttime</b>: The <b>time(0)</b> value of when the
+     program began.  This is useful for printing out information
+     while the program runs.
+</li><li> <b>v</b>: This is a <b>(void *)</b> that you will get to
+     define in your code.  You will initialize it in 
+     <b>initialize_v()</b>.  Each <b>Spq</b> struct's <b>v</b>
+     field will point to the same value.  You'll see how to 
+     use this in a bit.
+</li></ul>
+
+After setting up one <b>Spq</b> struct (including a call to
+<b>initialize_v()</b>), the <b>main()</b>
+thread sets up a random number generator, and then 
+creates <b>nusers</b> user threads, and <b>nprinters</b>
+printer threads.  Each thread gets its own <b>Spq</b> struct
+as its argument.  The only thing that differs in each <b>Spq</b>
+struct is the <b>id</b>.  Everything else (including the 
+pointer to <b>v</b>) is the same.  Finally, the main
+thread exits, leaving only the user and printer threads.
+
+<h3>User threads</h3>
+
+Each user thread does the same thing.  It iterates for <b>nevents</b>
+iterations.  In each iteration, it sleeps for a random period of
+time (between 1 and <b>arrtime*2</b> -- this yields a mean waiting
+time of <b>arrtime</b>), and then submits a print job.  This
+job is represented by a <b>Job</b> struct, which has three 
+fields -- the user's id, a job id (which is <b>i</b>), and
+the number of pages, which is a random number between 1 and
+<b>maxpages</b>.  The job is then submitted with <b>submit_job</b>.
+<p>
+After submitting <b>nevents</b> jobs, the user thread exits.
+The user thread prints out when it sleeps, and when it submits
+a job.
+
+</p><h3>Printer threads</h3>
+
+Each printer thread does the same thing.  It iterates 
+forever, first getting a job using <b>get_print_job()</b>,
+and then printing that job.  It simulates printing the
+job by sleeping for 4 seconds for each page.  After 
+printing, it repeats the process.
+The printer thread prints out when it asks for
+a job, and when it prints
+a job.
+
+<hr>
+<h2>A dummy solution</h2>
+
+All that's left is to write 
+<b>initialize_v(),</b>
+<b>submit_job(),</b>
+and <b>get_print_job().</b>
+To reiterate, were this a lab, your job would be to write 
+these three subroutines so that they work with 
+<b>printqsim.h</b> and <b>printqsim.c</b>
+You would not be allowed to modify
+<b>printqsim.h</b> and <b>printqsim.c</b>
+<p>
+Now, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps1.c"><b>ps1.c</b></a>.
+This is one solution to the problem.  It's not a
+working solution, but it is one that will compile and run.
+What it does is set <b>s-&gt;v</b> to <b>NULL</b>, 
+ignore print jobs when they are submitted, and
+force the printer threads to exit.
+</p><p>
+Try running it:
+</p><ul><pre>UNIX&gt; <b>ps1 5 3 5 5 5 3</b>
+   0: user  0/000: Sleeping for  6 seconds
+   0: user  1/000: Sleeping for  7 seconds
+   0: user  2/000: Sleeping for  6 seconds
+   0: user  3/000: Sleeping for  1 seconds
+   0: user  4/000: Sleeping for 10 seconds
+   0: prnt  0/000: ready to print
+   0: prnt  0/000: Done
+   0: prnt  1/000: ready to print
+   0: prnt  1/000: Done
+   0: prnt  2/000: ready to print
+   0: prnt  2/000: Done
+   1: user  3/000: Submitting a job with size 4
+   1: user  3/001: Sleeping for  7 seconds
+   6: user  2/000: Submitting a job with size 5
+   6: user  2/001: Sleeping for  8 seconds
+   6: user  0/000: Submitting a job with size 2
+   6: user  0/001: Sleeping for  8 seconds
+   7: user  1/000: Submitting a job with size 5
+   7: user  1/001: Sleeping for  6 seconds
+   8: user  3/001: Submitting a job with size 2
+   8: user  3/002: Sleeping for  4 seconds
+  10: user  4/000: Submitting a job with size 5
+  10: user  4/001: Sleeping for  8 seconds
+  12: user  3/002: Submitting a job with size 3
+  12: user  3/003: Done
+  13: user  1/001: Submitting a job with size 3
+  13: user  1/002: Sleeping for  5 seconds
+  14: user  0/001: Submitting a job with size 1
+  14: user  0/002: Sleeping for 10 seconds
+  14: user  2/001: Submitting a job with size 5
+  14: user  2/002: Sleeping for  9 seconds
+  18: user  4/001: Submitting a job with size 5
+  18: user  4/002: Sleeping for  6 seconds
+  18: user  1/002: Submitting a job with size 3
+  18: user  1/003: Done
+  23: user  2/002: Submitting a job with size 4
+  23: user  2/003: Done
+  24: user  0/002: Submitting a job with size 2
+  24: user  0/003: Done
+  24: user  4/002: Submitting a job with size 4
+  24: user  4/003: Done
+UNIX&gt; 
+</pre></ul>
+This created a simulation with 5 users, 3 printers,
+an average of 5 seconds between print jobs, a max
+page size of 5, a print queue size of 5, and three
+print jobs per user.
+<p>
+You'll note that the simulation did run, but not correctly.
+Why?  Well, the printers never printed anything, for
+starters.  Moreover, more than 5 print jobs were submitted
+and ostesibly queued, and the subsequent print jobs were
+still allowed to be submitted.  
+</p><p>
+This may seem like a boneheaded example, but it illustrates
+something important -- solutions to a problem may compile and
+run, but you have to check their output for correctness.  I will
+provide "solutions" like this one for your thread labs that
+will be incorrect, but give you a starting point.
+
+</p><hr><h2>Starting on a real solution</h2>
+
+To actually solve this problem, it's pretty clear how to start.
+You need to set up a queue of print jobs in your <b>v</b>
+pointer.  This queue will have <b>bufsize</b> elements.
+When a user submits a job, if there are less than <b>bufsize</b>
+elements in the queue, you will put the job there.  Otherwise,
+you'll have to wait for a printer to remove one of the jobs.
+<p>
+Since you have multiple threads accessing the buffer, you'll
+need to protect it with a mutex.  The above is all done in
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps2.c"><b>ps2.c</b></a>.
+First, it defines a <b>Buffer</b> struct
+that uses an array as a circular queue (with head/tail/njobs)
+defining the state of the queue.  It also has a mutex.
+</p><p>
+In <b>initialize_v()</b>, the buffer is allocated, and 
+<b>v</b> is set to be the buffer.
+Moreover,  now <b>submit_job</b> inserts the job into
+the buffer if there's room.  If there's not room, the
+user thread exits.  Also, nothing is done with <b>get_print_job()</b>.
+This is an example of programming incrementally -- you try one
+thing and test it to make sure it works before going on.
+</p><p>
+When we call this with the same arguments as before, we
+see that 5 jobs get submitted, and then the users all
+exit.  This is what we expect, so the code is working:
+</p><pre><ul>
+UNIX&gt; <b>ps2 5 3 5 5 5 3</b>
+   0: user  0/000: Sleeping for 10 seconds
+   0: user  1/000: Sleeping for  5 seconds
+   0: user  2/000: Sleeping for  8 seconds
+   0: user  3/000: Sleeping for  3 seconds
+   0: user  4/000: Sleeping for  6 seconds
+   0: prnt  0/000: ready to print
+   0: prnt  0/000: Done
+   0: prnt  1/000: ready to print
+   0: prnt  1/000: Done
+   0: prnt  2/000: ready to print
+   0: prnt  2/000: Done
+   3: user  3/000: Submitting a job with size 2
+   3: user  3/001: Sleeping for  1 seconds
+   4: user  3/001: Submitting a job with size 2
+   4: user  3/002: Sleeping for  6 seconds
+   5: user  1/000: Submitting a job with size 5
+   5: user  1/001: Sleeping for  6 seconds
+   6: user  4/000: Submitting a job with size 2
+   6: user  4/001: Sleeping for  2 seconds
+   8: user  2/000: Submitting a job with size 2
+   8: user  2/001: Sleeping for  6 seconds
+   8: user  4/001: Submitting a job with size 3
+   8: user  4 -- the queue is full -- exiting
+  10: user  3/002: Submitting a job with size 3
+  10: user  3 -- the queue is full -- exiting
+  10: user  0/000: Submitting a job with size 5
+  10: user  0 -- the queue is full -- exiting
+  11: user  1/001: Submitting a job with size 3
+  11: user  1 -- the queue is full -- exiting
+  14: user  2/001: Submitting a job with size 5
+  14: user  2 -- the queue is full -- exiting
+UNIX&gt; 
+</ul></pre>
+
+<hr><h2>A semi-working solution</h2>
+ 
+Now the question is -- what should we do when the queue is full?
+Moreover, when we start writing <b>get_print_job()</b>, what
+do we do when the queue is empty and there are no jobs to 
+print?  Well, <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps3.c"><b>ps3.c</b></a> provides one
+solution.  It is not a good solution, but it works.
+When <b>submit_job()</b> is called and the queue is full,
+the mutex is released, and <b>sleep(1)</b> is called.
+Then the queue is checked again.  In this way, if a printer
+thread calls <b>get_print_job()</b> during that second, 
+then it can take a job off the queue, and then user's job
+may be submitted.  Similarly, when the queue is empty and
+a printer calls <b>get_print_job()</b> it sleeps for a 
+second an checks again.  note, it has to release the 
+mutex when it sleeps so that a user thread can actually
+put a job on the queue.  
+<p>
+The code works.  Try it out:
+
+</p><pre><ul>
+UNIX&gt; <b>ps3 5 3 5 5 5 3</b>
+   0: user  0/000: Sleeping for 10 seconds
+   0: user  1/000: Sleeping for  1 seconds
+   0: user  2/000: Sleeping for  4 seconds
+   0: user  3/000: Sleeping for  1 seconds
+   0: user  4/000: Sleeping for 10 seconds
+   0: prnt  0/000: ready to print
+   0: prnt  0 sleeping because the queue is empty
+   0: prnt  1/000: ready to print
+   0: prnt  1 sleeping because the queue is empty
+   0: prnt  2/000: ready to print
+   0: prnt  2 sleeping because the queue is empty
+   1: user  1/000: Submitting a job with size 3
+   1: user  1/001: Sleeping for  7 seconds
+   1: user  3/000: Submitting a job with size 4
+   1: user  3/001: Sleeping for  4 seconds
+   1: prnt  0/000: Printing job   0 from user  1 size   3
+   1: prnt  1/000: Printing job   0 from user  3 size   4
+   1: prnt  2 sleeping because the queue is empty
+   2: prnt  2 sleeping because the queue is empty
+   3: prnt  2 sleeping because the queue is empty
+   4: user  2/000: Submitting a job with size 4
+   4: user  2/001: Sleeping for 10 seconds
+   4: prnt  2/000: Printing job   0 from user  2 size   4
+   5: user  3/001: Submitting a job with size 1
+   5: user  3/002: Sleeping for  2 seconds
+   7: user  3/002: Submitting a job with size 2
+   7: user  3/003: Done
+   8: user  1/001: Submitting a job with size 5
+   8: user  1/002: Sleeping for  4 seconds
+  10: user  4/000: Submitting a job with size 3
+  10: user  4/001: Sleeping for  9 seconds
+  10: user  0/000: Submitting a job with size 5
+  10: user  0/001: Sleeping for  5 seconds
+  12: user  1/002: Submitting a job with size 3
+  12: user  1 sleeping because the queue is full
+  13: prnt  0/001: ready to print
+  13: prnt  0/001: Printing job   1 from user  3 size   1
+  13: user  1/003: Done
+  14: user  2/001: Submitting a job with size 1
+  14: user  2 sleeping because the queue is full
+  15: user  0/001: Submitting a job with size 1
+  15: user  0 sleeping because the queue is full
+  15: user  2 sleeping because the queue is full
+  16: user  2 sleeping because the queue is full
+  16: user  0 sleeping because the queue is full
+  17: prnt  1/001: ready to print
+  17: prnt  1/001: Printing job   2 from user  3 size   2
+  17: user  0/002: Sleeping for  3 seconds
+  17: prnt  0/002: ready to print
+...
+  60: prnt  1 sleeping because the queue is empty
+  60: prnt  2/004: ready to print
+  60: prnt  2 sleeping because the queue is empty
+  60: prnt  0 sleeping because the queue is empty
+  61: prnt  2 sleeping because the queue is empty
+  61: prnt  0 sleeping because the queue is empty
+  61: prnt  1 sleeping because the queue is empty
+  62: prnt  0 sleeping because the queue is empty
+  62: prnt  1 sleeping because the queue is empty
+  62: prnt  2 sleeping because the queue is empty
+  63: prnt  0 sleeping because the queue is empty
+  63: prnt  1 sleeping because the queue is empty
+  63: prnt  2 sleeping because the queue is empty
+  64: prnt  1 sleeping because the queue is empty
+^CUNIX&gt; 
+</ul></pre>
+
+It all works fine.  When all the user jobs are done, 
+the printer threads keep sleeping and checking the
+queue, so you eventually have to <b>cntl-c</b> out of
+the program.
+<p>
+This is a workable solution, but it is not a good one.
+The technique of periodically checking the queue is called
+<i>polling</i>.  It's not really what you want because
+you'd like for a printer thread to wake up and start printing
+as soon as a job is inserted into the queue, instead of up
+to a second afterward.  Similarly, you'd like the user to
+complete submitting a job as soon as a printer thread
+empties a space in the queue instead of up to a second afterward.
+</p><p>
+In short, polling is ok, but not great.  I show it to you
+because it's good for you to see, but I don't want to see any
+polling in your labs -- if you do it, you will get points
+taken off. 
+
+</p><hr><h3>Monitors and condition variables</h3>
+
+<i>(I know, you were already introduced to these in a previous lecture, so 
+this will be a little repetitive.  However, it will also be a very good
+reinforcement of the material for you.)</i>
+<p>
+
+Monitors and condition variables together form a very convenient tool
+for synchronization.  There are two ways to discuss
+monitors and condition variables -- as part of a threaded language,
+or as part of a threads library.  
+</p><p>
+The CS361 textbook (Silberschatz &amp; Galvin, Chapter 6 -- or at least that's
+what it was last time I checked) discusses them
+as part of a threaded language, but I'm going to discuss them as part
+of a threads library, since that's how you will use them.
+
+</p><p>A <i>monitor</i> is a data structure which a thread can "enter" and "exit".
+Only one thread may be in the monitor at a time.  This is just like
+a mutex, and in pthreads, there is no entity called a "monitor".  You 
+just use a mutex.
+
+<i>Condition variables</i> allow you to do more sophisticated things with
+monitors.  A condition variable must be associated with a specific monitor.
+There are three procedures that act on condition varaibles,
+and whenever you call them, you must have entered the relevant monitor
+(i.e. you must have locked the relevant mutex):
+
+</p><ul>
+<li><b>pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *mon)</b>
+<p>This says to release the mutex and block until another thread unblocks
+you.  This is of course, done atomically.  When <b>pthread_cond_wait()</b>
+returns, that means that you have been woken up, and you have reacquired
+the mutex.
+</p><p>
+</p></li><li><b>pthread_cond_signal(pthread_cond_t *c)</b>
+<p>This chooses one thread that has blocked on
+the condition variable, and unblocks it.  If there is no thread that
+has blocked on the condition variable, then <b>pthread_cond_signal()</b> 
+does nothing.
+There are no guarantees about which thread gets
+unblocked if there are more than one blocked -- just that some thread(s)
+will be unblocked.  The pthreads library does not require that you 
+actually own the mutex when you call <b>pthread_cond_signal()</b>.
+Some threads packages do, and I think that it's a good idea, so whenever
+you see me use <b>pthread_cond_signal()</b>, I will have locked the 
+relevant mutex.
+</p><p>
+</p></li><li><b>pthread_cond_broadcast(pthread_cond_t *c)</b>
+
+<p>This unblocks all threads that have blocked on the condition variable.
+</p></li></ul>
+Let me advocate testing the return values of all monitor and condition
+variable calls.  This is because you often make errors messing with these,
+and testing the return value can save you hours of debugging.
+<p>
+
+</p><p>
+Now, here is an odd thing -- if you call
+<b>pthread_cond_signal()</b> or <b>pthread_cond_broadcast()</b>, 
+then you should own the mutex (i.e. you should have locked
+the mutex).
+However, the thread that you are
+unblocking will have locked the mutex when it called
+<b>pthread_cond_wait()</b>.  This at first appears to be
+a contradiction, but you must remember that the waiting
+thread unlocks the mutex while it is blocked.  When 
+it is unblocked, it must relock the mutex before returning
+from <b>pthread_cond_wait()</b>.
+</p><p>
+As it turns out there are a few choices that the threads system
+has in implementing condition variables.
+
+</p><ol>
+<li>The unblocked thread has to wait until the the thread calling
+   <b>pthread_cond_signal()</b>/<b>pthread_cond_broadcast()</b> 
+   unlocks the mutex to run.  I.e. the unblocking
+   merely makes it block on the mutex instead of the condition variable.
+
+</li><li>The unblocked thread automatically locks mutex and the thread
+  calling <b>pthread_cond_signal()</b>/<b>pthread_cond_broadcast()</b> 
+  goes back to blocking on the mutex.
+  When the mutex is free, the thread will reenter it and continue
+  executing following the 
+   <b>pthread_cond_signal()</b>/<b>pthread_cond_broadcast()</b> call.
+</li></ol>
+
+Believe it or not, there are arguments for both approaches.  In pthreads,
+the former approach is taken.  My personal philosophy on this
+is that you should program in such a way that either approach will
+work.  One way to do this is to make sure that you unlock the
+mutex <i>immediately</i> after calling <b>pthread_cond_signal()</b> or 
+<b>pthread_cond_broadcast()</b>.  My code will always do this.
+
+<p>Read the CS361 textbook (chapter 6) for a further discussion of this.
+
+</p><hr><h2>Using condition variables</h2>
+
+Now, adding condition variables to our program is straightforward.
+We need two condition variables -- one for when the queue is full
+and one for when the queue is empty.  We'll call <b>pthread_cond_wait()</b>
+in <b>submit_job()</b> when the queue is full, and 
+<b>pthread_cond_signal()</b> in <b>get_print_job()</b> when a printer
+thread removes a job from a full queue.
+<p>
+Likewise, 
+we'll call <b>pthread_cond_wait()</b>
+in <b>get_print_job()</b> when the queue is empty, and 
+<b>pthread_cond_signal()</b> in <b>submit_job()</b> when a user
+thread inserts a job into an empty queue.
+</p><p>
+Note that <b>submit_job()</b> and  <b>get_print_job()</b> both
+use while loops because when <b>pthread_cond_wait()</b> returns,
+the queue may have become full/empty in the time between when
+the waiting thread unblocked and the time that it acquired
+the mutex.  Therefore, it may have to wait again.
+</p><p>
+The code is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps4.c"><b>ps4.c</b></a>.  When you run it, everything
+seems to work just fine.
+
+
+</p><ul><pre>UNIX&gt; !ps
+ps4 5 3 5 5 5 3
+   0: user  0/000: Sleeping for  4 seconds
+   0: user  1/000: Sleeping for 10 seconds
+   0: user  2/000: Sleeping for  5 seconds
+   0: user  3/000: Sleeping for  2 seconds
+   0: user  4/000: Sleeping for  7 seconds
+   0: prnt  0/000: ready to print
+   0: prnt  0 blocking because the queue is empty
+   0: prnt  1/000: ready to print
+   0: prnt  1 blocking because the queue is empty
+   0: prnt  2/000: ready to print
+   0: prnt  2 blocking because the queue is empty
+   2: user  3/000: Submitting a job with size 5
+   2: user  3/001: Sleeping for 10 seconds
+   2: prnt  0/000: Printing job   0 from user  3 size   5
+   4: user  0/000: Submitting a job with size 1
+   4: user  0/001: Sleeping for  1 seconds
+   4: prnt  1/000: Printing job   0 from user  0 size   1
+   5: user  2/000: Submitting a job with size 4
+   5: user  2/001: Sleeping for  6 seconds
+   5: user  0/001: Submitting a job with size 3
+   5: user  0/002: Sleeping for 10 seconds
+   5: prnt  2/000: Printing job   0 from user  2 size   4
+   7: user  4/000: Submitting a job with size 4
+   7: user  4/001: Sleeping for 10 seconds
+   8: prnt  1/001: ready to print
+   8: prnt  1/001: Printing job   1 from user  0 size   3
+  10: user  1/000: Submitting a job with size 1
+  10: user  1/001: Sleeping for  6 seconds
+  11: user  2/001: Submitting a job with size 3
+  11: user  2/002: Sleeping for  1 seconds
+  12: user  3/001: Submitting a job with size 1
+  12: user  3/002: Sleeping for 10 seconds
+  12: user  2/002: Submitting a job with size 5
+  12: user  2/003: Done
+  ...
+</pre></ul>
+
+
+<hr><h2>A bug</h2>
+However, there is still one problem with this code.
+Suppose there are two printer threads waiting because
+the queue is empty.  Moreover, there are two user
+threads that want to submit jobs at the same time.
+The first user thread puts the job on the queue and
+calls <b>pthread_cond_signal()</b>.  This unblocks
+one of the printer threads, but it then blocks so
+that it can acquire the mutex.  Now, the user thread
+releases the mutex, but the printer thread does not
+get it -- instead, the next user thread gets it.
+It puts a job into the queue, but since there is
+already a job there, it does <i>not</i> call
+<b>pthread_cond_signal()</b>.  Therefore, even though
+there are two jobs to be printed, only one printer
+thread is awake.  This means that we've lost one 
+printer.  This is a bug.  
+<p>
+Look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps4-bad.txt"><b>ps4-bad.txt</b></a>.  
+This is exactly what happens.  There are three user
+threads and five printer threads.  Initially, all of
+the printer threads block.  At the 3 second mark, two
+user threads submit jobs, but only one printer thread
+(0) is signalled.  Then, more jobs are put onto
+the print queue, but since <b>njobs</b> is greater than
+1, no more printers get awakened.  This is a bug.
+</p><p>
+Fixing this bug is simple (in
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps5.c"><b>ps5.c</b></a>) 
+-- simply remove the <b>if</b>
+statements around the <b>pthread_cond_signal()</b> calls.
+This means that <b>submit_job</b> always signals the
+<b>empty</b> condition variable, and <b>get_print_job</b>
+always signals the <b>full</b> condition variable.  This
+works fine -- if there are no blocked threads, 
+<b>pthread_cond_signal()</b> does nothing, and if, for example,
+a user thread is unblocked and there is no room on the 
+queue, it will simply call <b>pthread_cond_wait()</b> again.
+Try it out.  If you look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread4/ps5-good.txt"><b>ps5-good.txt</b></a>, you'll see
+the same scenario as in <b>ps4-bad.txt</b> at the 27 second
+mark, and that it is handled just fine.
+</p><p>
+
+</p><hr><h2>So</h2>
+
+So, you've learned what monitors/condition variables are,
+and you've seen a detailed example of their use.  You have
+also seen that synchronization problems can be subtle, and
+you have to examime your program's output carefully to make
+sure that it is working like you think it should.
+</body></html>

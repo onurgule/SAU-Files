@@ -1,0 +1,594 @@
+
+<!-- saved from url=(0079)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Wait and Exec</title>
+</head><body bgcolor="ffffff">
+<h2>CS360 Lecture notes -- Wait and Exec</h2>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Exec</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/lecture.html
+</b></a>
+</li><li> Original Lecture Notes: Mid 1990's.
+</li><li> Most recent update: <i>
+Sat Mar 24 10:56:10 EDT 2018
+</i>
+</li></ul>
+<hr>
+
+<h2>Wait()</h2>
+
+<b>Wait()</b> is a very important system call.  What it does is wait 
+for one of your child processes, that you have created with <b>fork()</b>,
+to exit.   When one exits, <b>wait()</b> returns and gives you some information
+about the child and how it exited.  Here's the prototype (<b>man -s wait</b>):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include <sys wait.h="">
+
+pid_t wait(int *stat_loc);   <font color="blue">// pid_t is an int or uint32_t, typically</font>
+</sys></pre></td></tr></tbody></table></center><p>
+</p><p>
+
+When you call it, if you don't have any children, it returns -1.  Otherwise, it
+will wait for one of your children to exit.  When they do, the <b>wait()</b> call
+will return with the process id of the child that exited.  It will also fill in
+the integer pointed to by <b>stat_loc</b> with information on how the child exited.
+There are macros in the <b>sys/wait.h</b> include file that can help you parse
+this integer.  
+</p><p>
+Here are examples.
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait0.c">forkwait0.c</a></b> calls <b>wait()</b> with no children:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/wait.h&gt;
+
+int main()
+{
+  int rv, stat_loc;
+  
+  stat_loc = 0xabcdef;
+
+  rv = wait(&amp;stat_loc);
+  printf("RV: %d.   Stat_loc = 0x%x\n", rv, (unsigned int) stat_loc);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+It returns instantly with a return value of -1, and <b>stat_loc</b> remains
+unchanged:
+
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./forkwait0</b></font>
+RV: -1.   Stat_loc = 0xabcdef
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait1.c">forkwait1.c</a></b> forks off one child, which exits instantly
+with a return code of zero.  The parent calls <b>wait()</b> and prints out a bunch
+of stuff about the return status:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i, j, status;
+
+  i = fork();
+
+  if (i &gt; 0) {
+    j = wait(&amp;status);
+    printf("Parent: Child done.\n");
+    printf("  Return value: %d\n", j);
+    printf("  Status:       %d\n", status);
+    printf("  WIFSTOPPED:   %d\n", WIFSTOPPED(status));
+    printf("  WIFSIGNALED:  %d\n", WIFSIGNALED(status));
+    printf("  WIFEXITED:    %d\n", WIFEXITED(status));
+    printf("  WEXITSTATUS:  %d\n", WEXITSTATUS(status));
+    printf("  WTERMSIG:     %d\n", WTERMSIG(status));
+    printf("  WSTOPSIG:     %d\n", WSTOPSIG(status));
+  } else {
+    printf("Child (%d) calling exit(0)\n", getpid());
+    exit(0);
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+You can see with "WEXITSTATUS" that the child exited with a return code
+of zero.  
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./forkwait1</b></font>
+Child (8575) calling exit(0)
+Parent: Child done.
+  Return value: 8575
+  Status:       0
+  WIFSTOPPED:   0
+  WIFSIGNALED:  0
+  WIFEXITED:    1
+  WEXITSTATUS:  0
+  WTERMSIG:     0
+  WSTOPSIG:     0
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait2.c">forkwait2.c</a></b> is the exact same as
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait1.c">forkwait1.c</a></b>, except that the child calls
+<b>exit(1)</b> instead of <b>exit(0)</b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>./forkwait2</b></font>
+Child (8747) calling exit(1)
+Parent: Child done.
+  Return value: 8747
+  Status:       256
+  WIFSIGNALED:  0
+  WIFEXITED:    1
+  WEXITSTATUS:  1
+  WTERMSIG:     0
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+With <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait3.c">forkwait3.c</a></b>, the child goes into an infinite 
+loop, which means that the parent's <b>wait()</b> call does not return:
+
+<pre>UNIX&gt; <font color="darkred"><b>forkwait3</b></font>
+Child (8912) doing nothing until you kill it
+Kill the child with 'kill -9 8912'  or just 'kill 8912'
+</pre>
+
+In another window, go ahead and kill the child process:
+
+<pre>UNIX&gt; <font color="darkred"><b>kill -9 8912</b></font>
+</pre>
+
+Now, the parent's <b>wait()</b> call returns, and shows you that the child
+process was terminated with "signal 9."  That is how you killed the child process
+with the "kill" command:
+
+<pre>Parent: Child done.
+  Return value: 8912
+  Status:       9
+  WIFSTOPPED:   0
+  WIFSIGNALED:  1
+  WIFEXITED:    0
+  WEXITSTATUS:  0
+  WTERMSIG:     9
+  WSTOPSIG:     0
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Finally, 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait4.c">forkwait4.c</a></b> has the child generate a segmentation violation.
+That is reported to the parent as terminating with "signal 11."
+
+<pre>UNIX&gt; <font color="darkred"><b>./forkwait4</b></font>
+Child (9255) generating a seg fault
+Parent: Child done.
+  Return value: 9255
+  Status:       11
+  WIFSTOPPED:   0
+  WIFSIGNALED:  1
+  WIFEXITED:    0
+  WEXITSTATUS:  0
+  WTERMSIG:     11
+  WSTOPSIG:     0
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+We'll go over signals in detail in another lecture.
+
+<p>Ok.  Now, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/forkwait5.c"><b>forkwait5.c</b></a>.
+It does the following:
+
+</p><ul>
+<li> The child exits immediately with an exit code of 3.
+</li><li> The parent sleeps for a second, which insures that the child will be terminated 
+     when the parent awakens.
+</li><li> The parent prints the output of "<b>ps aux | grep plank</b>".
+</li><li> The parent calls <b>wait()</b> and prints out information.
+</li></ul>
+
+As mentioned above, by the time the
+parent calls <b>system("ps aux | grep plank")</b>, the child has exited.  Thus,
+we might expect there to be no listing in the "<b>ps x</b>"
+command for the child, and possibly that the <b>wait()</b> might
+wait forever, since the child is gone.  However, this
+is not the case.  
+
+<p>When a child exits, its process becomes a
+"<i>zombie</i>" until its parent process either dies or calls
+<b>wait()</b> for it.  By a "zombie", we mean that it takes up no
+resources, and doesn't run, but it is just being maintained
+by the operating system so that when the parent calls
+<b>wait()</b>, it will get the proper information.  Look at the
+output of <b>forkwait5</b>: 
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./forkwait5</b></font>
+Child (6698) calling exit(2)
+root      5286  0.0  0.1 168264  5504 ?        Ss   10:55   0:00 sshd: plank [priv]
+plank     5315  0.0  0.0 168264  2428 ?        S    10:55   0:00 sshd: plank@pts/0
+plank     5316  0.0  0.0 127964  2160 pts/0    Ss   10:55   0:00 -csh
+plank     5617  0.0  0.1 158956  4960 pts/0    S+   10:58   0:00 vim lecture.html
+root      6406  0.0  0.1 168264  5508 ?        Ss   11:04   0:00 sshd: plank [priv]
+plank     6413  0.0  0.0 168264  2432 ?        S    11:04   0:00 sshd: plank@pts/1
+plank     6414  0.0  0.0 127964  2160 pts/1    Ss   11:04   0:00 -csh
+plank     6697  0.0  0.0   4172   360 pts/1    S+   11:06   0:00 ./forkwait5
+plank     6698  0.0  0.0      0     0 pts/1    Z+   11:06   0:00 [forkwait5] <defunct>
+plank     6700  0.0  0.0 113140  1428 pts/1    S+   11:06   0:00 sh -c ps aux | grep plank
+plank     6701  0.0  0.0 161372  1840 pts/1    R+   11:06   0:00 ps aux
+plank     6702  0.0  0.0 112676   964 pts/1    S+   11:06   0:00 grep plank
+
+Parent: Child done.
+  Return value: 6698
+  Status:       512
+  WIFSTOPPED:   0
+  WIFSIGNALED:  0
+  WIFEXITED:    1
+  WEXITSTATUS:  2
+  WTERMSIG:     0
+  WSTOPSIG:     2
+UNIX&gt; <font color="darkred"><b>ps aux | grep plank</b></font>
+root      5286  0.0  0.1 168264  5504 ?        Ss   10:55   0:00 sshd: plank [priv]
+plank     5315  0.0  0.0 168264  2428 ?        S    10:55   0:00 sshd: plank@pts/0
+plank     5316  0.0  0.0 127964  2160 pts/0    Ss   10:55   0:00 -csh
+plank     5617  0.0  0.1 158956  5012 pts/0    S+   10:58   0:00 vim lecture.html
+root      6406  0.0  0.1 168264  5508 ?        Ss   11:04   0:00 sshd: plank [priv]
+plank     6413  0.0  0.0 168264  2432 ?        S    11:04   0:00 sshd: plank@pts/1
+plank     6414  0.0  0.0 127964  2160 pts/1    Ss   11:04   0:00 -csh
+plank     6821  0.0  0.0 161372  1840 pts/1    R+   11:08   0:00 ps aux
+plank     6822  0.0  0.0 112676   964 pts/1    S+   11:08   0:00 grep plank
+UNIX&gt; <font color="darkred"><b></b></font>
+</defunct></pre>
+
+The process 6698 is the zombie process, denoted in the "<b>ps x</b>" output with
+a capital Z.  When <b>forkwait5</b> (process 6697) calls <b>wait()</b>,
+then process goes away.  
+
+<p>What happens if the parent exits without calling <b>wait()</b>?  
+Then the child process goes away if/when the child has exited.
+
+</p><p><b>wait()</b> returns whenever a child exits.  If a process has more than
+one child, then you can't force <b>wait()</b> to wait for a specific child.
+You simply get whichever child exits first.  For example, see
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/multichild.c"><b>multichild.c</b></a>.  This program forks off 
+4 children processes and then calls <b>wait()</b> four times.
+The children sleep for a random period of time,
+and then exit.  As you see, the first <b>wait()</b> call returns the
+first child to return:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./multichild</b></font>
+Fork 0 returned 14160
+Fork 1 returned 14161
+Fork 2 returned 14162
+Fork 3 returned 14163
+Child 1 (14161) exiting
+Wait returned 14161
+Child 3 (14163) exiting
+Wait returned 14163
+Child 0 (14160) exiting
+Wait returned 14160
+Child 2 (14162) exiting
+Wait returned 14162
+UNIX&gt;
+</pre>
+Now, you can use <b>waitpid()</b> to wait for a specific process, and
+you can even have it return if the specified process has not exited.
+I personally think using <b>waitpid()</b> is usually bad form, and
+most certainly using the version that returns instantly is <i>really</i>
+bad form.  
+<p>
+You will not be allowed to use any <b>wait()</b> variant besides 
+<b>wait()</b> in your <b>jsh</b> lab.  I will instruct the TA's to 
+be ruthless if you call <b>waitpid()</b> with <b>NOHANG</b> set
+(or one of the <b>wait<i>x</i>()</b> equivalents).
+
+</p><hr>
+<h2>Execve</h2>
+
+You saw last lecture how we create new processes -- using <b>fork()</b>.
+Now, we go over how to execute programs using <b>execve()</b>.
+
+<p><b>Execve()</b> is simple in concept:
+
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int execve(char *path, char **argv, char **envp);
+</pre></td></tr></tbody></table></center><p>
+
+</p><p><b>Execve()</b> assumes that <b>path</b> is the name of an executable file.  
+<b>Argv</b>
+is an array of null-terminated strings, such that the last element
+is <b>NULL</b>, and <b>envp</b> is 
+another null-terminated array of null-terminated
+strings.  (I'm not going to go over <b>envp</b> -- it holds your environment
+variables, which you can get and set with <b>getenv()/setenv()</b>.  You can 
+get <b>envp</b> as a third argument to <b>main()</b>, which is what I'm going
+to do here).
+
+</p><p><b>Execve()</b> overwrites the current process so that it executes
+the file in <b>path</b> with the arguments in <b>argv</b>, and the
+environment variables in <b>envp</b>.  <b>Execve()</b> does not return
+unless it encounters an error, such as the file in <b>path</b>
+not existing, or not being an executable file. 
+
+</p><p>This may seem confusing.  Why does <b>execve()</b> not return?
+Well, look at the example in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/exec2.c">exec2.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(int argc, char **argv, char **envp)
+{
+  char *newargv[3];
+  int i;
+
+  newargv[0] = "cat";
+  newargv[1] = "exec2.c";
+  newargv[2] = NULL;
+
+  i = execve("/bin/cat", newargv, envp);
+  perror("exec2: execve failed");
+  exit(1);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Suppose we compile this to the program <b>exec2</b>.  Then we
+execute it with no arguments.  When we get to the <b>execve()</b>
+call, the state of memory is the following: 
+
+</p><pre>                      |-----------------|
+                      |                 |
+                      | code for exec2  |
+                      |                 |
+                      |-----------------|
+                      |                 |
+                      |     globals     |
+                      |    for exec2    |
+                      |                 |
+                      |-----------------|
+                      |                 |
+                      | heap for exec2  |
+                      |                 |
+                      |-----------------|
+                            ....
+                      | stack for exec2 |
+                      |-----------------|
+</pre>
+
+Now, <b>execve()</b> is called.  This is a system call that
+says "overwrite my process' memory so that it is running <b>main()</b> in 
+the program in <b>/bin/cat</b>" with the arguments
+"<b>cat</b>" "<b>exec2.c</b>".  When <b>execve()</b> is done, the state of
+memory has been changed so that we are in the <b>main()</b>
+routine of cat, with <b>argc</b> and <b>argv</b> set properly: 
+
+<pre>                      |-----------------|
+                      |                 |
+                      |  code for cat   |
+                      |                 |
+                      |-----------------|
+                      |                 |
+                      |     globals     |
+                      |     for cat     |
+                      |                 |
+                      |-----------------|
+                      |                 |
+                      |  heap for cat   |
+                      |                 |
+                      |-----------------|
+                            ....
+                      |  stack for cat  |
+                      |-----------------|
+</pre>
+
+You'll notice that everything concerning <b>exec2.c</b> is
+gone.  This is because the state of memory has been
+overwritten to run <b>cat</b>.  There is no trace of <b>exec2</b>
+left.  This is why <b>execve()</b> cannot return if it is
+sucessful -- the state to which it might have returned
+has been overwritten.  It is gone.  When <b>cat</b> exits,
+the operating system simply destroys the process. 
+<p>
+Here it is running -- looks just like "cat exec2.c":
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./exec2</b></font>
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(int argc, char **argv, char **envp)
+{
+  char *newargv[3];
+  int i;
+
+  newargv[0] = "cat";
+  newargv[1] = "exec2.c";
+  newargv[2] = NULL;
+
+  i = execve("/bin/cat", newargv, envp);
+  perror("exec2: execve failed");
+  exit(1);
+}
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>So how come when you execute <b>cat</b> in the shell it looks
+like it returns to the shell?  This is because the
+shell calls <b>fork()</b>.  It then has the child call <b>execve()</b>, and 
+the parent calls <b>wait()</b>. 
+
+</p><p>There are six variants of <b>execve()</b> -- see the man page
+for <b>execve()</b>.  I'll summarize them below:
+
+</p><ol>
+<li> <b>execl(char *path, char *arg0, char *arg1, ..., char *argn, NULL)</b>:
+     This uses your current <b>envp</b>, and lets you specify the <b>argv</b>
+     as parameters, rather than building an array of pointers.  <b>Path</b>
+     must specify the path name exactly.<p>
+</p></li><li> <b>execv(char *path, char **argv)</b>: This is just like <b>execve</b>,
+     but uses your current <b>envp</b>.<p>
+</p></li><li> <b>execle(char *path, char *arg0, char *arg1, ..., char *argn, NULL, 
+     char **envp)</b>:  This is just like <b>execl</b>, but you must specify
+     <b>envp</b>.<p>
+</p></li><li> <b>execve(char *path, char **argv, char **envp)</b>.<p>
+</p></li><li> <b>execlp(char *path, char *arg0, char *arg1, ..., char *argn, NULL)</b>:
+     This is just like <b>execl</b>, except that if <b>path</b> is a relative
+     filename, then the directories in your <b>PATH</b> variable
+     will be searched to find <b>path</b>.<p>
+</p></li><li> <b>execvp(char *path, char **argv)</b>: This is just like <b>execv</b>,
+     except that the <b>PATH</b> variable will be searched to find <b>path</b>.
+</li></ol>
+
+Of the six, <b>execvp()</b> and <b>execlp()</b> are the most
+useful.  All are implemented on top of <b>execve()</b>
+though. 
+
+<p>If <b>execve()</b> is unsuccessful (for example, there is no
+file with the name "<b>path</b>", or that file does not have
+the executable bit set), it will return with a value
+of -1.  For example, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/exec1.c"><b>exec1.c</b></a>.
+
+</p><p>This program tries to execute "<b>./cat</b>", which does not exist.
+Thus, the <b>execve()</b> call fails, and the <b>perror</b> 
+statement is executed.
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./exec1</b></font>
+exec1: execve failed: No such file or directory
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>This leads to:
+
+</p><hr><hr><hr>
+<center>
+<h2><u>DR. PLANK'S CARDINAL SIN OF EXEC</u></h2>
+
+<h3>You should NEVER EVER EVER call execve() or any of its variants without
+testing the return value and exiting if it returns!!!!!!!</h3>
+</center>
+<hr><hr><hr>
+
+Why is this such a sin?  Look at the <b>execcat</b><i>x</i><b>.c</b> programs.
+First is
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/execcat1.c">execcat1.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main(int argc, char **argv)
+{
+  char *newargv[3];
+  int i, j;
+
+  newargv[0] = "cat";
+  newargv[1] = "f1.txt";
+  newargv[2] = NULL;
+
+  for (j = 0; j &lt; 4; j++) {
+    if (fork() == 0) {
+      i = execvp("cat", newargv);
+    } else {
+      wait(&amp;i);
+    }
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>
+This program
+forks off four processes that all exec "<b>cat f1.txt</b>".  Note
+the use of <b>execvp()</b>, which does not need an environment variable, and
+which searches the <b>PATH</b> variable to find "<b>cat</b>".
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./execcat1</b></font>
+This is file f1.txt
+This is file f1.txt
+This is file f1.txt
+This is file f1.txt
+UNIX&gt;
+</pre>
+
+Now, 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/execcat2.c"><b>execcat2.c</b></a>
+simply substitutes <b>execv()</b> for <b>execvp()</b>.  Now, the path is not
+searched, and the <b>cat</b> executable will not be found.  When you run it, 
+ostensibly nothing happens:
+
+<pre>UNIX&gt; <font color="darkred"><b>./execcat2</b></font>
+UNIX&gt;
+</pre>
+
+What's really going on?  Well, the <b>execv()</b> call fails.  This means that
+the <b>execv()</b> call returns with <b>i = -1</b>, and then the child process
+continues.  It too will go through the <b>while</b> loop and call <b>fork()</b>.
+To help illustrate what goes on, look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/execcat3.c"><b>execcat3.c</b></a>,
+which prints out the value of <b>j</b> and the pid of the process before every 
+<b>fork()</b> call:
+
+<pre>UNIX&gt; <font color="darkred"><b>./execcat3</b></font>
+I am 13796.  j = 0
+I am 13797.  j = 1
+I am 13798.  j = 2
+I am 13799.  j = 3
+I am 13798.  j = 3
+I am 13797.  j = 2
+I am 13802.  j = 3
+I am 13797.  j = 3
+I am 13796.  j = 1
+I am 13805.  j = 2
+I am 13806.  j = 3
+I am 13805.  j = 3
+I am 13796.  j = 2
+I am 13809.  j = 3
+I am 13796.  j = 3
+UNIX&gt;
+</pre>
+
+As you can see, <b>fork()</b> is called 15 times, not four,
+because the processes that failed the <b>execv()</b> call
+continue in the <b>while</b> loop.  This isn't bad when the <b>for</b>
+loop stops when <b>j = 4</b>, 
+but were that a 10 rather than a 4, then <b>fork()</b> would be called 1023
+times.  (i.e.  fork gets called <i>2<sup>n</sup>-1</i> times if the 4
+were an <i>n</i>).  This can be devastating.  Fix the error
+by calling <b>perror()</b> and <b>exit()</b> if <b>execv()</b> returns, as in
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/execcat4.c"><b>execcat4.c</b></a>:
+
+<pre>UNIX&gt; <font color="darkred"><b>./execcat4</b></font>
+execcat4: No such file or directory
+execcat4: No such file or directory
+execcat4: No such file or directory
+execcat4: No such file or directory
+UNIX&gt;
+</pre>
+
+If you want a truly disastrous program, take a look at
+
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Exec/disaster.c">disaster.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main(int argc, char **argv)
+{
+  char *newargv[3];
+  int i, j;
+
+  newargv[0] = "cat";
+  newargv[1] = "f1.txt";
+  newargv[2] = NULL;
+
+  j = 0;
+  while (j &lt; 4) {
+    if (fork() == 0) {
+      execv("cat", newargv);
+    } else {
+      j++;
+    }
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Don't run that one unless you are a machine that you can reboot.....
+
+</p></body></html>

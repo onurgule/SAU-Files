@@ -1,0 +1,873 @@
+
+<!-- saved from url=(0085)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- A primer on mutexes and condition variables</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- A primer on mutexes and condition variables</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Mutex-Cond</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/lecture.html
+</b></a>
+</li><li> Original notes: 2017
+</li><li> Last modification:
+Thu Apr 11 16:50:04 EDT 2019
+</li></ul>
+<hr>
+
+<h3>The pthread_mutex_t data structure</h3>
+
+This text is copied from the <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/lecture.html">lecture
+notes on race conditions (thread 2)</a>.
+<p>
+
+The pthreads library provides a simple data structure called a "mutex" that allows threads to synchronize by locking
+and unlocking the data structure.  The three procedures that you use with mutexes are as follows:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int pthread_mutex_init(pthread_mutex_t *mutex, NULL);
+int pthread_mutex_lock(pthread_mutex_t *mutex);
+int pthread_mutex_unlock(pthread_mutex_t *mutex);
+</pre></td></tr></tbody></table></center><p>
+
+You create a mutex with <b>pthread_mutex_init()</b>.  You have to have allocated memory for it ahead of time
+(i.e. <b>pthread_mutex_init()</b> does not call <b>malloc()</b>. 
+Then any thread may lock or unlock the mutex. When a thread locks the mutex, no other thread may lock it. 
+If a thread calls <b>pthread_mutex_lock()</b> while the mutex is locked, then the thread 
+will block until the mutex is unlocked. Only one thread may lock the mutex at a time.
+</p><p>
+
+The program <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/mutex_example_1.c">mutex_example_1.c</a></b> is a simple illustration of a
+mutex in action.  In this program, we fork off multiple threads.  Each thread has access to a shared
+counter, and what each thread does is lock the mutex, update the counter, sleep for a bit, and then
+unlock the mutex.  Before it unlocks the mutex, it checks to make sure that the counter has not
+been altered while it was asleep.  The properties of the mutex data structure assure that this
+works.  Here's the code.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;pthread.h&gt;
+
+<font color="blue">/* Each thread is going to have private information and 
+   shared information.  Here is the shared information. */</font>
+
+struct shared {
+  int counter;            <font color="blue">/* A shared counter. */</font>
+  pthread_mutex_t *lock;  <font color="blue">/* A lock to protect the counter. */</font>
+  int usleeptime;         <font color="blue">/* Microseconds that each thread will sleep after updating the counter. */</font>
+};
+
+<font color="blue">/* Here is the private information */</font>
+
+struct info {
+  int id;                 <font color="blue">/* The thread's id. */</font>
+  struct shared *s;       <font color="blue">/* Pointer to the shared information. */</font>
+};
+
+<font color="blue">/* Here is the procedure that each thread calls.  
+   In a nutshell, each thread locks the mutex, increments the
+   counter, then sleeps.  It then tests to make sure that the
+   counter hasn't been modified, and unlocks the mutex.  It
+   repeats this loop indefinitely. */</font>
+
+void *share_counter(void *arg)
+{
+  struct info *info;    <font color="blue">/* The thread's private info. */</font>
+  struct shared *s;     <font color="blue">/* The thread's shared info. */</font>
+  int counter;          <font color="blue">/* A copy of the counter, to test. */</font>
+
+  info = (struct info *) arg;
+  s = info-&gt;s;
+
+  while (1) {
+
+    <font color="blue">/* Lock the mutex, update the counter and print. */</font>
+
+    pthread_mutex_lock(s-&gt;lock);      
+    s-&gt;counter++;
+    counter = s-&gt;counter;
+    printf("Thread: %3d - Begin - Counter %3d.\n", info-&gt;id, s-&gt;counter);
+    fflush(stdout);
+
+    <font color="blue">/* Sleep, and then print the counter again. */</font>
+
+    usleep(s-&gt;usleeptime);
+    printf("Thread: %3d - End   - Counter %3d.\n", info-&gt;id, s-&gt;counter);
+    fflush(stdout);
+
+    <font color="blue">/* Make sure the counter hasn't been modified, then unlock the mutex. */</font>
+
+    if (s-&gt;counter != counter) {
+      printf("Thread %d - Problem -- counter was %d, but now it's %d\n",
+             info-&gt;id, counter, s-&gt;counter);
+      exit(1);
+    }
+    pthread_mutex_unlock(s-&gt;lock);
+
+  }
+
+  return NULL;   <font color="blue">/* Shut the compiler up. */</font>
+}
+
+<font color="blue">/* The main sets up the threads, and exits. */</font>
+  
+int main(int argc, char **argv)
+{
+  int nthreads;
+  int usleeptime;
+  pthread_t *tids;
+  struct shared S;
+  struct info *infos;
+  int i;
+
+  if (argc != 3) {
+    fprintf(stderr, "usage: mutex_example nthreads usleep_time\n");
+    exit(1);
+  }
+
+  nthreads = atoi(argv[1]);
+  usleeptime = atoi(argv[2]);
+
+  tids = (pthread_t *) malloc(sizeof(pthread_t) * nthreads);
+  infos = (struct info *) malloc(sizeof(struct info) * nthreads);
+  for (i = 0; i &lt; nthreads; i++) {
+    infos[i].id = i;
+    infos[i].s = &amp;S;
+  }
+  S.counter = 0;
+  S.usleeptime = usleeptime;
+  S.lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+  pthread_mutex_init(S.lock, NULL);
+
+  for (i = 0; i &lt; nthreads; i++) {
+    pthread_create(tids+i, NULL, share_counter, (void *) &amp;infos[i]);
+  }
+
+  pthread_exit(NULL);
+}
+</pre></td></tr></tbody></table></center><p>
+
+You call this with the number of threads, and the number of microseconds that each 
+thread sleeps.  Let's call it with 4 threads and 10,000 microseconds.  You'll see
+that it works as anticipated -- the threads line up on the mutex, and each time
+a thread unlocks the mutex, another thread grabs it and updates the counter:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>make mutex_example_1</b></font>
+gcc -o mutex_example_1 mutex_example_1.c -lpthread
+UNIX&gt; <font color="darkred"><b>./mutex_example_1 4 10000 | head -n 20</b></font>
+Thread:   0 - Begin - Counter   1.
+Thread:   0 - End   - Counter   1.
+Thread:   1 - Begin - Counter   2.
+Thread:   1 - End   - Counter   2.
+Thread:   2 - Begin - Counter   3.
+Thread:   2 - End   - Counter   3.
+Thread:   3 - Begin - Counter   4.
+Thread:   3 - End   - Counter   4.
+Thread:   0 - Begin - Counter   5.
+Thread:   0 - End   - Counter   5.
+Thread:   1 - Begin - Counter   6.
+Thread:   1 - End   - Counter   6.
+Thread:   2 - Begin - Counter   7.
+Thread:   2 - End   - Counter   7.
+Thread:   3 - Begin - Counter   8.
+Thread:   3 - End   - Counter   8.
+Thread:   0 - Begin - Counter   9.
+Thread:   0 - End   - Counter   9.
+Thread:   1 - Begin - Counter  10.
+Thread:   1 - End   - Counter  10.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<h3>What happens if we don't use a mutex</h3>
+
+If we don't use a mutex, then the threads don't have exclusive access to the counter.
+in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/mutex_example_2.c">mutex_example_2.c</a></b>, I have simply commented out
+the <b>pthread_mutex_lock()</b> and 
+<b>pthread_mutex_unlock()</b> calls.  Take a look at the output:
+
+<pre>UNIX&gt; <font color="darkred"><b>make mutex_example_2</b></font>
+gcc -o mutex_example_2 mutex_example_2.c -lpthread
+UNIX&gt; <font color="darkred"><b>./mutex_example_2 4 10000 | head -n 20</b></font>
+Thread:   0 - Begin - Counter   1.
+Thread:   1 - Begin - Counter   2.
+Thread:   2 - Begin - Counter   3.
+Thread:   3 - Begin - Counter   4.
+Thread:   0 - End   - Counter   4.
+Thread 0 - Problem -- counter was 1, but now it's 4
+Thread:   1 - End   - Counter   4.
+Thread:   2 - End   - Counter   4.
+Thread:   3 - End   - Counter   4.
+UNIX&gt;
+</pre>
+
+What you see here is that all of the threads update the counter, with thread 0 updating it first.
+When thread 0 wakes up, the counter has been changed.  Interestingly, between the time that
+it prints its error statement and the <b>exit(1)</b> call, threads 1, 2 and 3 wake up and
+print their counters.  Then the <b>exit(1)</b> call kills the process.
+<p>
+This program is non-deterministic -- its output depends on the ordering of the threads by the
+system.  Here's a second call, which is quite different:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./mutex_example_2 4 10000 | head -n 20</b></font>
+Thread:   3 - Begin - Counter   3.
+Thread:   1 - Begin - Counter   1.
+Thread:   0 - Begin - Counter   1.
+Thread:   2 - Begin - Counter   2.
+Thread:   3 - End   - Counter   3.
+Thread:   1 - End   - Counter   3.
+Thread:   0 - End   - Counter   3.
+Thread:   2 - End   - Counter   3.
+Thread:   3 - Begin - Counter   4.
+Thread 1 - Problem -- counter was 1, but now it's 4
+Thread 0 - Problem -- counter was 1, but now it's 4
+Thread 2 - Problem -- counter was 2, but now it's 4
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+There are two really interesting things here:
+
+<ul>
+<li> Threads 0, 1 and 2 run before thread three, updating the counter, but thread 3's <b>fflush()</b> statement
+is executed first. 
+</li><li> Threads 0 and 1 both accessed <b>counter</b> simultaneously, so they both read that its value was zero,
+and updated it to 1.  That's a brutal race condition.
+</li></ul>
+
+I hope this output helps to motivate why you use mutexes to protect shared data.
+
+<h3>Just because you're using a mutex, it doesn't mean that your data is safe from other threads.</h3>
+
+I also quote this text from the 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread2/lecture.html">lecture
+notes on race conditions.</a>:
+
+<p>
+<font color="green"><b><i>I want to point out here, that
+pthread_mutex_lock() does not actively "lock" other threads.
+Instead, it locks a data structure, which can be shared among the
+threads.  The locking and unlocking of the data structure makes
+synchronization guarantees, which are very important to avoiding race
+conditions.  However, I don't want you to get into the habit of
+thinking that pthread_mutex_lock() actively blocks other threads, or
+"locks them out." It doesn't -- it locks a data structure, and when
+other threads try to lock the same data structure, they block.
+Please reread this paragraph.</i></b></font>
+</p><p>
+
+To illustrate this, 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/mutex_example_3.c">mutex_example_3.c</a></b> is the exact same
+as 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/mutex_example_1.c">mutex_example_1.c</a></b>, except the last thread does 
+not lock or unlock the mutex.  All of the others do.  Take a look at the output:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./mutex_example_3 4 10000 | head -n 20</b></font>
+Thread:   1 - Begin - Counter   1.
+Thread:   3 - Begin - Counter   2.
+Thread:   1 - End   - Counter   2.
+Thread:   3 - End   - Counter   2.
+Thread 1 - Problem -- counter was 1, but now it's 2
+Thread:   3 - Begin - Counter   3.
+UNIX&gt; 
+</pre>
+
+Thread 1 locks the mutex, which locks out threads 0 and 2.  However, since thread 3 is not
+calling <b>pthread_mutex_lock()</b>, it goes ahead and updates the counter.  Thread 1
+discovers this after it wakes up, and flags the error.  As you can see, just because
+thread 0 locks the mutex, that doesn't mean that it "locks out" all of the other threads.
+It works cooperatively with all of the other threads that try to lock the same mutex.
+
+<hr>
+<h2>An example of multiple threads working on one problem: Determining primes</h2>
+
+This program is slightly contrived, but it will help you with your <b>jtalk</b> 
+lab.  The two files
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/numbers-20.txt">numbers-20.txt</a></b> and
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/numbers-5000.txt">numbers-5000.txt</a></b> contain 100 and 5000 large numbers (up to 16
+digits), and we want to know which ones are prime numbers.  We're going to write
+a multithreaded program so that multiple threads can test primality of these numbers.
+The first of these is in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/prime_example_1.c">prime_example_1.c</a></b>.  I'm only going to show
+the code that the threads run.  The setup code in the <b>main()</b> thread is 
+straightforward and very much like the code in the mutex examples.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Each thread will have its own private information, and some shared information.  
+   Here's the shared information.   At this point, there's little to share, because
+   the threads are simply reading from standard input and writing to standard output. */</font>
+
+struct shared {
+  int debug;          <font color="blue">/* This is 0 or 1.  If 1, it will print more information. */</font>
+};
+
+<font color="blue">/* Here's the private information.  This includes a pointer to the shared information. */</font>
+
+struct info {
+  int id;
+  struct shared *s;
+};
+
+<font color="blue">/* This is what each thread runs.  
+   Each thread reads longs from standard input, and prints out the primes on standard output. */</font>
+   
+void *worker(void *arg)
+{
+  struct info *info;               <font color="blue">/* Private Information. */</font>
+  struct shared *s;                <font color="blue">/* Shared Information. */</font>
+  long prime_to_test;              <font color="blue">/* The number to determine primality. */</font>
+  long i;
+  int prime;                       <font color="blue">/* Boolean -- is it prime? */</font>
+
+  <font color="blue">/* Set the shared and private information from the argument. */</font>
+
+  info = (struct info *) arg;
+  s = info-&gt;s;
+
+  while (1) {
+
+    <font color="blue">/* Read a number from standard input.  Return if standard input is done. */</font>
+
+    if (scanf("%ld", &amp;prime_to_test) != 1) {
+      if (s-&gt;debug) printf("Thread %d - Input_over - Exiting.\n", info-&gt;id);
+      return NULL;
+    }
+
+    if (s-&gt;debug) {
+      printf("Thread %d testing %ld\n", info-&gt;id, prime_to_test);
+      fflush(stdout);
+    }
+
+    <font color="blue">/* Determine if the number is prime, and print out if so. */</font>
+
+    prime = (prime_to_test &gt;= 2);
+    for (i = 2; prime &amp;&amp; i*i &lt;= prime_to_test; i++) {
+        if (prime_to_test % i == 0) prime = 0;
+    }
+
+    if (prime) {
+      printf("Thread %d found prime %ld\n", info-&gt;id, prime_to_test);
+    } else if (s-&gt;debug) {
+      printf("Thread %d found composite %ld.  Exited the loop when i = %ld\n", 
+              info-&gt;id, prime_to_test, i-1);
+    } 
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+We run this on one thread, and it finds two prime numbers in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/numbers-20.txt">numbers-20.txt</a></b>.  It finds 122 primes in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/numbers-5000.txt">numbers-5000.txt</a></b> and takes one minute and 45 seconds
+on my Macbook (in 2019):
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./prime_example_1 1 n &lt; numbers-100.txt</b></font>
+Thread 0 found prime 7075339107081019
+Thread 0 found prime 8608832394453737
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 1 n &lt; numbers-5000.txt &gt; output-5000.txt</b></font>
+105.853u 0.195s 1:46.36 99.6%	0+0k 0+0io 0pf+0w
+UNIX&gt; <font color="darkred"><b>wc output-5000.txt</b></font>
+     122     610    4623 output-5000.txt
+UNIX&gt; <font color="darkred"><b>head -n 5 output-5000.txt </b></font>
+Thread 0 found prime 7463817079068967
+Thread 0 found prime 9023127434641013
+Thread 0 found prime 9985493102083921
+Thread 0 found prime 361166542956361
+Thread 0 found prime 9343670048266007
+UNIX&gt; <font color="darkred"><b>tail -n 5 output-5000.txt</b></font>
+Thread 0 found prime 3609439943333089
+Thread 0 found prime 6564031501227023
+Thread 0 found prime 9114759606402677
+Thread 0 found prime 6889406536167677
+Thread 0 found prime 6371913195199121
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Below, I'll increase the thread count from 1 to 8.  
+In each case, I verify that the outputs match each other.
+Take a look -- I've highlighted the wall-clock times of the runs in blue, and 
+the number of threads in magenta:
+
+<pre>UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">1</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+102.430u 0.051s <font color="blue">1:42.51</font> 99.9%	0+0k 0+3io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">2</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+99.482u 0.071s <font color="blue">0:50.25</font> 198.1%	0+0k 0+5io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">3</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+101.360u 0.119s <font color="blue">0:34.40</font> 294.9%	0+0k 0+3io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">4</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+105.055u 0.115s <font color="blue">0:26.82</font> 392.0%	0+0k 1+3io 2pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">5</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+124.551u 0.118s <font color="blue">0:25.63</font> 486.3%	0+0k 0+5io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">6</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+142.507u 0.120s <font color="blue">0:24.70</font> 577.4%	0+0k 0+3io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">7</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+159.279u 0.220s <font color="blue">0:24.05</font> 663.1%	0+0k 0+1io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b>time ./prime_example_1 <font color="magenta">8</font> n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+170.716u 0.128s <font color="blue">0:22.47</font> 760.2%	0+0k 0+3io 0pf+0w
+UNIX&gt; <font color="darkred"><b>sed 's/Thread ./Thread 0/' &lt; tmp.txt | sort | openssl md5 ; rm tmp.txt</b></font>
+(stdin)= b4c0be00e5c83840b5286c5d0505029e
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+As you can see, from one thread to four, the addition of an extra thread speeds things up, 
+pretty much proportionally to the number of threads.  After that, though, there is no 
+significant speedup.
+That's because my Macintosh has four cores. 
+<p>
+Take a look at what I'm doing in the commands that begin with <b>sed</b>.  I'll break it down
+for you:
+
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>sed 's/Thread ./Thread 0/' &lt; tmp.txt   <font color="blue"> - This makes every line begin with "Thread 0"</font>
+| sort                                 <font color="blue"> - This sorts the output</font>
+| openssl md5                          <font color="blue"> - This calculates the MD5 hash of the output</font>
+; rm tmp.txt                           <font color="blue"> - And this deletes tmp.txt</font>
+</pre></td></tr></tbody></table></center><p>
+
+The <b>sed</b> command gets rid of any differences that the outputs may have because of the thread
+numbers -- it simple makes every line begin with "Thread 0".  I need the <b>sort</b> command,
+because with threads, the primes can be printed in any order, depending on which thread does what.
+When I sort, the output will be the same, regardless of the order that the primes are printed.
+An MD5 hash takes the contents of the file and turns them into a 128-bit hash -- when two files
+differ, the probability that their hashes are the same is 1 in 2<sup>128</sup>.  So, we can be
+reasonably assured that if two outputs have the same hash, they are identical, and if you look
+at the output, they are.  Thus, I'm convinced that they work.
+
+</p><p>
+Look at the output when we look at 20 numbers and I turn on the debugging flat -- it's interesting:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./prime_example_1 4 y &lt; numbers-20.txt</b></font>
+Thread 0 testing 8185099285209145
+Thread 1 testing 7075339107081019    <font color="blue">- This is a prime number</font>
+Thread 2 testing 640904115652591
+Thread 3 testing 699059234573950
+Thread 0 found composite 8185099285209145.  Exited the loop when i = 5
+Thread 2 found composite 640904115652591.  Exited the loop when i = 7
+Thread 0 testing 8608832394453737    <font color="blue">- This is a prime number</font>
+Thread 2 testing 3821701465442891
+Thread 3 found composite 699059234573950.  Exited the loop when i = 2
+Thread 3 testing 9370646097390169
+Thread 2 found composite 3821701465442891.  Exited the loop when i = 71
+Thread 2 testing 3231405834979810
+Thread 3 found composite 9370646097390169.  Exited the loop when i = 23
+Thread 3 testing 1850884017234395
+Thread 2 found composite 3231405834979810.  Exited the loop when i = 2
+Thread 2 testing 3801829741075466
+Thread 3 found composite 1850884017234395.  Exited the loop when i = 5
+Thread 3 testing 540168881271137       <font color="blue">- This is not prime, but it will take a while.</font> 
+Thread 2 found composite 3801829741075466.  Exited the loop when i = 2
+Thread 2 testing 2545171349758192
+Thread 2 found composite 2545171349758192.  Exited the loop when i = 2
+Thread 2 testing 1597181395944134
+Thread 2 found composite 1597181395944134.  Exited the loop when i = 2
+Thread 2 testing 4808764804932068
+Thread 2 found composite 4808764804932068.  Exited the loop when i = 2
+Thread 2 testing 7581664330568676
+Thread 2 found composite 7581664330568676.  Exited the loop when i = 2
+Thread 2 testing 2281999321403870
+Thread 2 found composite 2281999321403870.  Exited the loop when i = 2
+Thread 2 testing 4533540853644025
+Thread 2 found composite 4533540853644025.  Exited the loop when i = 5
+Thread 2 testing 8421794371578008
+Thread 2 found composite 8421794371578008.  Exited the loop when i = 2
+Thread 2 testing 5935296786582469
+Thread 2 found composite 5935296786582469.  Exited the loop when i = 41
+Thread 2 testing 6884845122873466
+Thread 2 found composite 6884845122873466.  Exited the loop when i = 2
+Thread 2 - Input_over - Exiting.
+Thread 3 found composite 540168881271137.  Exited the loop when i = 8688607
+Thread 3 - Input_over - Exiting.
+Thread 1 found prime 7075339107081019
+Thread 1 - Input_over - Exiting.
+Thread 0 found prime 8608832394453737
+Thread 0 - Input_over - Exiting.
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+When thread 1 gets 7075339107081019, it spends the duration of the program calculating that it is
+prime.  Fortunately, we have other threads to help do the work.  
+<p>
+Shortly thereafter, thread 0 gets 8608832394453737, which is also a prime; so it too spends all
+of its time calculating the primality of the number.  After that, it's up to threads 2 and 3
+to do all of the testing, which they do, until thread 3 gets 540168881271137.  This number isn't
+prime, but it takes a while to figure that out, because it is equal to 8688607 * 62169791.
+For that reason, thread 2 is the thread that finishes up all of the other calculations.
+</p><p>
+This is a nice example of having multiple threads split up the work, and they do so by splitting
+up the CPU time necessary, rather than, for example, giving 5 numbers to each of the four 
+threads.
+</p><p>
+You'll note that this code does not have any mutexes in it.  That's because the standard I/O library is
+"thread-safe" -- you don't get race conditions on that <b>scanf()</b> call.  
+You can take a look at <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09_01">http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09_01</a> if you want more information
+about that...
+</p><p>
+Let me draw a picture of how these threads are organized.  It's a simplistic picture, but
+it will be useful when we look at the remaining programs.  As you can see, all of the worker
+threads simply read from standard input and write to standard output.  Because the standard-IO
+library is thread-safe everything works nicely.
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- A primer on mutexes and condition variables_files/Prime-1.png"></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h3>Adding a thread to process output</h3>
+
+Now, suppose we'd like to process the output in a more sophisticated manner.  A nice way to
+do that is to add a thread to the system whose sole purpose is to process output.  It's clean,
+because your threads have specific purposes:
+
+<ul>
+<li> The worker threads calculate whether numbers are prime.
+</li><li> The output thread processes the output.
+</li></ul>
+
+To do this, we need a way for the worker threads to communicate their
+primes to the output thread.  And we need a way for the output thread to know when there are
+primes to output.   The first part of that is easy -- we can use a dllist, and protect it
+with a mutex: worker threads append to the dllist, and the output thread reads from the dllist.  
+<p>
+The second part is trickier, and requires a new synchronization data structure -- the condition
+variable.  This data structure facilitates those times when you want a thread to block, because there is a certain
+"condition".  And then it facilitates unblocking the thread when that condition is no longer
+true.  Like the mutex, the condition variable has three procedures that act on it:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int pthread_cond_init(pthread_cond_t *cond, NULL);
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *lock);
+int pthread_cond_signal(pthread_cond_t *cond);
+</pre></td></tr></tbody></table></center><p>
+
+Like the mutex, you initialize a condition variable with
+<b>pthread_cond_init</b>.  You call <b>pthread_cond_wait()</b> when you want your thread
+to block.  You call it on a condition variable <i>and</i> a mutex.  You must own the lock
+to the mutex when you call it.  <b>pthread_cond_wait()</b> will atomically release the
+mutex and block your thread.  It will store the fact that your thread is blocked as part
+of the condition variable.
+</p><p>
+When a thread calls <b>pthread_cond_signal()</b> on a condition variable, then the thread
+system checks to see if there are any threads that are blocked because they called
+<b>pthread_cond_wait()</b> on that condition variable.  If there are none, then the
+<b>pthread_cond_signal()</b> call does nothing.  However, if there are any threads
+that are blocked, then the thread system unblocks one of them, and it tries to re-lock
+the mutex.  When it does lock the mutex, then it returns from the <b>pthread_cond_wait()</b>
+call that blocked it.
+</p><p>
+Once again -- condition variables are designed for when a thread
+needs to block because some condition is present in the system.
+Another thread will unblock it when the condition is no longer
+present by calling <b>pthread_cond_signal()</b>.
+</p><p>
+In the case of our primes program, we'll have the worker threads communicate with the 
+output thread as follows:
+
+</p><ul>
+<li> The threads will share a dllist, a mutex and a condition variable.
+</li><li> When a worker thread discovers a prime, it will lock the mutex,
+append the prime to the dllist, signal the condition variable, and then unlock the 
+mutex.
+</li><li> The output thread executes a loop that checks to see if the dllist is empty, and if
+so, it blocks on the condition variable.   When it is unblocked, it prints the primes on 
+the dllist, removing them, until the dllist is empty, at which point it blocks again.
+</li></ul>
+
+Here's the schematic picture:
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- A primer on mutexes and condition variables_files/Prime-w-output.png"></td></tr></tbody></table></center><p>
+
+The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/prime_2_output_thread.c">prime_2_output_thread.c</a></b>.  I'm not going to include
+all of the code -- just the relevant changes.  Here is the addition to the shared data:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Each thread will have its own private information, and some shared information.  
+   Here's the shared information.   In addition to the debug flag, we have a 
+   dllist, mutex and condition variable that allow the workers to communicate with
+   the output thread. */</font>
+
+struct shared {
+  int debug;                       <font color="blue">/* This is 0 or 1.  If 1, it will print more information. */</font>
+  Dllist primes;                   <font color="blue">/* List of primes found by the worker threads. */</font>
+  pthread_mutex_t *output_mutex;   <font color="blue">/* Mutex for the list of primes. */</font>
+  pthread_cond_t  *output_cond;    <font color="blue">/* Condition variable to wake up the output thread. */</font>
+};
+</pre></td></tr></tbody></table></center><p>
+
+Here's the code that we add to <b>main()</b> to initialize the data:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Set up the shared and private information. */</font>
+
+  nthreads = atoi(argv[1]);
+  S.debug = (strcmp(argv[2], "y") == 0);
+  S.primes = new_dllist();
+  S.output_mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+  S.output_cond = (pthread_cond_t *) malloc(sizeof(pthread_cond_t));
+  pthread_mutex_init(S.output_mutex, NULL);
+  pthread_cond_init(S.output_cond, NULL);
+</pre></td></tr></tbody></table></center><p>
+
+Here is the change in the worker thread code when it finds a prime number:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>    <font color="blue">/* If it's prime, then put it onto the list and signal the output thread. */</font>
+
+    if (prime) {
+      pthread_mutex_lock(s-&gt;output_mutex);
+      dll_append(s-&gt;primes, new_jval_l(prime_to_test));
+      pthread_cond_signal(s-&gt;output_cond);
+      pthread_mutex_unlock(s-&gt;output_mutex);
+    }
+</pre></td></tr></tbody></table></center><p>
+
+And finally, here is the code for the output thread:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Here's the code for the output thread.  It takes as its argument the shared data.
+   It monitors the dllist of primes, blocking when it is empty, and printing/clearing
+   its contents when it is non-empty. */</font>
+
+void *output_thread(void *arg)
+{
+  struct shared *s;                <font color="blue">/* Shared Information. */</font>
+  int counter;                     <font color="blue">/* We'll keep track of the number of primes, too. */</font>
+
+  counter = 0;
+  s = (struct shared *) arg;
+
+  pthread_mutex_lock(s-&gt;output_mutex);
+  while (1) {                                   <font color="blue">/* Print the primes if there are any */</font>
+    while (!dll_empty(s-&gt;primes)) {
+      printf("Prime %5d: %20ld\n", counter, s-&gt;primes-&gt;flink-&gt;val.l);
+      counter++;
+      dll_delete_node(s-&gt;primes-&gt;flink);
+    }                                           <font color="blue">/* When the list is empty, wait. */</font>
+    pthread_cond_wait(s-&gt;output_cond, s-&gt;output_mutex);
+  }
+  return NULL;
+}
+</pre></td></tr></tbody></table></center><p>
+
+When we run it on the 20-number input, it finds and prints the primes correctly.  Unfortunately,
+it doesn't terminate, and to be honest with you, I'm not sure why:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./prime_2_output_thread 4 n &lt; numbers-20.txt</b></font>
+Prime     0:     7075339107081019
+Prime     1:     8608832394453737
+<font color="blue">It hangs here.</font>
+</pre>
+
+<hr>
+<h3>Fixing the program so that it terminates</h3>
+
+To fix this, we're going to dd a variable <b>workers_alive</b> to the shared data.  It will be
+set to one initially.  We'll have the main thread call <b>pthread_join()</b> on the worker
+threads, so that it can figure out when they are all done.  When that happens, it 
+sets <b>workers_alive</b> to zero, and signals the condition variable.  We add some
+code to the output thread to exit when the primes list is empty, and when <b>workers_alive</b>
+is zero.
+<p>
+The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/prime_3_fix_end.c">prime_3_fix_end.c</a></b>.  I'll show two snippets.  The 
+first is the code in <b>main()</b> that joins with the workers, and then signals the
+condition variable:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Wait for the worker threads to exit, and then signal the output thread to exit. */</font>
+
+  for (i = 0; i &lt; nthreads; i++) pthread_join(tids[i], &amp;rv);
+  pthread_mutex_lock(S.output_mutex);
+  S.workers_alive = 0;
+  pthread_cond_signal(S.output_cond);
+  pthread_mutex_unlock(S.output_mutex);
+
+  pthread_exit(NULL);
+</pre></td></tr></tbody></table></center><p>
+
+The second is the output thread, which now exits when the list is empty and there
+are no more workers:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  <font color="blue">/* Change the loop to exit when the list is empty and there are no more workers. */</font>
+
+  pthread_mutex_lock(s-&gt;output_mutex);
+  while (!dll_empty(s-&gt;primes) || s-&gt;workers_alive) {
+    while (!dll_empty(s-&gt;primes)) {          <font color="blue">/* Print and delete the primes on the list. */</font>
+      printf("Prime %5d: %20ld\n", counter, s-&gt;primes-&gt;flink-&gt;val.l);
+      counter++;
+      dll_delete_node(s-&gt;primes-&gt;flink);
+    }                                           <font color="blue">/* When the list is empty, wait. */</font>
+    pthread_cond_wait(s-&gt;output_cond, s-&gt;output_mutex);
+  }
+  pthread_mutex_unlock(s-&gt;output_mutex);
+  return NULL;
+</pre></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h3>Adding a thread to process input.</h3>
+
+The final structural change is to add an input thread, whose sole job is to process input.
+This is a bit more complex than the output thread, because we don't want it to read all of the
+input at once.  Instead, we're going to have it read ten numbers at time, and then only 
+read more numbers when those ten numbers have been used by the worker threads.
+<p>
+To make this work, we're going to have another dllist, <b>primes_to_test</b>, which the
+input thread will fill with ten numbers at a time.  The worker threads will grab their
+testing numbers from this list, deleting the numbers as they go.
+</p><p>
+The synchronization here requires two condition variables -- one for workers and one for
+the input thread.  The input thread will wait on its condition variable whenever the 
+list is non-empty.  When it's empty, it will fill it with ten numbers, and signal the
+worker condition variable.
+</p><p>
+On the flip side, workers have no problem when the list is non-empty -- they grab a number
+and delete it from the list.  When the list is empty, however, they will signal the input
+thread to wake up, and then they will wait on the worker condition variable.  
+</p><p>
+There's a subtlety here about waking up the workers.  When the input thread fills the dllist,
+it signals the worker's condition variable.  That will wake up one worker.  That worker, in 
+turn, checks to see if there's work to do, and if so, it signals the worker's condition variable
+again, in case there is another worker that is waiting.  In this way, the input thread only has
+to call signal once, and the workers wake each other up.
+</p><p>
+I have a variable for the input thread to set when it hits EOF.  When the list is empty,
+the worker threads check this variable, and exit if it has been set.
+</p><p>
+Here's the diagram of how the threads and shared data fit together:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- A primer on mutexes and condition variables_files/Prime-w-input.png"></td></tr></tbody></table></center><p>
+</p><p>
+Here's the relevant code, in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Mutex-Cond/prime_4_input_thread.c">prime_4_input_thread.c</a></b>.  First, the new shared
+data:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>struct shared {
+  int debug;                       /* This is 0 or 1.  If 1, it will print more information. */
+  int workers_alive;               /* Boolean for whether there are still worker threads. */
+  int input_over;                  <font color="blue">/* Boolean for whether there is no more input. */</font>
+  Dllist primes;                   /* List of primes found by the worker threads. */
+  Dllist primes_to_test;           <font color="blue">/* List of primes to test. */</font>
+  pthread_mutex_t *output_mutex;   /* Mutex for the list of primes. */
+  pthread_cond_t  *output_cond;    /* Condition variable to wake up the output thread. */
+  pthread_mutex_t *input_mutex;    <font color="blue">/* Mutex for the list of primes. */</font>
+  pthread_cond_t *input_cond;      <font color="blue">/* Condition variable for the input thread to wait. */</font>
+  pthread_cond_t *worker_cond;     <font color="blue">/* Condition variable for the workers to wait. */</font>
+};
+</pre></td></tr></tbody></table></center><p>
+
+Next, the input thread:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">/* Here's the code for the input thread.  When the primes_to_test list is empty, it
+   reads eight primes from standard input and puts them onto the list.  It also
+   signals the worker_cond once for each number.  If there are multiple workers waiting,
+   they will wake each other up. */</font>
+   
+void *input_thread(void *arg)
+{
+  struct shared *s;                <font color="blue">/* Shared Information. */</font>
+  int i;
+  long l;
+
+  s = (struct shared *) arg;
+
+  pthread_mutex_lock(s-&gt;input_mutex);
+
+  while (1) {
+    <font color="blue">/* If the list is empty, then put ten items on it (if there are ten items to
+       put on it).  Then signal the worker_cond to wake up a blocking worker.
+       That worker will unblock the others if necessary. */</font>
+
+    if (dll_empty(s-&gt;primes_to_test)) {
+      for (i = 0; i &lt; 10; i++) {
+
+        <font color="blue">/* Read an integer and put it on the list. */</font>
+        if (scanf("%ld", &amp;l) == 1) {
+          dll_append(s-&gt;primes_to_test, new_jval_l(l));
+          if (s-&gt;debug) printf("Reader thread put %ld onto primes_to_test.\n", l);
+
+        <font color="blue">/* If we're at EOF, then flag that input is over, signal the worker thread and exit. */</font>
+        } else {
+          s-&gt;input_over = 1;
+          pthread_cond_signal(s-&gt;worker_cond);
+          if (s-&gt;debug) printf("Reader thread is done.\n");
+          pthread_mutex_unlock(s-&gt;input_mutex);
+          return NULL;
+        }
+      }
+      pthread_cond_signal(s-&gt;worker_cond);
+
+    <font color="blue">/* If the list isn't empty, simply block and wait for a worker thread to signal you
+       that the list is empty. */</font>
+
+    } else {
+      if (s-&gt;debug) printf("Reader thread is blocking until primes_to_test is empty.\n");
+      pthread_cond_wait(s-&gt;input_cond, s-&gt;input_mutex);
+    }
+  }
+ 
+  <font color="blue">/* Keep the compiler quiet. */</font>
+  return NULL;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Finally, here's the code that the workers run to get their testing numbers:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>    <font color="blue">/* Get a number from the primes_to_test list.  If it's empty, signal the
+       input thread, and wait to be unblocked. */</font>
+
+    pthread_mutex_lock(s-&gt;input_mutex);
+    while (!s-&gt;input_over &amp;&amp; dll_empty(s-&gt;primes_to_test)) {
+      if (s-&gt;debug) printf("Thread %d - waking up the reader thread and blocking.\n", info-&gt;id);
+      pthread_cond_signal(s-&gt;input_cond);
+      pthread_cond_wait(s-&gt;worker_cond, s-&gt;input_mutex);
+    }
+    pthread_cond_signal(s-&gt;worker_cond);   <font color="blue">/* See the lecture notes for why I do this. */</font>
+
+    if (!dll_empty(s-&gt;primes_to_test)) {  <font color="blue">/* Grab a prime to test from the list. */</font>
+      prime_to_test = s-&gt;primes_to_test-&gt;flink-&gt;val.l;
+      dll_delete_node(s-&gt;primes_to_test-&gt;flink);
+    } else {                              <font color="blue">/* Otherwise, the input is done - so return */</font>
+      pthread_mutex_unlock(s-&gt;input_mutex);
+      if (s-&gt;debug) printf("Thread %d - exiting.\n", info-&gt;id);
+      return NULL;
+    }
+
+    pthread_mutex_unlock(s-&gt;input_mutex);
+ 
+    <font color="blue">/* All of the rest of the code is the same. */</font>
+</pre></td></tr></tbody></table></center><p>
+
+It works nicely, and runs at roughly the same speed as the first program.  
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./prime_4_input_thread 4 n &lt; numbers-20.txt</b></font>
+Prime     0:     7075339107081019
+Prime     1:     8608832394453737
+UNIX&gt; <font color="darkred"><b>time ./prime_4_input_thread 4 n &lt; numbers-5000.txt &gt; tmp.txt</b></font>
+93.606u 0.033s 0:23.83 392.9%	0+0k 0+3io 0pf+0w
+UNIX&gt; <font color="darkred"><b></b></font>
+UNIX&gt; <font color="darkred"><b>sed 's/.* //' output-5000.txt | sort | openssl md5</b></font> <font color="blue">     This shows that the primes are the same.</font>
+(stdin)= 5aad6da280e11ecd46f34b622ec77933
+UNIX&gt; <font color="darkred"><b>sed 's/.* //' tmp.txt | sort | openssl md5</b></font>
+(stdin)= 5aad6da280e11ecd46f34b622ec77933
+UNIX&gt; 
+</pre>
+
+<hr>
+<h2>Lessons Learned from this Lecture</h2>
+
+You've gotten further illustration of race conditions and how to help prevent them 
+with a mutex.  You've also learned how to use a condition variable to control a thread
+that needs to block and unblock because of certain conditions.  In this example, we had
+three classes of threads:
+<ul>
+<li> An input thread that read input and put it onto a list.
+</li><li> Worker threads that read from the list, determine primes, and then put those on a second list.
+</li><li> An output thread that processes this second list when numbers are put on it.
+</li></ul>
+
+In your chat server lab, you'll have an output thread that is very similar to the one
+here.
+</body></html>

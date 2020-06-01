@@ -1,0 +1,408 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Thread #3</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Thread #3</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Thread3</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/lecture.html
+</b></a>
+</li><li> Last update: April, 2018
+</li></ul>
+<hr>
+
+In this lecture, we go over race conditions in more detail, focusing
+on using mutexes, and the trade-off between safety and performance.
+
+<hr>
+<h2>SSNSERVER</h2>
+
+The lecture revolves around a piece of code that maintains a 
+database of people/ages/social security numbers.  The main
+code is in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver.c"><b>ssnserver.c</b></a>.
+It maintains a red-black tree (<i>t</i>) keyed on a person's
+name (in the order <i>last, first</i>).  The <i>val</i> field
+points to an <b>Entry</b> struct, which contains the person's
+name again, his/her age, and his/her social-security number,
+stored as a string.  
+<p>
+<b>Ssnserver.c</b> creates the tree and then accepts four
+kinds of inputs from standard input:
+</p><ol>
+<li> <b>ADD <i>fn ln age ssn</i></b> -- This adds an entry to the tree. 
+</li><li> <b>DELETE <i>fn ln</i></b> -- This deletes an entry from the tree.
+</li><li> <b>PRINT</b> -- This prints the tree.
+</li><li> <b>DONE</b> -- This causes the program to exit.
+</li></ol>
+Try it out:
+<ul>
+<pre>UNIX&gt; <font color="darkred"><b>./ssnserver</b></font>
+<font color="darkred"><b>ADD Jim Plank 31 987-65-4321
+PRINT</b></font>
+__________________________________________________
+Plank, Jim                     -- 987-65-4321   31
+--------------------------------------------------
+<font color="darkred"><b>ADD Phil Fulmer 45 123-45-6789
+ADD Pat Summitt 42 111-11-1111
+PRINT</b></font>
+__________________________________________________
+Fulmer, Phil                   -- 123-45-6789   45
+Plank, Jim                     -- 987-65-4321   31
+Summitt, Pat                   -- 111-11-1111   42
+--------------------------------------------------
+<font color="darkred"><b>DELETE Jim Plank</b>
+<b>DELETE Steve Spurrier</b></font>
+Error: No Steve Spurrier
+<font color="darkred"><b>PRINT</b></font>
+__________________________________________________
+Fulmer, Phil                   -- 123-45-6789   45
+Summitt, Pat                   -- 111-11-1111   42
+--------------------------------------------------
+<font color="darkred"><b>DONE</b></font>
+UNIX&gt;
+</pre>
+</ul>
+
+<hr>
+<h2>INPUTGEN</h2>
+
+Ok, now look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/inputgen.c"><b>inputgen.c</b></a>.
+This is a program that I wrote to really beat on <b>ssnserver</b>.
+As input, it takes a number of events, a random number seed, and
+a file of last names.  The file of last names that I've created
+is <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/lns"><b>lns</b></a>, which is simply 
+a dictionary of words copied into a
+file.   The program reads the last names
+into the array <b>lns</b>, and it has an array <b>fns</b> of 
+65 first names.  Now, what it does is create <b>nevents</b> 
+random input events for <b>ssnserver.c</b>.  The first 50
+events are random <b>ADD</b> events, and thereafter, it
+will create either <b>ADD</b>, <b>DELETE</b> or <b>PRINT</b>
+events (these in the ratio 5/5/1).   It ends with a <b>PRINT</b>
+and a <b>DONE</b> event.
+
+<p>
+In order to create <b>DELETE</b>
+events that correspond to entries in the tree, <b>inputgen</b>
+uses a rb-tree of its own.  This tree is keyed on a random number,
+and its val field is one of the names that it added previously.
+When it creates a <b>DELETE</b> event, it chooses the first name
+in the tree -- this will be a random name, deletes it from the
+tree, and then uses this name for the <b>DELETE</b> event.
+</p><p>
+
+So, this is a little complex, but you should be able to understand
+it.  <b>Inputgen</b> is set up so that the tree that it manages
+will average around 50 elements, regardless of the number of
+events that it generates.  To prove this to yourself,
+try it:
+</p><ul>
+<pre>UNIX&gt; <font color="darkred"><b>./inputgen 5 1 lns</b></font>
+ADD Bill Lackadaisic 20 415-47-4505
+ADD Brad Laminar 56 042-36-5794
+ADD Emily Quadrille 8 421-51-9445
+ADD Suzy Gangling 97 093-66-1121
+ADD Wanda Connotative 81 333-14-0543
+PRINT
+DONE
+UNIX&gt; <font color="darkred"><b>./inputgen 5 1 lns | ./ssnserver</b></font>
+__________________________________________________
+Connotative, Wanda             -- 333-14-0543   81
+Gangling, Suzy                 -- 093-66-1121   97
+Lackadaisic, Bill              -- 415-47-4505   20
+Laminar, Brad                  -- 042-36-5794   56
+Quadrille, Emily               -- 421-51-9445    8
+--------------------------------------------------
+UNIX&gt; <font color="darkred"><b>./inputgen 6000 1 lns | ./ssnserver | tail -60</b></font>
+Katharine, Jean                -- 528-96-5398   18
+Kombu, Jay                     -- 198-09-2304   29
+Latter, Kitty                  -- 618-64-7728   72
+Lectionary, Thor               -- 253-33-9585   96
+Lifeguard, Jamal               -- 832-33-5899   21
+Lisbon, Sergei                 -- 687-82-1290   16
+Lone, Tamika                   -- 507-11-3987   65
+Lord, Xavier                   -- 954-43-1389   81
+Mercenary, Charlie             -- 493-67-3474   86
+Methanol, Carla                -- 174-02-1580   50
+Meticulous, Elena              -- 699-28-4283   63
+Morn, Shira                    -- 375-18-0046   72
+Mueller, Catherine             -- 706-48-8525   51
+Nabla, Jeff                    -- 986-16-8309   82
+Oilcloth, Baine                -- 593-20-7036   50
+Okinawa, Raynoch               -- 350-31-0939   10
+Orthonormal, John              -- 582-44-4890    9
+Palmate, Mary                  -- 985-04-3349   22
+Patristic, Kitty               -- 203-64-5066   53
+Peddle, Glenn                  -- 548-58-6281   49
+Percept, John                  -- 769-43-4766   60
+Petulant, Anika                -- 785-79-1666   36
+Pierce, Jeff                   -- 400-33-8526   24
+Please, Katie                  -- 588-60-6996   33
+Populism, Jane                 -- 177-84-6454   64
+Procession, Tamika             -- 433-90-0341   18
+Prosthesis, Dave               -- 839-05-3321    6
+Protactinium, Ellen            -- 583-16-2020   13
+Puccini, Brad                  -- 491-64-8838   65
+Pyrite, Ellen                  -- 080-31-4250   13
+Quip, Miles                    -- 407-45-1453   51
+Ravine, Wendy                  -- 783-00-8218   63
+Recompense, Wallace            -- 470-58-8646   91
+Refuge, Mark                   -- 418-35-4123   40
+Registrar, Suzy                -- 153-58-0681   76
+Rhodesia, Leonard              -- 464-59-3525   38
+Riverfront, Kitty              -- 870-69-4727   13
+Russell, John                  -- 335-78-1092   26
+Salmonella, Baine              -- 197-65-6912   24
+Seedy, Jean                    -- 939-16-2798   97
+Selectman, Bill                -- 183-91-7845   24
+Semite, Sviatoslav             -- 671-49-6969   12
+Sent, Mingo                    -- 915-92-4727   85
+Shorten, Blanche               -- 324-86-8815   28
+Sling, Kevin                   -- 917-64-4267   70
+Sluggish, Leonard              -- 703-46-9354   42
+Spectrograph, Leonard          -- 093-11-2234   28
+Stokes, Brad                   -- 483-74-8264   94
+Sulky, Wanda                   -- 022-23-5100   75
+Susan, Miles                   -- 374-57-2223   31
+Syllabic, Priest               -- 437-13-7025   89
+Tarnish, Charlie               -- 283-65-9468   98
+Teflon, Sviatoslav             -- 328-18-1211   54
+Thieving, Terry                -- 872-33-1440   34
+Throttle, Jeff                 -- 490-57-5911   80
+Triceratops, Baine             -- 840-45-8735   95
+Uterine, Misty                 -- 994-69-8502   49
+Walk, Jian                     -- 304-22-7820   75
+Wilhelmina, Jean               -- 645-55-4409   11
+--------------------------------------------------
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+</ul>
+You'll note that the above tree has 50 elements.
+
+<hr>
+<h2>Turning ssnserver into a real server</h2>
+
+Now, look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver1.c"><b>ssnserver1.c</b></a>.
+<p>
+What this does is turn <b>ssnserver</b> into a real server.
+It serves a socket, and then calls <b>accept_connection()</b>, 
+and creates a <b>server_thread()</b> thread to service the
+connection.
+The <b>server_thread()</b> thread works just like
+<b>ssnserver.c</b>, with the exception that the tree is a global
+variable.
+</p><p>
+Try it out with <b>telnet</b>.  For example, in one window
+on <b>hydra4</b> I do:
+</p><ul><pre>UNIX&gt; <font color="darkred"><b>./ssnserver1 8888</b></font>
+</pre></ul>
+while in another, I do:
+<ul><pre>UNIX&gt; <font color="darkred"><b>nc hydra4 8888</b></font>
+<b><font color="darkred">ADD Jim Plank 31 123-45-6789
+ADD Phil Fulmer 45 987-65-4321
+PRINT</font></b>
+__________________________________________________
+Fulmer, Phil                   -- 987-65-4321   45
+Plank, Jim                     -- 123-45-6789   31
+--------------------------------------------------
+<b><font color="darkred">DONE</font></b>
+
+                               <font color="blue">It is unfortunate that nc doesn't figure out that the </font>
+Ncat: Broken pipe.             <font color="blue">connection is gone until it catches SIGPIPE.</font>
+UNIX&gt; 
+</pre></ul>
+
+It works just fine.  I modified <b>inputgen.c</b> to work as a
+socket client -- the code is in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/inclient.c"><b>inclient.c</b></a>.
+It is straightforward and uses a second thread to read the 
+socket output and print it to standard out.  Try it out on
+the same server:
+<ul><pre>UNIX&gt; <font color="darkred"><b>./inclient hydra4 8888 5 1 lns</b></font>
+__________________________________________________
+Connotative, Wanda             -- 333-14-0543   81
+Gangling, Suzy                 -- 093-66-1121   97
+Lackadaisic, Bill              -- 415-47-4505   20
+Laminar, Brad                  -- 042-36-5794   56
+Quadrille, Emily               -- 421-51-9445    8
+--------------------------------------------------
+UNIX&gt;
+</pre></ul>
+
+Now, look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver2.c"><b>ssnserver2.c</b></a>.
+This works just like <b>ssnserver1</b> except that it can
+service multiple connections simultaneously by forking
+off one <b>server_thread()</b> per connection.  Note however,
+that that access to <b>t</b> is not protected by mutexes.
+This presents a problem because, for example, one thread may
+be adding one element to the tree while another is deleting
+a nearby element.  If the first thread is interrupted before
+it finishes adding the element, then the rb-tree pointers may
+not be where they should be when the second thread tries to
+delete.  This will result in an error, probably a core dump.
+<p>
+To help illustrate this, I wrote a shell script called 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/kill_it.sh"><b>kill_it.sh</b></a>.  This forks
+off a given number of <b>inclient</b> processes who all 
+blast away at the given <b>ssnserver2</b> server.
+</p><p>
+Try it out:  On one machine, start a <b>ssnserver2</b>.
+For example, I did the following on <b>hydra4</b>:
+
+</p><ul><pre>UNIX&gt; <font color="darkred"><b>./ssnserver2 hydra4.eecs.utk.edu 8888</b></font>
+</pre></ul>
+
+Then, on <b>hydra3</b>, I had 5 <b>inclients</b> send 1000
+entries simultaneously to the server:
+
+<ul><pre>UNIX&gt; <font color="darkred"><b>sh kill_it.sh</b></font>
+usage: sh kill_it.sh host port nentries nclients
+UNIX&gt; <font color="darkred"><b>sh kill_it.sh hydra4 8888 10000 5 &gt; &amp; /dev/null</b></font>
+</pre></ul>
+
+Within a few seconds, the <b>ssnserver2</b> process had a segmentation violation.
+This doesn't always happen, but usually.  The reason is
+that access to <b>ti-&gt;t</b> is not protected.
+
+<hr>
+<h2>Adding a mutex</h2>
+
+Now look at <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver3.c"><b>ssnserver3.c</b></a>.
+This adds a mutex that each thread locks while it processes
+a connection.  This solves the problem with accessing <b>t</b>,
+because no two threads may access <b>t</b> simultaneously.
+I.e. try out <b>kill_it.sh</b>: On <b>hydra4</b>:
+
+<ul><pre>UNIX&gt; <font color="darkred"><b>./ssnserver3 8888</b></font>
+</pre></ul>
+
+And on <b>hydra3</b>:
+
+<ul><pre>UNIX&gt; <font color="darkred"><b>sh kill_it.sh hydra4 8888 10000 5 &gt; &amp; /dev/null</b></font>
+</pre></ul>
+
+No core dump!  
+<p>
+So, this solves the mutual exclusion problem, but it is like
+stapling papers with a sledge hammer.  By having each thread lock
+the mutex throughout its lifetime, we have serialized the server --
+no two threads can do <i>anything</i> simultaneously, and this is
+a performance problem.  For example, a client could open a connection and
+then do nothing, thereby disabling the server!
+
+</p><p>
+We solve this problem in a very standard way, 
+with <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver4.c"><b>ssnserver4.c</b></a>.
+Instead of locking
+the mutex at all times, the thread only locks the mutex when it
+accesses the tree.  This is within the code for <b>ADD</b>, <b>DELETE</b>
+and <b>PRINT</b>.
+</p><p>
+You can now test that multiple clients may indeed access the server 
+simultaneously by using <b>nc</b> as the client.  
+</p><p>
+When I went to demonstrate the performance of the two programs, I was confronted
+with something that happens all too often in computer science research.  I couldn't
+make sense of the results.  What I did was the following.  I ran the <b>ssnserver3</b> on port 8889
+of hydra3,
+and then I ran the following on mamba, the machine on my desk:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>time sh kill_it.sh hydra3 8889 120000 10</b></font>
+26.268u 11.264s 1:13.13 51.3% 0+0k 8+0io 0pf+0w
+UNIX&gt;
+</pre>
+
+Next, I ran <b>ssnserver4</b> on port 8889 of hydra3:
+
+<pre> 
+UNIX&gt; <font color="darkred"><b>time sh kill_it.sh hydra3 8889 120000 10</b></font>
+37.515u 15.702s 1:45.63 50.3% 0+0k 0+0io 0pf+0w
+UNIX&gt;
+</pre>
+
+That is odd indeed -- 1:13 for the version that serializes everything, and
+1:45 for the version that allows the clients to work in parallel.  It doesn't
+make sense!
+
+<p>
+I have been a professor long enough now, to know that many students, when they get
+results like these, graph them and call it a day.  You need to avoid that temptation,
+and instead try to explain what is going on.  To probe further, I printed out the 
+starting time of the shell script, and then the 
+completion times of the 10 clients in the serialized version (their <b>time(0)</b> values):
+
+</p><pre>T0 1524685224
+T0 1524685226
+T0 1524685228
+T0 1524685231
+T0 1524685237
+T0 1524685244
+T0 1524685252
+T0 1524685261
+T0 1524685272
+T0 1524685283
+T0 1524685296
+</pre>
+
+You'll note that the clients take the following times to complete: 2 seconds, 2, 3, 6, 7, 8, 9, 11, 13.  Can you explain why each client is taking longer than the next?
+
+<p>
+Here's the reason -- when the first client runs, it puts 50 elements into the tree, and then
+processes its 119,950 other events.  When it's done, the tree has roughly 50 elements.  
+When the second client runs, it puts 50 more elements into the tree, and then
+processes its 119,950 other events.  When it's done, the tree has roughly 100 elements.
+Each successive client works on a tree that gets incrementally bigger.  
+</p><p>
+Now, think about the clients when the server allows them to work simultaneously.  Pretty 
+much instantly, the tree has 500 elements.  When means that each client has to work on a
+tree of 500 elements.  The average client completion time roughly 10.5 seconds.  
+</p><p>
+In other words, we have set up a bad experiment to compare the two servers.  Now, I'm not
+going to set up a better one, because I don't have the time, and I don't think that it adds
+value to the class.  What would be better would be to write a program that populates the
+tree, and then fires off clients that just do ADD/DELETE/PRINT.  
+</p><p>
+Remember this lecture, because you will likely see something like it in your near
+future, when you are trying to analyze something involving computers.
+</p><hr>
+
+<p>
+</p><hr>
+<h2><b>ssnserver5</b></h2>
+
+There's another improvement that you can do to your program, to increase
+the amount of parallelism in it.  Think to yourself:
+does the mutex really need to be locked while printing the tree?
+No, not really.  You can do some buffering to help you.  Instead,
+create the string that you'll be using to print the tree while
+holding this mutex.  This will take some time, but not nearly as
+much as writing this string to the socket.  Then you release the
+mutex and write the string.  This is done in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Thread3/ssnserver5.c"><b>Ssnserver5.c</b></a>.  
+I wish that this improved performance more than it does -- it 
+improved the time of the above test from 1:45 to 1:39.  Someday,
+I'll explore this one more, but for now, just let it be known that 
+it is a nice application of buffering that does improve performance
+somewhat.
+
+<hr>
+<h2>The lesson to be learned</h2>
+
+The lesson to be learned here is that you need to think carefully
+about your use of synchronization primitives.  There are two issues:
+correctness and performance.  You want to make sure that there are
+no race conditions in your code, as there were in 
+<b>ssnserver2.c</b>.  
+However, you want to eliminate these race
+conditions in a way that maximizes performance.  This should be
+done by making sure you only hold a mutex for as long as you need
+it locked.  If you are performing a very time consuming operation
+(such as writing to a socket or file) while holding the mutex,
+then you should consider the use of buffering so that you can 
+move the time consuming operation out of the code that holds the
+mutex.  This is what <b>ssnserver5</b> does.
+</body></html>

@@ -1,0 +1,704 @@
+
+<!-- saved from url=(0081)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Memory</title>
+</head><body bgcolor="ffffff">
+<h1> CS360 Lecture notes -- Memory</h1>
+<li> <a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li> Directory: <b>/home/plank/cs360/notes/Memory</b>
+</li><li> Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/lecture.html
+</b></a>
+</li><li> Original Lecture Notes: Mid 1990's.
+</li><li> Most recent update: March, 2018
+
+<hr>
+
+<h1> Before I Start </h1>
+
+(This was written in 2018.)
+This lecture material can be problematic, because memory layout, and the primitives
+used to explore them are typically not POSIX standards, and can differ from operating
+system to operating system.  Fortunately, the concepts are easy to map from one machine to
+another, but I can understand your frustration if things become confusing on a new machine.
+<p>
+Also fortunately, Raspberry Pi's using the Raspbian operating system are pretty clean, 32-bit
+machines.  The output that you see below will be on a Pi, so if you have access
+to one and want to follow along, then please do so.  Most Linux OS's will come close to
+what you see here, so long as you are ready for 64-bit pointers.  If you compile these
+programs with <b>-m32</b> on a 64-bit Linux machine, you'll get nicer looking pointers.
+</p><p>
+(Also, if you compile these with a strict compiler, you'll get warnings.  Sorry, but
+I don't want to junk up my code with the proper typecasts to get rid of the warnings.
+They don't happen on the Pi).
+
+</p><hr>
+<h1> Memory </h1>
+
+This lecture is an introduction to memory as we see it in Unix.
+<p>
+</p><p>As I have said previously, memory is like a huge array with 
+2<sup>32</sup> or 2<sup>64</sup> elements, depending on whether you are 
+running in 32 or 64-bit mode.
+A pointer in C is an index to this array.  Thus when 
+a C pointer is <tt>0xefffe034</tt>, it points to the <tt>0xefffe035th</tt> element in 
+the memory array (memory being indexed starting with zero).
+
+</p><p>You cannot access all elements of memory.  One example
+that we have seen a lot is element 0.  If you try to dereference a 
+pointer with a value of 0, you will get a segmentation violation.
+This is Unix's way of telling you that that memory location is
+illegal.
+
+</p><p>For example, the following program 
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/segfault.c">segfault.c</a></b>)
+will generate a segmentation violation.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  char *s;
+  char c;
+
+  s = (char *) 0;
+  c = *s;           <font color="blue">/* The segmentation violation happens here. */</font>
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./segfault</b></font>
+Segmentation fault
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+There are many regions of memory that are set up to be legal, when you run your
+program.  They are set up by the operating system, with the help of the hardware.
+I will talk about four of them here.  While there are standard Unix names for 
+them (which I'll tell you), I think that they are confusing, so I use my own:
+<ol>
+<li><b>The code</b>: This memory region holds the instructions of your program.
+The standard Unix name for this is "text".
+</li><li><b>The globals</b>: These are your global variables.  Standard Unix lingo splits the
+globals into two parts: "Data", which holds global variables that have been initialized in
+the program; and "BSS", which holds global variables that have not been initialized.
+</li><li><b>The heap</b>: This is memory that you get from <b>malloc()</b> (or <b>new</b> in C++).
+</li><li><b>The stack</b>: This contains your local variables and procedure arguments.
+</li></ol>
+
+If we view memory as a big array, the regions (or ``segments'') look
+as follows:
+
+<pre>     |--------------| 0x00000000
+     |              |
+     |   void       |
+     |              |
+     |--------------| 
+     |              |
+     |  code        |
+     |              |
+     |--------------|
+     |  void        |
+     |--------------| 
+     |              |
+     |  globals     |
+     |              |
+     |--------------|
+     |  void        |
+     |--------------|
+     |              |
+     |  heap        |
+     |              |  You can make the heap grow with the sbrk() or mmap() system call.
+     |--------------|
+     |  void        |
+     |--------------|
+     |              |
+     |  stack       |
+     |              | 
+     |--------------|
+     |  void        |
+     |--------------| 0xffffffff
+</pre>
+
+Note, the heap grows down as you make more <b>malloc()</b> calls and your program
+asks the operating system for more memory.  As we have seen in the Assembly code
+lecture notes, the stack grows "upward", by subtracting values from the stack and frame
+pointers.  In reality, the stack is a fixed size (typically 8 MB).  You could make it
+grow by using <b>mmap()</b> properly, but that is not what happens by default.
+
+<hr>
+<h1>Paging</h1>
+
+On all machines, memory is broken up into fixed chunks called pages.
+Pages are typically 4096 or 8192 bytes long, but other sizes have been supported
+by other machines.  You can find out your machine's page size by calling
+the <b>getpagesize()</b> system call.  On the Pi, they are 4096 bytes (we
+will see this below).
+
+<p>
+The way memory works is as follows:  The operating system allocates
+certain pages of memory for you.  Whenever you try to read, write or execute
+an instruction 
+from an address in memory, the hardware first checks with the operating
+system to see if that address belongs to a page that has been allocated
+for you, and if you have permission to do the operation.  
+If so, then it goes ahead and performs the read/write.  If
+not, you'll get a segmentation violation, which is a hardware error.  It is caught
+by the operating system, which in turn "sends" it to your program (we'll see how
+you can "catch" it later in the semester).
+
+</p><p>This is what happens when you do:
+
+</p><pre>  s = (char *) 0;
+  c = *s;
+</pre>
+
+When you say "<b>c = *s</b>", the hardware sees that you
+want to read memory location zero.  The hardware checks a table, which has been set up
+by the operating system, to see if location zero is legal, and discovers that it
+is not.  This results in a segmentation violation.  
+
+<p>The exact mechanics of paging are covered in
+classes on Operating Systems.  I won't go into them
+further here.  What you should understand is that the hardware and operating system
+manage memory at a page granularity, and that when you want to use memory, to read it, 
+write it, or execute instructions from it, the hardware checks the page on which the
+memory resides, to make sure you have the permissions to use it.  If you don't, you'll
+get a segmentation violation.
+
+</p><hr>
+<h1>Looking at Memory Regions of your Program</h1>
+
+The program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/look_at_memory.c">look_at_memory.c</a></b>
+takes a look at the various memory regions of your program, while it is running.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>#include &lt;sys/types.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+typedef unsigned long int UI;
+
+<font color="blue">/* These are special variables that
+   denote the end of the memory segments
+   for the code ("text"), initialized
+   global variables ("data") and
+   uninitialized global variables ("bss").
+   */</font>
+
+extern etext;
+extern edata;
+extern end;
+
+<font color="blue">/* Here are four global variables.  A
+   and B belong to the "data", and X and Y
+   belong to the "bss".  */</font>
+
+int A = 4;
+int X;
+int B = 6;
+int Y;
+
+<font color="blue">/* Proc_a and main should reside in the
+   "text" segment. */</font>
+
+void proc_a()
+{
+}
+
+<font color="blue">/* And of course i and buf will belong
+   on the stack.  I will call malloc()
+   to set buf equal to an address in 
+   the heap. */</font>
+</pre></td><td valign="top"><pre>int main(int argc, char **argv)
+{
+  int i;
+  char *buf;
+
+  buf = (char *) malloc(200);
+
+  printf("Page size: %d\n", getpagesize());
+  printf("\n");
+
+  printf("&amp;etext: 0x%lx\n", (UI) &amp;etext);
+  printf("&amp;edata: 0x%lx\n", (UI) &amp;edata);
+  printf("&amp;end:   0x%lx\n", (UI) &amp;end);
+  printf("\n");
+
+  printf("Code Addresses:\n");
+  printf("main:   0x%lx\n", (UI) main);
+  printf("proc_a: 0x%lx\n", (UI) proc_a);
+  printf("\n");
+
+  printf("Global Variable Addresses:\n");
+  printf("&amp;A: 0x%lx\n", (UI) &amp;A);
+  printf("&amp;B: 0x%lx\n", (UI) &amp;B);
+  printf("&amp;X: 0x%lx\n", (UI) &amp;X);
+  printf("&amp;Y: 0x%lx\n", (UI) &amp;Y);
+  printf("\n");
+
+  printf("Heap Address:\n");
+  printf("buf: 0x%lx\n", (UI) buf);
+  printf("\n");
+
+  printf("Stack Addresses:\n");
+  printf("&amp;i:    0x%lx\n", (UI) &amp;i);
+  printf("&amp;buf:  0x%lx\n", (UI) &amp;buf);
+  printf("&amp;argc: 0x%lx\n", (UI) &amp;argc);
+  printf("\n");
+
+  <font color="blue">/* Finally, print the addressses as 
+     recorded in the directory "/proc". */</font>
+
+  sprintf(buf, "cat /proc/%d/maps", getpid());
+  system(buf);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Again, not all machines will allow this code to compile.  Linux-based machines are a pretty
+safe bet, though.  Go ahead and read the comments to the code above.  Basically, we are 
+printing out addresses of variables in each of the memory segments that I describe above.
+After that, we look at the file <b>/proc/<i>pid</i>/maps</b>, which lets you know
+about the memory mappings in the process with id <i>pid</i>.  
+
+</p><p>
+We run the program on a Raspberry Pi, and we get a lot of information:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./look_at_memory</b></font>
+Page size: 4096
+
+&amp;etext: 0x107f4
+&amp;edata: 0x20a74
+&amp;end:   0x20a80
+
+Code Addresses:
+main:   0x1058c
+proc_a: 0x10578
+
+Global Variable Addresses:
+&amp;A: 0x20a6c
+&amp;B: 0x20a70
+&amp;X: 0x20a78
+&amp;Y: 0x20a7c
+
+Heap Address:
+buf: 0x12cb008
+
+Stack Addresses:
+&amp;i:    0x7ebe3b3c
+&amp;buf:  0x7ebe3b38
+&amp;argc: 0x7ebe3b34
+
+00010000-00011000 r-xp 00000000 00:22 126617690  /mnt/nfs/plank/cs360-lecture-notes/Memory/look_at_memory
+00020000-00021000 rw-p 00000000 00:22 126617690  /mnt/nfs/plank/cs360-lecture-notes/Memory/look_at_memory
+012cb000-012ec000 rw-p 00000000 00:00 0          [heap]
+76d9c000-76ec7000 r-xp 00000000 b3:07 524518     /lib/arm-linux-gnueabihf/libc-2.19.so
+76ec7000-76ed7000 ---p 0012b000 b3:07 524518     /lib/arm-linux-gnueabihf/libc-2.19.so
+76ed7000-76ed9000 r--p 0012b000 b3:07 524518     /lib/arm-linux-gnueabihf/libc-2.19.so
+76ed9000-76eda000 rw-p 0012d000 b3:07 524518     /lib/arm-linux-gnueabihf/libc-2.19.so
+76eda000-76edd000 rw-p 00000000 00:00 0 
+76ef6000-76efb000 r-xp 00000000 b3:07 3540510    /usr/lib/arm-linux-gnueabihf/libarmmem.so
+76efb000-76f0a000 ---p 00005000 b3:07 3540510    /usr/lib/arm-linux-gnueabihf/libarmmem.so
+76f0a000-76f0b000 rw-p 00004000 b3:07 3540510    /usr/lib/arm-linux-gnueabihf/libarmmem.so
+76f0b000-76f2b000 r-xp 00000000 b3:07 524429     /lib/arm-linux-gnueabihf/ld-2.19.so
+76f35000-76f3a000 rw-p 00000000 00:00 0 
+76f3a000-76f3b000 r--p 0001f000 b3:07 524429     /lib/arm-linux-gnueabihf/ld-2.19.so
+76f3b000-76f3c000 rw-p 00020000 b3:07 524429     /lib/arm-linux-gnueabihf/ld-2.19.so
+7ebc3000-7ebe4000 rwxp 00000000 00:00 0          [stack]
+7ec2a000-7ec2b000 r-xp 00000000 00:00 0          [sigpage]
+7ec2b000-7ec2c000 r--p 00000000 00:00 0          [vvar]
+7ec2c000-7ec2d000 r-xp 00000000 00:00 0          [vdso]
+ffff0000-ffff1000 r-xp 00000000 00:00 0          [vectors]
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+From this program, we can deduce that our program's address space looks as in the picture below:
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Memory_files/Drawings.jpg"></td></tr></tbody></table></center><p>
+
+You'll note that every memory address from <tt>0x0</tt> to <tt>0xffffffff</tt> is accounted
+for.  You'll also note how the <b>printf()</b> statements from the program match the 
+picture.  For example, <b>A</b> and <b>B</b> have values between <tt>0x20000</tt>
+(the beginning of the globals) and <tt>0x20ffff</tt> (the end of the globals).  
+They also have values lower than
+<b>&amp;edata</b>, which is right, because they are initialized by the program.
+</p><p>
+<b>X</b> and <b>Y</b> also have values between <tt>0x20000</tt>
+and <tt>0x20ffff</tt>.  They are uninitialized, so they belong in the "bss" segment.
+Accordingly, their values are between <b>&amp;edata</b> and 
+<b>&amp;end</b>.
+</p><p>
+You should also see that <b>main</b> and <b>proc_a</b> are in the code segment, 
+<b>buf</b> is in the heap, and <b>&amp;i</b>, <b>&amp;buf</b> and <b>&amp;argc</b> are
+all in the stack segment.  
+</p><p>
+All of the addresses labeled <b>NULL</b> will give you segmentation violations if you 
+try to access them.
+</p><p>
+It is slightly unfortunate that the heap addresses
+and stack addresses will change from run to run:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./look_at_memory | grep buf</b></font>
+buf: 0x53b008
+&amp;buf:  0x7e98eb38
+UNIX&gt; <font color="darkred"><b>./look_at_memory | grep buf</b></font>
+buf: 0x1274008
+&amp;buf:  0x7efc4b38
+UNIX&gt; <font color="darkred"><b>./look_at_memory | grep buf</b></font>
+buf: 0x19df008
+&amp;buf:  0x7eec7b38
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The reason for this is security.  Be ready for it.
+
+<hr>
+<h3>Reading, Writing and Executing Memory Regions</h3>
+
+The program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/mess_with_memory.c">mess_with_memory.c</a></b> changes
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/look_at_memory.c">look_at_memory.c</a></b> in a few minor ways.
+First, it defines the procedure <b>proc_a</b> to simply print "Hi":
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>void proc_a()
+{
+  printf("Hi\n");
+}
+</pre></td></tr></tbody></table></center><p>
+
+Next, it defines three more variables in <b>main()</b>.  These are <b>ptr</b>, 
+<b>c</b> and <b>proc</b>:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>  char *ptr;
+  char c;
+  void (*proc)();
+</pre></td></tr></tbody></table></center><p>
+
+The only subtle one is <b>proc</b> -- it is a pointer to a function, which you 
+can set and execute at runtime.  
+</p><p>
+At the end of <b>mess_with_memory</b>, we do some dangerous stuff.  In fact, if 
+you have ever heard someone say that C is a dangerous or unsafe language, well
+here's your proof!  Read the comments to see what the code is doing.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>
+  <font color="blue">/* All the previous code from look_at_memory.c is here. */</font>
+
+  i = 0xabcd;
+
+  while (1) {
+    printf("\n");
+    printf("Enter an address (with 0x), and R|W|X: ");
+    fflush(stdout);
+  
+    <font color="blue">/* From stdin, read a pointer value into ptr, and a character R, W, or X into c. */</font>
+
+    if (scanf("0x%x %c", &amp;ptr, &amp;c) != 2 || strchr("RWX", c) == NULL) {
+      printf("Exiting\n");
+      exit(0);
+    }
+  
+    <font color="blue">/* If c is 'R', read the character at the pointer. */</font>
+
+    if (c == 'R') {
+      printf("Reading 0x%x\n", (UI) ptr);
+      fflush(stdout);
+      c = *ptr;
+      printf("Read 0x%x\n", c); 
+  
+    <font color="blue">/* If c is 'W', write the value 0x67 to the byte at the pointer, 
+       and then print out A, i and buf. */</font>
+
+    } else if (c == 'W') {
+      printf("Writing 0x67 to 0x%x\n", ptr);
+      *ptr = 0x67;
+      printf("A is now 0x%x\n", A);
+      printf("i is now 0x%x\n", i);
+      printf("buf is now %s\n", buf);
+
+    <font color="blue">/* If c is 'X', then treat ptr as a procedure, and call it. */</font>
+
+    } else if (c == 'X') {
+      memcpy(&amp;proc, &amp;ptr, sizeof(void *));
+      proc();
+    }
+  }
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+So, what the program is allowing the user to do is enter an address, and then either
+read from, write to, or execute code from that address.  Let's give it a try.  It is 
+unfortunate that the memory addresses will change from when we called <b>look_at_memory</b>
+above.  I'm only going to include output that is important to understanding this part of
+the lecture:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./mess_with_memory</b></font>
+&amp;etext: 0x10b3c   <font color="blue"> I'm deleting a bunch of lines here, to make it clearer</font>
+&amp;edata: 0x20e80
+&amp;end:   0x20e94
+
+Code Addresses:
+main:   0x1072c
+proc_a: 0x10714
+
+Global Variable Addresses:
+&amp;A: 0x20e78
+
+Heap Address:
+buf: 0x1685008
+
+Stack Addresses:
+&amp;i:    0x7eadeb3c
+
+00010000-00011000 r-xp 00000000 00:22 126617872  /mnt/nfs/plank/cs360-lecture-notes/Memory/mess_with_memory
+00020000-00021000 rw-p 00000000 00:22 126617872  /mnt/nfs/plank/cs360-lecture-notes/Memory/mess_with_memory
+01685000-016a6000 rw-p 00000000 00:00 0          [heap]
+7eabe000-7eadf000 rwxp 00000000 00:00 0          [stack]
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x20e78 R</b></font>
+Reading 0x20e78
+Read 0x4
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x7eadeb3c R</b></font>
+Reading 0x7eadeb3c
+Read 0xcd
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x7eadeb3d R</b></font>
+Reading 0x7eadeb3d
+Read 0xab
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x1685008 R</b></font>
+Reading 0x1685008
+Read 0x30
+</pre>
+
+All of these are straightforward -- we are reading the first byte of <b>A</b>, which,
+because the Raspberry Pi is little endian, equals 4.  We set <b>i</b> to be <tt>0xabcd</tt>, so
+its first byte is <tt>0xcd</tt> and its second byte is <tt>0xab</tt>.  Finally, <tt>0x1685008</tt>
+is the value of <b>buf</b>, which is a heap address.  When we read it, we get <tt>0x30</tt>,
+which is the ASCII character code for '0', which is the first character in the string
+that we just read from the terminal.
+<p>
+
+We can write to these addresses as well -- the 'W' character says to write 0x67 to 
+the address.  Below, we'll write it to <b>A</b>, to the third byte of <b>i</b>, and
+to <b>buf</b>:
+
+
+</p><pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x20e78 W</b></font>
+Writing 0x67 to 0x20e78
+A is now 0x67            <font color="blue">We just wrote 0x67 to the first byte of A</font>
+i is now 0xabcd
+buf is now 0x20e78 W
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x7eadeb3e W</b></font>
+Writing 0x67 to 0x7eadeb3e
+A is now 0x67
+i is now 0x67abcd        <font color="blue">We just wrote 0x67 to the third byte of i</font>
+buf is now 0x7eadeb3e W
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x1685008 W</b></font>
+Writing 0x67 to 0x1685008
+A is now 0x67
+i is now 0x67abcd
+buf is now gx1685008 W    <font color="blue">We just wrote 0x67 ('g') to the first byte of buf</font>
+</pre>
+
+Recall that memory is partitioned by the processor into pages, and it manages the protection
+of memory at the page level.  So, even though <b>&amp;end</b> is <tt>0x20e94</tt>, we
+see from the <b>/proc/<i>pid</i>/maps</b> file that all memory up to <tt>0x20fff</tt>
+is part of the global variable segment.  So, we can read and write <tt>0x20fff</tt>
+without segfaulting, even though that doesn't have any meaning to our program:
+
+<pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x20fff W</b></font>
+Writing 0x67 to 0x20fff
+<font color="blue">Ignore the output</font>
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x20fff R</b></font>
+Reading 0x20fff
+Read 0x67
+</pre>
+
+However, if we try to read 0x21000, we will segfault:
+
+<pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x21000 R</b></font>
+Reading 0x21000
+Segmentation fault
+UNIX&gt; 
+</pre>
+
+We can read an execute memory in the code segment.  That seems pretty dangerous,
+doesn't it?  Let's go ahead and read the first bytes of <b>main()</b> and <b>proc_a</b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>./mess_with_memory</b></font>
+&amp;etext: 0x10b3c
+&amp;edata: 0x20e80
+&amp;end:   0x20e94
+
+Code Addresses:
+main:   0x1072c
+proc_a: 0x10714
+
+Global Variable Addresses:
+&amp;A: 0x20e78
+&amp;B: 0x20e7c
+&amp;X: 0x20e8c
+&amp;Y: 0x20e90
+
+Heap Address:
+buf: 0x824008
+
+Stack Addresses:
+&amp;i:    0x7ec4bb3c
+&amp;buf:  0x7ec4bb38
+&amp;argc: 0x7ec4bb24
+
+<font color="blue">I'm omiting the maps</font>
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x1072c R</b></font>
+Reading 0x1072c
+Read 0x10
+
+Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x10714 R</b></font>
+Reading 0x10714
+Read 0x0
+</pre>
+
+That's not very exciting.  Now, let's set the function pointer <b>proc</b> to <tt>0x10714</tt>,
+which is the first instruction of <b>proc_a</b>, and call <b>proc</b>.  You'll see that
+it calls <b>proc_a</b>:
+
+<pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x10714 X</b></font>
+Hi
+</pre>
+
+Can we call <b>main()</b>?  Why not!
+
+<pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x1072c X</b></font>
+<font color="blue">The first lines, up to the heap addresses are the same as before.</font>
+<font color="blue">I'm not including them here.</font>
+Heap Address:
+buf: 0x8240d8
+
+Stack Addresses:
+&amp;i:    0x7ec4bb0c
+&amp;buf:  0x7ec4bb08
+&amp;argc: 0x7ec4baf4
+</pre>
+
+Since we're calling <b>main()</b> recursively, you'll see that <b>buf</b> has a new
+address, since we called <b>malloc()</b> again, and that the stack addresses are
+smaller than they were previously.
+<p>
+How about if we call it on a heap address?  We will get a segmentation violation,
+because the heap does not have execute permissions:
+
+</p><pre>Enter an address (with 0x), and R|W|X: <font color="darkred"><b>0x824008 X</b></font>
+Segmentation fault
+</pre>
+
+An observant student in class noted that the stack <i>did</i> have execute permissions.
+That doesn't seem prudent.  If we try to an address in our current stack frame, 
+we'll get an illegal instruction, since those addresses have not been set up as instructions:
+
+<pre>UNIX&gt; <font color="darkred"><b>./mess_with_memory</b></font>
+<font color="blue">Lines deleted</font>
+Stack Addresses:
+&amp;i:    0x7ef84b3c
+&amp;buf:  0x7ef84b38
+&amp;argc: 0x7ef84b24
+<font color="blue">More deleted</font>
+
+Enter an address (with 0x), and R|W|X: 0x7ef84b3c X
+Illegal instruction
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+I tried to then put real code onto the stack and run it, but it failed -- probing,
+it has to do with ARM branch instructions, and I don't really want to go down that
+rabbit hole.  Too bad.
+
+
+<hr>
+<h3>Breaking the stack</h3>
+
+It's not hard to break the stack -- simply do infinite recursion.  The
+program 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/break_the_stack.c">break_the_stack.c</a></b>
+does this.  
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+
+int main(int argc)
+{
+  char eight_K[8192];
+
+  printf("Argc = %5d.  &amp;argc = 0x%x.\n", argc, &amp;argc);
+  main(argc+1);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Typically, the operating system allocates 8MB for the stack, so this program
+should segfault in around 1024 iterations (less, because you are pushing more
+onto the stack than the <b>eight_K</b> array):
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./break_the_stack</b></font>
+Argc =     1.  &amp;argc = 0x7ec79b44.
+Argc =     2.  &amp;argc = 0x7ec77b34.
+Argc =     3.  &amp;argc = 0x7ec75b24.
+Argc =     4.  &amp;argc = 0x7ec73b14.
+....
+Argc =  1019.  &amp;argc = 0x7e481ba4.
+Argc =  1020.  &amp;argc = 0x7e47fb94.
+Argc =  1021.  &amp;argc = 0x7e47db84.
+Segmentation fault
+UNIX&gt;
+</pre>
+
+You can also break the stack by simply allocating too much local memory.  A
+declaration like the following will do:
+
+<pre>   char big[10000000];
+</pre>
+
+<hr>
+<h3>What happens when you run out of heap space?</h3>
+
+When this happens, <b>malloc()</b> returns NULL.  The program
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Memory/break_the_heap.c">break_the_heap.c</a></b> keeps calling
+<b>malloc()</b> for a megabyte, until <b>malloc()</b> fails.  On
+my Raspberry pi, this happens after 2021 iterations, so it looks like
+my process gets two gigabytes of heap space before the operating system
+cries uncle...
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i;
+  char *c;
+
+  for (i = 0; i &lt; 1000000000; i++) {
+    c = (char *) malloc(1024*1024);
+    printf("%9d 0x%08lx\n", i, (unsigned long) c);
+    if (c == NULL) exit(0);
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./a.out</b></font>
+        0 0x76d0c008
+        1 0x76c0b008
+        2 0x76b0a008
+        3 0x76a09008
+...
+     2019 0x7eda0008
+     2020 0x7eea1008
+     2021 0x00000000
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+On my linux box, this went over 700,000 iterations before I killed it...
+</li></body></html>

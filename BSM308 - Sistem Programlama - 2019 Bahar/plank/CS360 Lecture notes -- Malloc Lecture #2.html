@@ -1,0 +1,405 @@
+
+<!-- saved from url=(0082)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Malloc2/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Malloc Lecture #2</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Malloc Lecture #2</h1>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Malloc2</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Malloc2/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Malloc2/lecture.html
+</b></a>
+</li><li> Original Notes: 1996.
+</li><li> Last updated:
+Thu Mar  8 11:15:03 EST 2018
+</li><li> <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Malloc2/Malloc-Marz-2/index.html"> The material Stephen Marz used when he taught
+this lecture in 2017.</a>
+<hr>
+
+<h3>More on malloc() and free().</h3>
+
+Last class I discussed how malloc keeps a
+big buffer of memory in the heap and carves it up
+and doles it out whenever the user calls
+<b>malloc()</b>.  If there is not enough room in the
+buffer for what the user desires, then <b>sbrk()</b> is
+called to get heap storage for a big enough
+buffer. 
+
+<p><b>Malloc</b> actually works in a different way.  What
+it really does is maintain a linked list of free
+memory.  When <b>malloc()</b> is called, it looks on its
+list for a piece of memory that is big enough.
+If it finds one, then it removes that memory from
+the linked list and returns it to the user.  When
+<b>free()</b> is called, the memory is put back on the
+linked list.  Now, to be efficient, if there is a
+chunk of memory on the free list that much bigger
+than what is requested, then it breaks up that
+chunk into two chunks -- one which is the size of
+the request (padded to a multiple of 8),
+and the remainder.  The remainder is put on the
+free list and the one the size of the request is
+returned to the user.  This is the standard way
+that you view <b>malloc</b> -- it manages a free list of
+memory.  <b>Malloc()</b> takes memory from the free list
+and gives it to the user, and <b>free()</b> puts memory
+back to the free list. 
+
+</p><p>Initially, the free list is empty.  When the
+first <b>malloc()</b> is called, we call <b>sbrk()</b> to get a
+new chunk of memory for the free list.  This
+memory is split up so that some is returned to
+the user, and the rest goes back onto the free
+list. 
+
+</p><p>Before going into an example, I should say
+something about how the free list is implemented.
+There will be a global variable <b>malloc_head</b>,
+which is the head of the free list.  Initially,
+<b>malloc_head</b> is <b>NULL</b>.  When <b>malloc()</b> is first
+called, <b>sbrk()</b> is called so that some memory can
+be put on the free list.  The way to turn
+memory into a free list element is to use the
+first few bytes as a list structure.  In other
+words, if you have a chunk of memory on the free list 
+and that chunk
+always has at least 12 bytes, then you can treat
+the first twelve bytes of the memory as a list
+structure.  In other words:
+
+</p><ul>
+<li> bytes 0-3: Integer -- size of this chunk.
+</li><li> bytes 4-7: pointer to next chunk in the free list
+</li><li> bytes 8-11: pointer to previous chunk in the free list
+</li></ul>
+
+How do you do this?  You set up a typedef like the following:
+<pre>typedef struct flist {
+   int size;
+   struct flist *flink;
+   struct flist *blink;
+} *Flist;
+</pre>
+And when you need to treat a chunk of memory starting at location
+<b>s</b> (where <b>s</b> is a <b>(char *)</b> or <b>(void *)</b> or 
+<b>caddr_t</b>) as a free list element, you cast it:
+<pre>  Flist f;
+  
+  f = (Flist) s;
+</pre>
+
+<hr>
+So, you start off as follows.  <b>malloc_head</b> equals <b>NULL</b>.  
+In other words, the free list is empty.
+Suppose the user calls <b>malloc(16)</b>.
+Your <b>malloc</b> program sees that there is no memory
+on the free list, so it calls <b>sbrk(8192)</b> to get
+8K of heap storage for free memory.  Suppose
+<b>sbrk(8192)</b> returns <b>0x6100</b>.  Then you have the
+following view of memory: 
+
+<pre>          malloc_head == NULL
+
+         |---------------|
+         |               | 0x6100 (start of heap)
+         |               | 0x6104
+         |               | 0x6108
+         |               | 0x610c
+         |               | 0x6120
+         |               |
+              .....      |
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+</pre>
+
+To put this hunk of memory on the free list, you typecast it to an <b>Flist</b>, 
+and then do the work to link it onto the list. 
+At the end of this process, memory will look as follows:
+
+<pre>          malloc_head == 0x6100
+
+         |---------------|
+         |    8192       | 0x6100 (start of heap)
+         |    NULL       | 0x6104
+         |    NULL       | 0x6108
+         |               | 0x610c
+         |               | 0x6110
+         |               |
+              .....      | 
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+</pre>
+
+You need to satisfy the user's request for 16 bytes.  You split this
+chunk of memory into two chunks -- one that is 24 bytes (16 for the user
+and 8 for bookkeeping), and one that is the remaining 8192-24 = 8168 bytes.
+You put the latter chunk onto the free list, and return a pointer to the
+16 bytes allocated for the user to the user:
+
+<pre>          malloc_head == 0x6118
+
+         |---------------|
+         |     24        | 0x6100 (start of heap)
+         |               | 0x6104
+         |               | 0x6108  &lt;-- beginning of 16 bytes for the user
+         |               | 0x610c
+         |               | 0x6110
+         |               | 0x6114
+         |     8168      | 0x6118
+         |     NULL      | 0x611c
+         |     NULL      | 0x6120
+              .....      | 
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+
+0x6108 is returned to the user.
+</pre>
+
+Suppose the user next calls <b>malloc(8)</b>.  You do the same thing -- carve 16
+bytes off of the chunk of memory in the free list, and return a pointer
+to 8 of them to the user.  The other 8 are used for bookkeeping.  The
+remaining 8152 bytes are put back on the free list.  In other words,
+after <b>malloc(8)</b> is called the heap looks like:
+
+<pre>          malloc_head == 0x6128
+         |---------------|
+         |     24        | 0x6100 (start of heap)
+         |               | 0x6104
+         |               | 0x6108  
+         |               | 0x610c
+         |               | 0x6110
+         |               | 0x6114
+         |     16        | 0x6118
+         |               | 0x611c
+         |               | 0x6120
+         |               | 0x6124
+         |     8152      | 0x6128
+         |     NULL      | 0x612c
+         |     NULL      | 0x6130
+              .....      | 
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+
+0x6120 is returned to the user.  
+</pre>
+
+Suppose the user calls
+<b>free(0x6108)</b>.  In other words, the user wants to free the chunk of 
+memory returned by the first <b>malloc</b> call.  
+The goal is to 
+put those 24 bytes,
+that were originally carved off the big chunk of memory, back onto the free list.
+<b>Free()</b> will do that by turning those 
+24 bytes into a free list node, and then
+making that node the first one in the free list.  When <b>free()</b> is done,
+memory will look as follows:
+
+<pre>          malloc_head == 0x6100
+         |---------------|
+         |     24        | 0x6100 (start of heap)
+         |   0x6128      | 0x6104
+         |   NULL        | 0x6108  
+         |               | 0x610c
+         |               | 0x6110
+         |               | 0x6114
+         |     16        | 0x6118
+         |               | 0x611c
+         |               | 0x6120
+         |               | 0x6124
+         |     8152      | 0x6128
+         |     NULL      | 0x612c
+         |    0x6100     | 0x6130
+              .....      |
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+</pre>
+
+
+The free list has two nodes now -- one starting at 
+<tt>0x6100</tt>
+and containing 24 bytes, and one starting at
+<tt>0x6128</tt> and containing 8152
+bytes.
+
+<p>Suppose now the user calls <b>malloc(24)</b>.  <b>Malloc</b>
+now tries to find a chunk in the free list that
+has 32 bytes (24 for the user and 8 for
+bookkeeping).  Thus, it rejects the first chunk
+in the free list, because it only has 24 bytes, and
+instead carves 32 bytes off the second.  When it
+is done, memory should look as follows: 
+
+</p><pre>          malloc_head == 0x6100
+         |---------------|
+         |     24        | 0x6100 (start of heap)
+         |   0x6148      | 0x6104
+         |   NULL        | 0x6108  
+         |               | 0x610c
+         |               | 0x6110
+         |               | 0x6114
+         |     16        | 0x6118
+         |               | 0x611c
+         |               | 0x6120
+         |               | 0x6124
+         |     32        | 0x6128
+         |               | 0x612c
+         |               | 0x6130
+         |               | 0x6134
+         |               | 0x6138
+         |               | 0x613c
+         |               | 0x6140
+         |               | 0x6144
+         |     8120      | 0x6148
+         |     NULL      | 0x614c
+         |     0x6100    | 0x6150
+              .....      |
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+</pre>
+
+
+And the value <tt>0x6130</tt> is returned to the user -- this is 24 bytes of 
+memory allocated for the user.
+
+<p>Finally, suppose now the user calls
+<b>malloc(8)</b>.  We want to find a free chunk of
+16 bytes (8 for the user and 8 for bookkeeping)
+in our free list.  The first chunk will do as it
+has 24 bytes; however there is a question --
+should we carve off 16 bytes from it, or just use
+all 24?  The answer is that we should use all 24
+bytes (give the user 16 bytes even though he or she will
+only think it's 8).  Why?  Because if we carve
+off 16 bytes, we'll only have 8 leftover, and
+that's not enough to store the pointers to hook
+it into the free list.  Thus, we take the entire
+24 bytes off the free list and give it to the
+user: 
+
+</p><pre>          malloc_head == 0x6148
+         |---------------|
+         |     24        | 0x6100 (start of heap)
+         |               | 0x6104
+         |               | 0x6108
+         |               | 0x610c
+         |               | 0x6110
+         |               | 0x6114
+         |     16        | 0x6118
+         |               | 0x611c
+         |               | 0x6120
+         |               | 0x6124
+         |     32        | 0x6128
+         |               | 0x612c
+         |               | 0x6130
+         |               | 0x6134
+         |               | 0x6138
+         |               | 0x613c
+         |               | 0x6140
+         |               | 0x6144
+         |     8120      | 0x6148
+         |     NULL      | 0x614c
+         |     NULL      | 0x6150
+              .....      |
+         |               |
+         |---------------| 0x8100 (end of heap -- sbrk(0))
+
+0x6108 is returned to the user.  
+</pre>
+
+Note how <b>malloc_head</b> and the
+pointers in the chunk starting at <tt>0x6148</tt> are 
+changed to reflect the
+chunk being removed from the free list.
+
+<hr>
+
+<h3>More on free()</h3>
+
+<b>Free()</b> must be called with addresses that have
+been returned from <b>malloc()</b>.  
+Why?  Because free expects that eight
+bytes behind the address will contain the size of
+the memory to be freed.  If you call free with an
+address that wasn't allocated with <b>malloc()</b>, then
+<b>free()</b> may well do something strange. 
+
+<p>For example, look in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Malloc2/badfree.c"><b>badfree.c</b></a>.
+It calls <b>free()</b>
+with an address in the middle of an array, and
+after a while, this causes <b>malloc()</b> to dump core.  It
+takes a while since <b>malloc()</b> seems to allocate from
+its buffer first, before attempting to use the
+(bogus) free'd blocks. 
+
+</p><p>In class it was suggested that <b>malloc()</b> keep track
+of the addresses that it allocates, and <b>free()</b> should
+check its argument to see whether or not it is a
+valid one.  This is a good suggestion.  However,
+<b>malloc()</b> will have to keep track of these addresses in a
+red-black tree structure or a hash table to make
+lookup fast.  Otherwise, <b>free()</b> will take too
+long.  You should note that red-black trees as
+implemented in <b>libfdr.a</b> cannot be used for this
+purpose, because the jrb routines call <b>malloc()</b> and
+<b>free()</b>. 
+
+</p><p>Another way for <b>free()</b> to do error checking is to
+use the bookkeeping bytes to help you.  You'll
+notice that the word 4 bytes before the address
+returned by <b>malloc()</b> is unused.  What you can do is
+set that word to a checksum when you call <b>malloc()</b>.
+Then when <b>free()</b> is called, it will check that word
+to see if it has the desired checksum.  If not,
+it will know that <b>free()</b> is being called with a
+bad address and can flag the error. 
+
+</p><hr>
+<h3>Coalescing free blocks</h3>
+
+When you call <b>free()</b>, you put a chunk of memory back 
+on the free list.  There may be times when the chunk immediately
+before it in memory, and/or the chunk immediately after it in 
+memory are also free.  If so, it makes sense to try to merge
+the free chunks into one free chunk, rather than having three
+continguous free chunks on the free list.  This is called ``coalescing''
+free chunks.
+
+<p>Here is one way that you can perform coalescing.  (You 
+should not do this in your lab).  However, if you want to give it a try
+on your own, it is
+a very good exercise in hacking.  Instead of having all 8 of your 
+bookkeeping bytes before the memory allocated for the user, keep 4
+before and 4 after.  When a memory chunk is allocated, both words
+are set to be the size of the chunk.  
+
+</p><p>Free chunks on the free list have a different layout.  They must
+be at least 16 bytes in size.  The first 12 bytes should be as
+described above, except <b>(-size)</b> should be kept in the first
+four bytes instead of <b>size</b>.  The last 4 bytes of the chunk
+should also hold <b>-size</b>.  
+
+</p><p>What this lets you do is the following.  When you free a chunk,
+you can look 8 bytes behind the pointer passed to <b>free()</b>.
+That should be either:
+
+</p><ul>
+<li> The <b>size</b> of the chunk before the given one in memory, if
+     that chunk is allocated.
+</li><li> <b>-size</b> of the chunk before the given one in memory, if that
+     chunk is free.  
+</li></ul>
+
+In other words, if the word 8 bytes before the given pointer is positive,
+then the chunk before the one being freed has been allocated.  Otherwise,
+it is free, and can be coalesced.  If the word after the current chunk
+is negative, then the subsequent chunk is free and it can be coalesced.
+Otherwise, it has been allocated.  Cool, no?
+
+<p>
+Obviously, you need to take care at the beginning and end of the 
+heap to make sure that your checks all work.  This is not difficult.
+
+</p></li></body></html>

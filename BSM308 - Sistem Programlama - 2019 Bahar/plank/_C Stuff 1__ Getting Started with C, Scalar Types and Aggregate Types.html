@@ -1,0 +1,567 @@
+
+<!-- saved from url=(0083)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title> "C Stuff 1:" Getting Started with C, Scalar Types and Aggregate Types</title>
+</head><body bgcolor="FFFFFF">
+<h2> "C Stuff 1:" Getting Started with C, Scalar Types and Aggregate Types</h2>
+
+<ul>
+<li> <a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li> <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/">CS360</a>
+</li><li> Url: <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Cstuff-1/lecture.html"><b>
+                  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Cstuff-1/lecture.html</b></a>
+</li><li> Programs are on the UT lab machines at <b>~jplank/cs360/notes/Cstuff-1</b>
+</li><li> And bitbucket: <a href="https://bitbucket.org/jimplank/cs360-lecture-notes">https://bitbucket.org/jimplank/cs360-lecture-notes</a>.
+</li><li> Originally written in 1995.
+</li><li> Last modification: <i>
+Tue Jan 16 16:29:47 EST 2018
+</i>
+</li></ul>
+<hr>
+<font color="red">As a caveat, this lecture and the next used to be bundled into one.
+I have unbundled them to reflect more closely what I'm doing in lecture.</font>
+
+<hr>
+<h2>Moving from C++ to C</h2>
+
+This class is taught in C, rather than C++.  The reasoning is as follows:
+Because C hides so much
+less from you than C++, you have a much easier time figuring out what's 
+going on when you run one or more programs.  This will be a little painful,
+because you lose so many of the wonderful things about C++ on which you have
+grown to rely, like <b>cin</b>, strings, objects with methods, and the standard
+template library.  Sorry.  
+<p>
+These lecture notes detail the parts of C++ that you lose when you migrate
+to C, and how you replace them.
+</p><p>
+You have to use <b>gcc</b> to compile programs in this class.  You <i>cannot</i>
+use <b>g++</b>.  Don't give the TA's C++ code and say you didn't know.  You know.
+</p><p>
+Time to learn C.
+</p><hr>
+<h2>Header files</h2>
+As with C++, you include standard header files with <b>#include</b>.  You include
+the file name in less-than/greater-than signs, and you include the <b>.h</b> extension.
+Instead of starting your programs with:
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;iostream&gt;
+using namespace std;
+</pre></td></tr></tbody></table></center><p>
+you start them with:
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</pre></td></tr></tbody></table></center><p>
+I never liked that "using namespace std" stuff anyway.
+</p><hr>
+<h2>Comments</h2>
+
+Comments in C are delimited by "/*" and "*/".  The former starts the comment, which 
+can span multiple lines, and the latter ends the comment.   (C++ style commenting 
+has been added to the C standard, so you can use it, but I don't -- you never know when
+you're going to be running on that 1979 VM....)
+<hr>
+
+<h2>Bye-bye, cin and cout</h2>
+
+Frankly, this isn't too painful, and will be less so when you learn the fields library.
+I'm assuming that you already know <b>printf()</b> from previous classes.  
+That handles output.  
+For input, we'll focus on three procedures that are defined
+in <b>stdio.h</b>: <b>scanf()</b>, <b>fscanf()</b> and <b>fgets()</b>.
+However, we're going to focus on them in a later lecture.  For now, we'll be 
+writing some non-interactive code.
+
+
+<hr>
+<h2>Types in C</h2>
+
+In C, there are three kinds of types that variables can have -- scalars, 
+      aggregates, and pointers.  Half of the game in getting things right
+      in C is keeping yourself from being confused about types.  This lecture
+      tries to elaborate on this a little.
+
+<h2>Scalar Types</h2>
+
+There are 7 scalar types in C:
+
+<li> <b>char</b>       -- 1 byte
+</li><li> <b>short</b>      -- 2 bytes
+</li><li> <b>int</b>        -- 4 bytes
+</li><li> <b>long</b>       -- 4 or 8 bytes, depending on the system and compiler
+</li><li> <b>float</b>      -- 4 bytes
+</li><li> <b>double</b>     -- 8 bytes
+</li><li> (pointer    -- 4 or 8 bytes, depending on the system and compiler)
+<p>
+These should all be familiar to you (ok, maybe not a <b>short</b>, but the rest should).  
+If you want to verify or use the size of a type in C, you use the macro <b>sizeof()</b>.
+For example, <b>sizeof(long)</b> will return either 4 or 8, depending on how big a <b>long</b>
+is in your system.
+</p><p>
+You can declare a scalar variable in 
+one of three places:  As a global variable, as a procedure parameter, and 
+as a local variable.  For example, look at the program below in 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/p1.c"><b>p1.c</b></a>:
+</p><p>
+(In this and all other lecture notes, you can copy the programs and the
+makefile into your own directory, and then compile them by using <b>make</b>.
+E.g. to make the program <b>p1</b>, you say ``<b>make p1</b>'').
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int i;
+
+int main(int argc, char **argv)
+{
+  int j;
+
+  j = argc;
+  i = j;
+  printf("Argc:          %d\n", i);
+
+  j = sizeof(long);
+  printf("Sizeof(long):  %d\n", j);
+
+  j = sizeof(int *);
+  printf("Sizeof(int *): %d\n", j);
+
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+There are three scalar int variables here -- <b>i</b>, <b>j</b>, and 
+<b>argc</b>.  <b>I</b> is a global 
+variable.  <b>J</b> is a local variable, and <b>argc</b> 
+is a parameter.  Scalars are 
+pretty straightforward.   You can pass them as parameters to procedures, and 
+return them from procedures without worrying about anything going awry.  
+
+The program prints argc (which it has copied to the variables j and i), and then
+the size of longs and pointers.  Here are two runs on my Mac (in 2018).  As 
+you can see, longs and pointers are 8 bytes:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./p1</b></font>
+Argc:          1
+Sizeof(long):  8
+Sizeof(int *): 8
+UNIX&gt; <font color="darkred"><b>./p1 using many arguments</b></font>
+Argc:          4
+Sizeof(long):  8
+Sizeof(int *): 8
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Some machines allow you to compile in 32-bit mode, which forces pointers and longs to 
+be four bytes.  On my macintosh, that's the "-m32" option to <b>gcc</b>:
+
+<pre>UNIX&gt; <font color="darkred"><b>gcc -m32 -o p1-32 p1.c</b></font>
+UNIX&gt; <font color="darkred"><b>./p1-32</b></font>
+Argc:          1
+Sizeof(long):  4
+Sizeof(int *): 4
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Some machines don't have 8-byte longs or pointers.  One example is the Raspberry Pi.
+When I pulled the repo and compiled on my Pi, I got the following:
+
+<pre>pi@raspberrypi:~/CS360/cs360-lecture-notes/Cstuff-1$ <font color="darkred"><b>./p1</b></font>
+Argc:          1
+Sizeof(long):  4
+Sizeof(int *): 4
+pi@raspberrypi:~/CS360/cs360-lecture-notes/Cstuff-1$ 
+</pre>
+
+The Pi's compiler doesn't have the "-m32" option.  Such is life.
+
+<hr>
+<h2>Aggregate Types</h2>
+
+Arrays and structs are aggregate types in C.  They are more complex than 
+scalars.  You can statically declare an array as a global or local variable --
+I do both below in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/p2.c">p2.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+char s1[15];
+
+int main(int argc, char **argv)
+{
+  char s2[4];
+
+...
+</pre></td></tr></tbody></table></center><p>
+<b>S1</b> is a global array of 15 chars and 
+<b>s2</b> is a local array of 4 chars.  
+</p><p>
+If an array has been statically declared, then you cannot assign it to 
+another array.  For example, look at the rest of <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/p2.c"><b>p2.c</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+char s1[15];
+
+int main(int argc, char **argv)
+{
+  char s2[4];
+  
+  s2 = "Jim";
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+The statement ``<b>s2 = "Jim"</b>'' is illegal in C, because <b>s2</b> has 
+been statically 
+declared.  If you try to compile this program, <b>gcc</b> 
+will give you an error:
+</p><pre>UNIX&gt; <font color="darkred"><b>gcc -o p2 p2.c</b></font>
+p2.c: In function `main':
+p2.c:10: incompatible types in assignment
+UNIX&gt;
+</pre>
+This is a good rule to bear in mind -- if <b>x</b> 
+is an array, then you should <i>NEVER</i> say 
+``<b>x = <i>something</i></b>''.  It
+will usually give you an error.  However, if it doesn't (because they change
+the compiler yet again), you are writing bad C code.
+<p>
+However, you can always say ``<b><i>something</i> = x</b>''.  We'll discuss later in the 
+lecture.
+</p><p>
+
+When you pass arrays as parameters, the pointers are passed, and not the arrays.  
+This is unlike a vector in C++, which copies the vectors.  Here's an example
+(in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/p2a.c">p2a.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<font color="blue">/* This sets any lower-case letter in a to upper case. */</font>
+
+void change_case(char a[20])
+{
+  int i;
+
+  for (i = 0; a[i] != '\0'; i++) {
+    if (a[i] &gt;= 'a' &amp;&amp; a[i] &lt;= 'z') a[i] += ('A' - 'a');
+  }
+}
+
+<font color="blue">/* This sets a string to 19 characters and then calls change_case(). */</font>
+
+int main()
+{
+  int i;
+  char s[20];
+  
+  <font color="blue">/* Set s to "abcdefghijklmnopqrs". */</font>
+
+  for (i = 0; i &lt; 19; i++) s[i] = 'a' + i;
+  s[19] = '\0';
+
+  printf("First, S is %s.\n", s);
+  change_case(s);
+  printf("Now, S is   %s.\n", s);
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+You'll note that even though you declare <b>a</b> to be an array of 20 chars, it is simply
+the pointer that gets passed to the procedure.  For that reason, <b>change_case()</b> operates
+on the array, and not on a copy:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./p2a</b></font>
+First, S is abcdefghijklmnopqrs.
+Now, S is   ABCDEFGHIJKLMNOPQRS.
+UNIX&gt;
+</pre>
+
+In fact, you can't trust that the compiler cares about the fact you put the "20" inside
+the declaration of <b>change_case</b>.  The following are in fact all equivalent:
+
+<pre>void change_case(char a[20])
+void change_case(char a[19])
+void change_case(char a[5000])
+void change_case(char a[])
+void change_case(char *a)
+</pre>
+
+<hr>
+<h3>Structs</h3>
+
+The second way to aggregate data is with a <b>struct</b>.  A <b>struct</b> looks a little
+like a C++ class with some notable omissions:
+<ul>
+<li> No "public/protected/private" mess.
+</li><li> No constructors/destructors.
+</li><li> No default "copy" methods or any of that mess.
+</li><li> No methods.
+</li></ul>
+
+Suppose we want to aggregate an int and a double.  We can do that as in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id1.c">id1.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+struct intdouble {
+  int i;
+  double d;
+};
+
+int main()
+{
+  struct intdouble id1;
+
+  id1.i = 5;
+  id1.d = 3.14;
+
+  printf("%d %.2lf\n", id1.i, id1.d);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./id1</b></font>
+5 3.14
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You can use a <b>typedef</b> to make it a little more readable (<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id2.c">id2.c</a></b>):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct intdouble {
+  int i;
+  double d;
+} ID;
+
+int main()
+{
+  ID id1;
+
+  id1.i = 5;
+  id1.d = 3.14;
+
+  printf("1: %d %.2lf\n", id1.i, id1.d);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+You may have some confusion with structs, because they exist in C++ with different
+semantics.  Let's take a look at the following code in C++, which declares two
+<b>intdouble</b>'s, sets one's variables, and then copies one to the other (<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id3.cpp">id3.cpp</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+using namespace std;
+
+struct intdouble {
+  int i;
+  double d;
+};
+
+int main()
+{
+  intdouble id1, id2;
+
+  id1.i = 5;
+  id1.d = 3.14;
+
+  id2 = id1;
+  id2.i += 5;
+  id2.d += 5;
+
+  printf("1: %d %.2lf\n", id1.i, id1.d);
+  printf("2: %d %.2lf\n", id2.i, id2.d);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Straightforward when it runs:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./id3</b></font>
+1: 5 3.14
+2: 10 8.14
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+Let's change this to C.  If we simply fix the headers, this will not compile.
+That is because C++ creates 
+"intdouble" as a type, and C does not.  When we try to compile, it fails:
+
+<pre>UNIX&gt; <font color="darkred"><b>gcc -o id4 id4.c</b></font>
+id4.c: In function 'main':
+id4.c:11: error: 'intdouble' undeclared (first use in this function)
+id4.c:11: error: (Each undeclared identifier is reported only once
+id4.c:11: error: for each function it appears in.)
+id4.c:11: error: expected ';' before 'id1'
+id4.c:13: error: 'id1' undeclared (first use in this function)
+id4.c:16: error: 'id2' undeclared (first use in this function)
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Now, if you put "struct" in front of "intdouble," that will fix the 
+problem.  It is in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id5.c">id5.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+struct intdouble {
+  int i;
+  double d;
+};
+
+int main()
+{
+  struct intdouble id1, id2;
+
+  id1.i = 5;
+  id1.d = 3.14;
+
+  id2 = id1;  <font color="blue">/* THIS IS THE OFFENDING LINE */</font>
+  id2.i += 5;
+  id2.d += 5;
+
+  printf("1: %d %.2lf\n", id1.i, id1.d);
+  printf("2: %d %.2lf\n", id2.i, id2.d);
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+This runs identically to the C++ version.  I can tell you that I disapprove of 
+this code.  Why? Because the statement ``<b>id2 = id1</b>'' offends me.  It is the 
+only part of C where you can copy an unspecified number of bytes with an assignment
+statement.  It is a weakness of the language.  For example, take a look at
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id5a.c">id5a.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct {
+  int a[1000];
+} SID;
+
+int main()
+{
+  SID s1, s2;
+  int i;
+
+  for (i = 0; i &lt; 1000; i++) s1.a[i] = i;
+  s2 = s1;
+
+  for (i = 0; i &lt; 1000; i++) printf("%4d %4d\n", s1.a[i], s2.a[i]);
+ 
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+The ``<b>s2 = s1</b>'' line copies 4000 bytes.  While I expect such garbage in C++,
+I am surprised that it's legal in C.  Why does it allow you to copy the struct, but
+not to copy the array?  Who knows -- anyway, I want you to be aware of it.
+You will never see me use that feature of the language because I don't approve.
+
+As a corollary, you can pass a struct as an argument to a procedure, and in C++
+fashion, it makes a copy of the entire thing.  You'll note that in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id5b.c">id5b.c</a></b>, I define a procedure <b>a()</b>, which changes the
+last element of the array, and when we run it, <b>s1.a[999]</b> is unchanged.  
+Make a mental note of it.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct {
+  int a[1000];
+} SID;
+
+void a(SID s)    <font color="blue">/* Although this procedure changes element 999 of s, */</font>
+{                <font color="blue">/* s is a copy of the calling parameter, so it is    */</font>
+  s.a[999] = -1; <font color="blue">/* deleted at the end of the procedure.              */</font>
+}                <font color="blue">/* In other words, the procedure does nothing.       */</font>
+
+
+int main()
+{
+  SID s1, s2;
+  int i;
+
+  for (i = 0; i &lt; 1000; i++) s1.a[i] = i;
+  s2 = s1;
+
+  a(s1);
+  for (i = 0; i &lt; 1000; i++) printf("%4d %4d\n", s1.a[i], s2.a[i]);
+ 
+  exit(0);
+}
+</pre></td></tr></tbody></table></center><p>
+
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./id5b | tail</b></font>
+ 990  990
+ 991  991
+ 992  992
+ 993  993
+ 994  994
+ 995  995
+ 996  996
+ 997  997
+ 998  998
+ 999  999
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<p>
+A final note about C++ structs.  They are basically stripped down classes -- you 
+can put methods in them, and then implement the methods using the struct's variables,
+as in <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/CStuff-1/id6.cpp">id6.cpp</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+using namespace std;
+
+struct intdouble {
+  int i;
+  double d;
+  void Print();
+};
+
+void intdouble::Print()
+{
+  printf("   %d %.2lf\n", i, d);
+}
+</pre></td><td valign="top"><pre>int main()
+{
+  intdouble id1, id2;
+
+  id1.i = 5;
+  id1.d = 3.14;
+
+  id2 = id1;
+  id2.i += 5;
+  id2.d += 5;
+
+  id1.Print();
+  id2.Print();
+}
+</pre></td></tr></tbody></table></center><p>
+
+Whoever designed structs in C++ did the world a disservice, because you have the same
+constructs in two fairly similar languages that have completely different semantics.
+Which means that tons of people are going to be confused going from C++ to C, or 
+even C to C++ when their struct semantics are off.  It is for this reason that
+I don't teach structs as a C++ construct in either CS140 or CS302.  Just use
+a class.  
+</p><p>
+<i>(When your job interviewer asks you why you are using classes rather than 
+structs in C++, you should respond as follows: "Structs in C++ are totally different
+constructs than they are in C.  However, they have enough similarity that one can
+easily get confused when writing code in both languages.  For that reason, I choose
+to use structs in C, but not in C++.  In C++, I use a class.  The compiler should
+be smart enough to make the class code as efficient as struct code.")</i>
+
+</p></li></body></html>

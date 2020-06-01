@@ -1,0 +1,583 @@
+
+<!-- saved from url=(0085)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Assembler Lecture #2: Procedures, Stack Frames, Spilling</title>
+</head><body bgcolor="ffffff">
+<h2>CS360 Lecture notes -- Assembler Lecture #2: Procedures, Stack Frames, Spilling</h2>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Assembler2</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/lecture.html
+</b></a>
+</li></ul>
+<hr>
+
+This lecture is a continuation of computer organization &amp; stack frames.  
+The focus is on procedure calls.  <p>
+
+Look at the following C code
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/p1.c">p1.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int a()
+{
+  return 1;
+}
+
+int main()
+{
+  int i;
+
+  i = a();
+}
+</pre></td></tr></tbody></table></center><p>
+
+This compiles into assembler that looks like the following:
+
+</p><pre>    a:
+	mov #1 -&gt; %r0
+	ret
+    main:
+	push #4
+	jsr a
+	st %r0 -&gt; [fp]
+	ret
+</pre>
+
+Both of these procedure calls are straightforward.  <b>Main()</b> first allocates
+one variable on the stack, and then calls "<b>jsr a</b>", which means
+jump to subroutine <b>a</b>.  All <b>a()</b> does is return 1 to its caller -- it does that
+by setting <b>r0</b> to one, and then calling <b>"ret"</b>.
+When control returns to <b>main()</b> it stores <b>a's</b> return value, which is in <b>r0</b>,
+to the memory that it has allocated for <b>i</b>.  And it returns.
+<p>
+
+This seems simple; however, what goes on when <b>jsr</b> and <b>ret</b> are
+called is a little trickier.  This is what happens:</p><p>
+
+When "<b>jsr</b>" is called, <b>(pc+4)</b> and the current value of
+<b>fp</b> are both pushed onto the stack.  Because of the pushing, 
+the <b>sp</b>'s value will be 8
+less than it was before the <b>jsr</b> call.  Then, the <b>fp</b>
+is changed to be the current <b>sp</b>, and <b>pc</b> is changed to be
+the location of the first instruction of the named procedure.  This
+is done atomically by the computer's hardware.  After <b>jsr</b> has
+taken effect, we are in a new stack frame, and the <b>pc</b> is
+executing <b>a()</b>.</p><p>
+
+When "<b>ret</b>" is called, the <b>sp</b> is changed to be the current
+<b>fp</b>.  Then the <b>fp</b> is popped off the stack: The <b>sp</b>'s value
+is incremented by four, and the <b>fp</b> is read from the stack.
+Finally,
+the <b>pc</b> is popped off the stack: The <b>sp</b>'s value
+is incremented by four again, and the <b>pc</b> is read from the stack.
+Like "<b>jsr</b>",
+this is all done atomically by the hardware.  When "<b>ret</b>"
+completes, the <b>pc</b> is set to be the instruction after the
+original "<b>jsr</b>" instruction, and the stack frame of that procedure has been
+restored.</p><p>
+
+Let's look at it pictorally.  Below is a drawing of what you'll see if you run 
+<b>jassem.tcl</b> on <b>p1.jas</b>.  At the start of the program, the stack and registers
+look as follows:</p><p> 
+
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-1008.jpg" width="600"></td></tr></tbody></table></center><p>
+
+(As an aside -- <b>jassem.tcl</b> assigns zero to unknown values and registers.  Here,
+I'm putting "unknown" to show that we don't know what the values will really be.)
+</p><p>
+First, the <b>sp</b> is decremented by 4 to allocate the local variable <b>i</b>:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-100c.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Now <b>jsr</b> is called.  This pushes <b>(pc+4)</b> and the
+value of the <b>fp</b> on the stack, and sets the <b>fp</b> to
+the new <b>sp</b>, and <b>pc</b> to <b>a</b>: 
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-1000.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Note now that we have a new stack frame for <b>a</b>, 
+and the <b>pc</b> is executing <b>a</b>.
+The first thing it does is load <b>1</b> into <b>r0</b>:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-1004.jpg" width="600"></td></tr></tbody></table></center><p>
+
+We then call "<b>ret</b>".  "<b>Ret</b>" sets the <b>sp</b> to the <b>fp</b>
+(which involves nothing in this case), and then
+pops the <b>fp</b> and the <b>pc</b> off the stack.  When it's
+done we're back to <b>main()</b>'s stack frame, and
+executing the next instruction after the <b>jsr</b>: 
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-1010.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Note the "fp in main" and "pc in main" values don't get changed or erased.  They simply
+remain on the stack. However since they are
+"above the stack", they should not get referenced.
+Now the "<b>st %r0 -&gt; [fp]</b>" gets executed, and the machine state looks like:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p1-1014.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Now <b>main()</b> is over, and calls "<b>ret</b>".  You can imagine
+what this does -- the stack is set up so that when <b>main()</b> calls
+<b>ret</b>, control returns to the operating system and the process
+goes away.  
+
+</p><p>
+Now, make sure you go over this with <b>Jassem</b>.  The program is
+in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/p1.jas"><b>p1.jas</b></a>, and you should see exactly what
+I have shown above.
+
+</p><hr>
+
+The next example shows a procedure with arguments and local variables.
+It's a pretty meaty example.  The C code 
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/p2.c">p2.c</a></b>):
+is to the left, and the assembler
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/p2.jas">p2.jas</a></b>):
+is to the right:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>int a(int i, int j)
+{
+  int k;
+
+  i++;
+  j -= 2;
+  k = i * j;
+  return k;
+}
+
+int main()
+{
+  int i, j, k;
+
+  i = 3;
+  j = 4;
+  k = a(j+1, i);
+  return 0;
+}
+</pre></td>
+<td valign="top"><pre>a:
+    push #4                 <font color="blue">/ Allocate k, which will be [fp]</font>
+    
+    ld [fp+12] -&gt; %r0       <font color="blue">/ i++</font>
+    add %r0, %g1 -&gt; %r0
+    st %r0 -&gt; [fp+12]
+
+    ld [fp+16] -&gt; %r0       <font color="blue">/ j -= 2</font>
+    mov #2 -&gt; %r1
+    sub %r0, %r1 -&gt; %r0
+    st %r0 -&gt; [fp+16]
+
+    ld [fp+12] -&gt; %r0       <font color="blue">/ k = i * j</font>
+    ld [fp+16] -&gt; %r1
+    mul %r0, %r1 -&gt; %r0
+    st %r0 -&gt; [fp]
+
+    ld [fp] -&gt; %r0          <font color="blue">/ return k</font>
+    ret
+
+main:
+    push #12                <font color="blue">/ Allocate i, j, k.  </font>
+                            <font color="blue">/ i is [fp-8], j is [fp-4], k is [fp]</font>
+
+    mov #3 -&gt; %r0           <font color="blue">/ i = 3</font>
+    st %r0 -&gt; [fp-8] 
+    mov #4 -&gt; %r0           <font color="blue">/ j = 4</font>
+    st %r0 -&gt; [fp-4]
+
+    ld [fp-8] -&gt; %r0        <font color="blue">/ Push i onto the stack</font>
+    st %r0 -&gt; [sp]--
+
+    ld [fp-4] -&gt; %r0        <font color="blue">/ Push j+1 onto the stack</font>
+    add %r0, %g1 -&gt; %r0
+    st %r0 -&gt; [sp]--
+
+    jsr a                   <font color="blue">/ Call a(), then pop the arguments </font>
+    pop #8  
+
+    st %r0 -&gt; [fp]         <font color="blue">/ Put the return value into k</font>
+    
+    mov #0 -&gt; %r0          <font color="blue">/ Return 0</font>
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+Let's focus first on the <b>main()</b>.  In the beginning, it decrements the
+stack pointer by 12, which allocates, 
+<b>i</b>,
+<b>j</b> and
+<b>k</b> on the stack.  Our compiler puts them in the order in which they are declared
+on the stack, so as the comments above state: 
+<b>i</b> is at <b>[fp-8]</b>, 
+<b>j</b> is at <b>[fp-4]</b> and
+<b>k</b> is at <b>[fp]</b>.  Next, we initialize <b>i</b> and <b>j</b>.  That is straightforward.
+
+</p><p>
+The procedure call requires explanation.  When you call a procedure with arguments, what you
+do is <i>push the arguments onto the stack in reverse order</i>.  Then you call <b>jsr</b>.
+When the <b>jsr</b> call returns, you pop the arguments off the stack, so that you can 
+reuse that memory.  
+</p><p>
+In this case, let's take a look at the stack when <b>main()</b> calls <b>jsr</b>.  I'm going
+to draw this myself, but the values and addresses match up with what happens when you run 
+this in <b>jassem</b>:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p2-jsr.jpg" width="600"></td></tr></tbody></table></center><p>
+
+It's good practice to label the stack -- you should be able to account for every word.
+</p><p>
+Now, the <b>jsr</b> statement pushes <b>(pc+4)</b> onto the stack, and then the value
+of the <b>fp</b>.  It then sets the <b>pc</b> to the first instruction in <b>a</b>.  That
+instruction is <b>push #4</b>, so that it allocates <b>k</b>.  At this point, here are
+the labeled stack values and registers.  You'll note, I've relabeled the two arguments
+that were pushed onto the stack as "<b>i</b> in <b>a()</b>" and 
+"<b>j</b> in <b>a()</b>":
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p2-ld.jpg" width="600"></td></tr></tbody></table></center><p>
+</p><p>
+Now, let's consider how <b>a()</b> finds its two arguments.  It knows that the old
+<b>fp</b> is in <b>[fp+4]</b> and the old <b>pc</b> is in <b>[fp+8]</b>.  
+Since the arguments are pushed in reverse order, the first argument should be next,
+at <b>[fp+12]</b>.  The second argument is at <b>[fp+16]</b>.  If there were a third
+argument, it would be at <b>[fp+20]</b>, and so on.  
+</p><p>
+Now, let's look at the state when <b>a()</b> returns.  At that point, you should see
+that <b>a()'s</b> variables 
+<b>i</b>, 
+<b>j</b> and
+<b>k</b> are equal to 6, 1 and 6 respectively.  <b>k</b>'s value has been loaded into the
+register <b>r0</b>, as that is how return values are passed from one procedure to another:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p2-a-ret.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Finally, when the <b>pc</b> is set to <tt>0x1064</tt> and the <b>fp</b> is set back to 
+<tt>0xfff448</tt>, we are back in <b>main()</b>.  The stack pointer is popped eight bytes,
+and the return value is stored into <b>k</b>.  When <b>main()</b> returns, the system looks
+as follows:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/p2-main-ret.jpg" width="600"></td></tr></tbody></table></center><p>
+
+Let's go over all of the main points from this example (including some review):
+
+</p><ul>
+<li> The <b>jsr</b> statement does four things: It pushes <b>(pc+4)</b> onto the stack, then <b>fp</b>, then it sets the <b>fp</b> to the current value of the <b>sp</b>, and the <b>pc</b> to the first instruction of the given procedure.
+<p>
+</p></li><li> The <b>ret</b> statement undoes what <b>jsr</b> has set up: It sets the <b>sp</b> to the
+current value of the <b>fp</b>, then it pops the <b>fp</b> and the <b>pc</b> off of the stack.
+<p>
+</p></li><li> If a procedure has arguments, you need to push them onto the stack in reverse order, before
+making the <b>jsr</b> call.
+<p>
+</p></li><li> Thus, when a procedure is called, its first argument is at <b>[fp+12]</b>.  
+Its second argument is at <b>[fp+16]</b>.  
+Its third argument is at <b>[fp+20]</b>.   And so on.
+<p>
+</p></li><li> When a procedure returns a value to its caller, it stores the value in <b>r0</b>.
+<p>
+</p></li><li> If you have pushed arguments before calling <b>jsr</b>, then the very first thing that
+you should do when the <b>jsr</b> call returns is pop those arguments off the stack.
+<p>
+</p></li><li> Although you are not currently using values whose addresses are less than or equal to
+the stack pointer, those addresses will have values, and those values may be deterministic.
+For example, in that last picture, there are a lot of values above the stack pointer, and
+we know what all of them are between <tt>0xfff42c</tt> and <tt>0xfff43c</tt>, because we know
+what the previous instructions have done.
+<p>
+</p></li><li> You should be able to see how each procedure gets its own memory locations for its parameters
+and local variables.  Even though <b>main()</b> and <b>a()</b> each used 
+<b>i</b>, <b>j</b> and <b>k</b>, they had their own separate memory locations for them.
+<p>
+</p></li><li> You should also see how memory gets allocated for local variables and parameters when a 
+procedure executes, and how it goes away when the procedure is done.
+</li></ul>
+
+<p>
+As always, I advocate running <b>jassem.tcl</b> on this program yourself and making sure you
+understand what's going on.
+</p><p>
+ 
+</p><hr>
+<h2>Register Spilling</h2>
+
+One important thing that has to
+be decided is whether a procedure may use a
+register without worrying about its current value
+(like <b>a()</b> does with <b>r0</b>), or whether a procedure
+should first save the register on the stack
+before using it.  This matters, because suppose
+for example, that the main routine uses register
+<b>r3</b>, then calls "<b>jsr a</b>", and afterwards expects <b>r3</b>
+to have the same value.  Then <b>a()</b> and any
+procedures that <b>a()</b> calls must make sure not to
+use <b>r3</b>, or to save <b>r3</b>'s value before using it,
+and restore it when its done.  
+<p>
+The act of saving a register's value before the body of a procedure
+call and restoring it afterwards is called <i>spilling</i>.
+Different machines and compilers handle spilling in different ways.  For
+example, older CISC architectures sometimes had a spill-mask that 
+would be part of a procedure call.  This specified which registers should
+be spilled, and the machine actually did the spilling for you.
+</p><p>
+What we do on our machine is a typical spilling solution:
+Procedures can use <b>r0</b> and <b>r1</b> without worrying
+about their values.  However, registers <b>r2</b> through 
+<b>r4</b> must be spilled if a procedure uses them.
+</p><p>
+Here's an example
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill1.c">spill1.c</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int a(int i, int j)
+{
+  int k;
+
+  k = (i+2)*(j-5);
+  return k;
+}
+
+int main()
+{
+  int i;
+
+  i = a(44, 22);
+}
+</pre></td></tr></tbody></table></center><p>
+
+To compile arithmetic expressions into assembler, it's useful to turn them
+into trees.  For example, the above expression becomes:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-1.jpg"></td></tr></tbody></table></center><p>
+
+In order to evaluate the tree, you need to do a 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs140/Notes/Trees/index.html">
+postorder traversal</a> (or, 
+if you think of the edges are pointing upward, you need to do a <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs302/Notes/Topological/">topological sorting</a> of the tree).  
+Arithmetic has to be done on a register-by-register basis, so each of those nodes
+must be in a register. You (the compiler) must figure out an ordering of instructions
+that is legal, and then an assignment of nodes to registers so that you don't reuse
+registers unless you can be sure that you don't need their values any more.  
+</p><p>For 
+example, in the above expression, suppose you do the (i+2) calculation first and 
+hold the result in <b>r0</b>.  Then you can't use <b>r0</b> to calculate (j-5). 
+For that reason, you are going to have to use <b>r2</b>, and because you are using
+<b>r2</b>, you'll have to spill it onto the stack.  I do this at the beginning of
+a procedure.  Then at the end, I "unspill" it by reading it back from the stack.
+</p><p>
+The code is in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill1.jas">spill1.jas</a></b>, which I've reproduced below.  You 
+may use <b>jassem.tcl</b> to step through this.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>a:
+    push #4              <font color="blue">/ Allocate k</font>
+    st %r2 -&gt; [sp]--     <font color="blue">/ Spill r2</font>
+
+    ld [fp+12] -&gt; %r0
+    mov #2 -&gt; %r1
+    add %r0, %r1 -&gt; %r0  <font color="blue">/ Calculate (i+2) and put the result in r0</font>
+
+    ld [fp+16] -&gt; %r1
+    mov #5 -&gt; %r2
+    sub %r1, %r2 -&gt; %r1  <font color="blue">/ Calculate (j-5) and put the result in r1</font>
+
+    mul %r0, %r1 -&gt; %r0
+    st %r0 -&gt; [fp]       <font color="blue">/ Do k = r0 * r1</font>
+
+    ld [fp] -&gt; %r0
+    ld ++[sp] -&gt; %r2     <font color="blue">/ Unspill r2</font>
+    ret
+
+main:
+
+    push #4              <font color="blue">/ Allocate i</font>
+ 
+    mov #22 -&gt; %r0       <font color="blue">/ Push arguments onto the stack in reverse order</font>
+    st %r0 -&gt; [sp]--
+    mov #44 -&gt; %r0       
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #8               <font color="blue">/ Always pop the arguments off the stack after jsr</font>
+
+    st %r0 -&gt; [fp]
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+Note, that you have to spill <b>r2</b> onto the stack <i>after</i> allocating
+the local variable.   Otherwise, <b>k</b> will not be at <b>[fp]</b>.  Think
+about it.
+    
+</p><hr>
+<h2>An example to show why spilling matters</h2>
+
+Take a look at
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill2.c">spill2.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int a(int i, int j)
+{
+  int k;
+
+  k = (i+2)*(j-5);
+  return k;
+}
+
+int main()
+{
+  int i;
+
+  i = (a(10, 20) + a(30, 40));
+}
+</pre></td></tr></tbody></table></center><p>
+
+You'll note that <b>a()</b> is exactly the same.  The only difference is that
+we're calling <b>a()</b> twice, and adding up the return values.  Think about
+that for a minute -- where should you store the return value of the first 
+call to <b>a()</b>?  You can't store it in <b>r0</b> or <b>r1</b> because 
+making a procedure call will destroy them (we have to assume that).
+Therefore, you have to store it in a higher register, like <b>r2</b>.
+You know that's ok, because <b>a()</b> will make sure that <b>r2</b>'s value is 
+unchanged.  Here's the code for <b>main()</b> (in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill2.jas">spill2.jas</a></b>).  You'll notice that <b>main()</b> spills
+<b>r2</b> as well, because if any procedure uses
+<b>r2</b>, <b>r3</b> or <b>r4</b>, it must spill them.
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>main:
+
+    push #4              <font color="blue">/ Allocate i</font>
+    st %r2 -&gt; [sp]--     <font color="blue">/ Spill r2</font>
+ 
+    mov #20 -&gt; %r0       <font color="blue">/ Call a(10, 20) and store the result in r2</font>
+    st %r0 -&gt; [sp]--
+    mov #10 -&gt; %r0
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #8
+    mov %r0 -&gt; %r2       
+
+    mov #40 -&gt; %r0       <font color="blue">/ Call a(30, 40) and add the result to r2</font>
+    st %r0 -&gt; [sp]--
+    mov #30 -&gt; %r0
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #8
+    add %r0, %r2 -&gt; %r0
+    st %r0 -&gt; [fp]
+   
+    ld ++[sp] -&gt; %r2     <font color="blue">/ Unspill r2</font>
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+Once again, I urge you to trace through this code with <b>jassem</b> to see
+how the spilling works.
+</p><hr>
+<h2>What do you do when you run out of registers?</h2>
+
+Try 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill3.c">spill3.c</a></b> on for size:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int a(int i)
+{
+  return i+5;
+}
+
+int main()
+{
+  int i;
+
+  i = ( (a(2)+a(3)) * (a(4)+a(5)) + (a(10)+a(11)) * (a(12)+a(13)) ) *
+      ( (a(6)+a(7)) * (a(8)+a(9)) + (a(14)+a(15)) * (a(16)+a(17)) );
+}
+</pre></td></tr></tbody></table></center><p>
+Yuck.  Here's the expression tree:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3.jpg"></td></tr></tbody></table></center><p>
+
+You can see I've labeled it with the registers that you can use if you do the 
+calculation in post-order, from left to right.   You'll see that we've run
+out of registers!
+</p><p>
+Below, I show how you handle that -- you spill the intermediate value shown 
+as "Spill". That allows you to use <b>r2</b> again, and you no longer run out
+of registers.  Before you do the last multiplication, you unspill the value into
+a register:
+
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3A.jpg"></td></tr></tbody></table></center><p>
+
+Did you really want to see the assembler for that?  It's in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler2/spill3.jas">spill3.jas</a></b>.  It's not that hard to read.  Here's
+the crucial code: Spilling the result of the sum (by the "Spill" in the picture
+above) onto the stack.  I start with the call to <b>a(13)</b>.  When it's done,
+you perform the multiplication and addition, and then spill the result of the
+addition onto the stack.  Then you start working on the right side of the equation
+(starting with <b>a(6)</b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>    ...
+    mov #13 -&gt; %r0
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #4
+    add %r0, %r4 -&gt; %r0
+
+    mul %r3, %r0 -&gt; %r0   <font color="blue">/ Multiplication, then Addition, then spill</font>
+    add %r2, %r0 -&gt; %r0   
+    st %r0 -&gt; [sp]--
+
+    mov #6 -&gt; %r0          <font color="blue">/ a(6)+a(7)</font>
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #4
+    mov %r0 -&gt; %r2
+    ...
+</pre></td></tr></tbody></table></center><p>
+
+At the end, when you're done with <b>a(17)</b>, you do the multiplication
+and addition.  You have one more multiplication, but its operand is the
+one spilled to the stack.  You unspill it and perform the multiplication.
+Then you're done!
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>    ...
+    mov #17 -&gt; %r0
+    st %r0 -&gt; [sp]--
+    jsr a
+    pop #4
+    add %r0, %r4 -&gt; %r0
+
+    mul %r3, %r0 -&gt; %r0   <font color="blue">/ Multiplication, then addition, then unspill and multiply</font>
+    add %r2, %r0 -&gt; %r0   
+    ld ++[sp] -&gt; %r1
+    mul %r0, %r1 -&gt; %r0
+
+    st %r0 -&gt; [fp]        <font color="blue">/ Store the result into i</font>
+
+    ld ++[sp] -&gt; %r4      <font color="blue">/ Unspill before returning</font>
+    ld ++[sp] -&gt; %r3
+    ld ++[sp] -&gt; %r2
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+You can run <b>jassem</b> on this -- it's a bit cumbersome, but I have important
+screen shots.  Here is the state just before the crucial spill:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3-SS-1.jpg"></td></tr></tbody></table></center><p>
+
+You can double-check yourself -- <b>a(i)</b> simply adds 5 to <b>i</b>, so:
+
+</p><ul>
+<li> <b>r4</b> should equal (12+5) = 17 = 0x11.  
+</li><li> <b>r3</b> should equal (10+5+11+5) = 31 = 0x1f.  
+</li><li> <b>r2</b> should equal (2+5+3+5)*(4+5+5+5) = 15*19 = 285 = 0x11d
+</li></ul>
+
+After the spill, 0x55a goes onto the stack:
+
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3-SS-2.jpg"></td></tr></tbody></table></center><p>
+
+I continue stepping to the "unspill":
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3-SS-3.jpg"></td></tr></tbody></table></center><p>
+
+And at the end, <b>i</b> has been set to 0x3009e4 = 3148620.  Is that right?
+I'll let you double-check it yourself, but it is indeed correct!
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #2_ Procedures, Stack Frames, Spilling_files/Spill-3-SS-4.jpg"></td></tr></tbody></table></center><p>
+
+</p></body></html>

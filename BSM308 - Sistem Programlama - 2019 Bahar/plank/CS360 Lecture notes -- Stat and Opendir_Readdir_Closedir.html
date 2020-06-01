@@ -1,0 +1,370 @@
+
+<!-- saved from url=(0079)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Stat and Opendir/Readdir/Closedir</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Stat and Opendir/Readdir/Closedir</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Stat</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/lecture.html">
+    <b> http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/lecture.html
+</b></a>
+</li><li> Original lecture: 1996
+</li><li> Last modification: <i>
+Thu Feb  8 11:24:25 EST 2018
+</i>
+</li></ul>
+
+<hr>
+This lecture covers things that you can do with <b>stat</b>, <b>lstat</b>, 
+and the <b>opendir</b> family of calls.  
+Go ahead and execute <b>make</b> when you copy these lecture notes.
+You may need to fix the definitions of <b>CFLAGS</b> and <b>LIB</b> -- I 
+have that documented in the makefile for when I use these lecture notes at home.
+
+<hr>
+<h1>Stat</h1>
+Read the man page for <b>stat</b> <tt>(man -s 2 stat)</tt>.  <b>Stat</b> is a
+system call that you can use to get information about files --
+information that is contained in the files' inodes.  Here I'll go over
+a simple motivating example.  Suppose you don't have the <b>stat</b> system
+call, and you'd like to write a program that for each argument that
+is a file, lists the file's size and name.  Something like the
+following 
+(in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls1.c"><b>ls1.c</b></a>) would work: 
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(int argc, char **argv)
+{
+  int i;
+  int fd;
+  off_t size;
+
+  for (i = 1; i &lt; argc; i++) {
+    fd = open(argv[i], O_RDONLY);
+    if (fd &lt; 0) {
+      printf("Couldn't open %s\n", argv[i]);
+    } else {
+      size = lseek(fd, (off_t) 0, SEEK_END);
+      printf("%10lld %s\n", size, argv[i]);
+      close(fd);
+    }
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+What it does is attempt to open each file, and then seek to the end
+of the file to figure out the size.  This works ok, but copy
+and compile it and then try it on the following:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./ls1 /home/plank/cs360/notes/Stat/m*</b></font>
+</pre>
+
+You'll note that it returns the following (the size of <b>makefile</b> may
+be different):
+
+<pre>       747 /home/plank/cs360/notes/Stat/makefile
+Couldn't open /home/plank/cs360/notes/Stat/myfile
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+Yet, when you try a regular <b>ls -l</b>, you get:
+
+
+<pre>UNIX&gt; <font color="darkred"><b>ls -l /home/plank/cs360/notes/Stat/m*</b></font>
+-rw-r--r--. 1 plank loci  747 Feb  8 11:26 /home/plank/cs360/notes/Stat/makefile
+----------. 1 plank guest   3 Sep 17  1996 /home/plank/cs360/notes/Stat/myfile
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Since <b>ls1</b> couldn't open "<b>myfile</b>", it couldn't print out
+its size.  This is unfortunate, but it also points out why we need
+the "<b>stat</b>" function -- there are things about a file that it
+would be nice to know, even if we're not allowed to access the file
+itself.  <p>
+
+To reiterate, the <b>stat</b> system call gives you information about a file's
+inode.  It can do this as long as the user has permission to get to
+the directory that contains the file.</p><p>
+
+Read the man page for <b>stat</b>.  The <b>stat</b> struct is defined
+in <a href="file://usr/include/sys/stat.h"><b>/usr/include/sys/stat.h</b></a>,
+and is roughly:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>struct stat {
+          mode_t   st_mode;     <font color="blue">/* File mode (see mknod(2)) */</font>
+          ino_t    st_ino;      <font color="blue">/* Inode number */</font>
+          dev_t    st_dev;      <font color="blue">/* ID of device containing */</font>
+                                <font color="blue">/* a directory entry for this file */</font>
+          dev_t    st_rdev;     <font color="blue">/* ID of device */</font>
+                                <font color="blue">/* This entry is defined only for */</font>
+                                <font color="blue">/* char special or block special files */</font>
+          nlink_t  st_nlink;    <font color="blue">/* Number of links */</font>
+          uid_t    st_uid;      <font color="blue">/* User ID of the file's owner */</font>
+          gid_t    st_gid;      <font color="blue">/* Group ID of the file's group */</font>
+          off_t    st_size;     <font color="blue">/* File size in bytes */</font>
+          time_t   st_atime;    <font color="blue">/* Time of last access */</font>
+          time_t   st_mtime;    <font color="blue">/* Time of last data modification */</font>
+          time_t   st_ctime;    <font color="blue">/* Time of last file status change */</font>
+                                <font color="blue">/* Times measured in seconds since */</font>
+          long     st_blksize;  <font color="blue">/* Preferred I/O block size */</font>
+          long     st_blocks;   <font color="blue">/* Number of 512 byte blocks allocated*/</font>
+};
+</pre></td></tr></tbody></table></center><p>
+
+The confusing types are mostly 
+ints, longs, and shorts.    I.e. from 
+<a href="file://usr/include/sys/types.h"><b>/usr/include/sys/types.h</b></a>:
+(This was from 1996.
+<b>off_t</b> is now a <b>long long</b>, usually. 
+I'm keeping the typedef's below just to show how using types
+like <b>off_t</b> still will not guarantee your code that will port cleanly over
+time.  So be it.)
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>typedef unsigned long   ino_t;
+typedef short           dev_t;
+typedef long            off_t;
+typedef unsigned short  uid_t;
+typedef unsigned short  gid_t;
+</pre></td></tr></tbody></table></center><p>
+
+And from <a href="file://usr/include/sys/stdtypes.h"><b>/usr/include/sys/stdtypes.h</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>typedef unsigned short  mode_t;         /* file mode bits */
+typedef short           nlink_t;        /* links to a file */
+typedef long            time_t;         /* value = secs since epoch */
+</pre></td></tr></tbody></table></center><p>
+
+Once you have read this man page, it should be trivial to change
+<b>ls1.c</b> to work correctly using <b>stat</b> instead of <b>open/lseek</b>.
+This is in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls2.c"><b>ls2.c</b></a>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/stat.h&gt;
+
+int main(int argc, char **argv)
+{
+  int i;
+  struct stat buf;
+  int exists;
+
+  for (i = 1; i &lt; argc; i++) {
+    exists = stat(argv[i], &amp;buf);
+    if (exists &lt; 0) {
+      fprintf(stderr, "%s not found\n", argv[i]);
+    } else {
+      printf("%10lld %s\n", buf.st_size, argv[i]);
+    }
+  }
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./ls2 /home/plank/cs360/notes/Stat/m*</b></font>
+       747 /home/plank/cs360/notes/Stat/makefile
+         3 /home/plank/cs360/notes/Stat/myfile
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+     
+Next, we'd like to have our "<b>ls</b>" work like the real "<b>ls</b>" 
+-- have it accept no arguments, and list all files in the current directory.  To
+do this, we need to use the "<b>opendir/readdir/writedir</b>" calls.  As usual,
+read their man pages.  Note that these are C library calls,
+and not system calls.  This means that they call
+<b>open/close/read/write</b>, and interpret the format of directory files
+for you.  This is convenient.  The "<b>struct dirent</b>" structure is
+defined in 
+<a href="file://usr/include/sys/dirent.h"><b>/usr/include/sys/dirent.h</b></a>:
+
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>struct  dirent {
+        off_t           d_off;          <font color="blue">/* offset of next disk dir entry */</font>
+        unsigned long   d_fileno;       <font color="blue">/* file number of entry */</font>
+        unsigned short  d_reclen;       <font color="blue">/* length of this record */</font>
+        char            *d_name;        <font color="blue">/* name */</font>
+};
+</pre></td></tr></tbody></table></center><p>
+
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls3.c"><b>Ls3.c</b></a> tweaks <b>ls2.c</b> to read from
+the current directory ("<b>.</b>"), and print out all files and their sizes:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;dirent.h&gt;
+
+int main(int argc, char **argv)
+{
+  struct stat buf;
+  int exists;
+  DIR *d;
+  struct dirent *de;
+
+  d = opendir(".");
+  if (d == NULL) {
+    fprintf(stderr, "Couldn't open \".\"\n");
+    exit(1);
+  }
+
+  for (de = readdir(d); de != NULL; de = readdir(d)) {
+    exists = stat(de-&gt;d_name, &amp;buf);
+    if (exists &lt; 0) {
+      fprintf(stderr, "%s not found\n", de-&gt;d_name);
+    } else {
+      printf("%s %lld\n", de-&gt;d_name, buf.st_size);
+    }
+  }
+  closedir(d);
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./ls3</b></font>
+. 4096
+.. 4096
+myfile 3
+ls1.c 649
+ls2.c 639
+ls3.c 773
+ls4.c 1041
+</pre>
+
+<hr>
+
+Now, note two things when you run <b>ls3</b> -- first, the output is
+not formatted.  Second, the files aren't sorted.  This is because
+<b>readdir()</b> makes no guarantees about the ordering of files in a
+directory.  The next two programs solve each of these problems.<p> 
+
+First, formatting output.  What we'd like to see is somthing like:
+
+</p><pre>.             4096
+..            4096
+myfile           3
+ls1.c          649
+ls2.c          639
+ls3.c          773
+ls4.c         1041
+</pre>
+
+
+In order to do this, we need to know how long the longest filename is.
+An we need to know it before we print out <i>any</i> filenames.  So, 
+what we do is read all the directory entries into a linked list,
+calculating the maximum length one along the way.  After doing that,
+we traverse the list, and print the output in a nice format.  Look 
+closely at the <b>printf</b> statement, and read the man page on <b>printf</b> so
+that you can figure out why it works.  This is 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls4.c"><b>ls4.c</b></a>.
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;dirent.h&gt;
+#include "dllist.h"
+
+int main(int argc, char **argv)
+{
+  struct stat buf;
+  int exists;
+  DIR *d;
+  struct dirent *de;
+  Dllist files, tmp;
+  int maxlen;
+
+  d = opendir(".");
+  if (d == NULL) {
+    fprintf(stderr, "Couldn't open \".\"\n");
+    exit(1);
+  }
+  
+  maxlen = 0;
+  files = new_dllist();
+
+  for (de = readdir(d); de != NULL; de = readdir(d)) {
+    dll_append(files, new_jval_s(strdup(de-&gt;d_name)));
+    if (strlen(de-&gt;d_name) &gt; maxlen) maxlen = strlen(de-&gt;d_name);
+  }
+  closedir(d);
+
+  dll_traverse(tmp, files) {
+    exists = stat(tmp-&gt;val.s, &amp;buf);
+    if (exists &lt; 0) {
+      fprintf(stderr, "%s not found\n", tmp-&gt;val.s);
+    } else {
+      printf("%*s %10lld\n", -maxlen, tmp-&gt;val.s, buf.st_size);
+    }
+  }
+}
+</pre></td></tr></tbody></table></center><p>
+
+Why did I use <b>strdup</b> in the <b>dll_append()</b> call instead of 
+<b>de-&gt;d_name</b>?  The answer is subtle.  The man page doesn't tell you 
+anything about how the struct that <b>readdir()</b> returns is allocated.
+All that you can really assume is that until you make the next call
+to <b>readdir()</b> or <b>closedir()</b>, the value of what <b>readdir()</b> 
+returns is ok.  If we knew that <b>readdir()</b> mallocs space
+for the "<b>struct dirent</b>" that it returns, and that that
+space isn't free'd until the user calls <b>free()</b>, then we
+could readily put <b>de-&gt;d_name</b> into our dlist, and not worry
+about anything.  However, with no such assurances from the
+man page, we have to call <b>strdup()</b>.  For example,
+<b>opendir/readdir/closedir</b> could be implemented as follows: 
+
+</p><ul>
+<li><b>opendir()</b> opens the directory file, and mallocs one "struct dirent".
+</li><li><b>readdir()</b> reads the next directory entry into that one 
+          "struct dirent", and returns a pointer to it.
+</li><li><b>closedir()</b> closes the directory file, and free's the "struct dirent".
+</li></ul>
+
+(In fact, that is how it is implemented in some versions of Unix).
+You should be able to reason why such an implementation necessitates
+that we call <b>strdup()</b> in the <b>dll_append()</b> statement.  
+If we just
+put <b>de-&gt;d_name</b> there, then we're going to get into all sorts of
+problems with memory.  This is subtle, but an important point.  Make sure
+you understand it.
+
+
+<hr>
+Now, to print out the directory files sorted, you just need to
+insert the entries into a red-black instead of a dllist.  The code
+is in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls5.c"><b>ls5.c</b></a>.  It is a very simple change.
+
+<hr>
+Next, we'd like to get rid of the %10d in the <b>printf</b> statement.
+In other words, we want 
+one space between the last column of the file names and the first
+column of the file sizes.  We do this by finding the maximum
+size of the file size while traversing the directory, and using 
+that in the <b>printf</b> statement.  This takes a <b>sprintf()</b> and a 
+<b>strlen()</b> -- see <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls5a.c"><b>ls5a.c</b></a>.
+
+<hr>
+Finally, <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Stat/ls6.c"><b>ls6.c</b></a> performs the same function as 
+"<b>ls -F</b>".  That is, it prints
+directories with a "<b>/</b>" at the end, symbolic (soft) links with a 
+"<b>@</b>", and executable files with a "<b>*</b>".  
+We are able to do this by interpreting 
+the "<b>st_mode</b>" field of the "<b>struct buf</b>".  Look over the
+code, because it will be very useful when you write <b>jtar</b>!
+
+<hr>
+(Typically, at this point in the lecture, I have time leftover, so I go over some more
+pointer exam questions.  Good ones are
+questions 6 and 7 from 2014 Midterm 1).
+</body></html>

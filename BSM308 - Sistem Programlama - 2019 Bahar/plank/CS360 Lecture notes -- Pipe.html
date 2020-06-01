@@ -1,0 +1,486 @@
+
+<!-- saved from url=(0079)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Pipe</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Pipe</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Pipe</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/lecture.html
+</b></a>
+</li><li> Original Lecture Notes: Mid 1990's.
+</li><li> Most recent modification: <i>
+Sat Mar 24 13:22:25 EDT 2018
+</i>
+</li></ul>
+<hr>
+
+<h1>Pipe()</h1>
+
+First, read the pipe man page.  I've included the SunOS version
+(from the 1990's) in <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe.txt"><b>pipe.txt</b></a>.
+It is one of the best 70 lines of text you will ever read.
+It tells you all you need to know in a very terse manner.  
+It is beautiful.
+
+<p>The <b>pipe()</b> system call gives parent-child processes a way to 
+communicate 
+with each other.  It is called as follows:
+
+</p><pre>int pipe(int fd[2]);
+</pre>
+
+In other words, you pass it an array of two
+integers.  It fills in that array with two file
+descriptors that can talk to each other.
+Anything that is written on <b>fd[1]</b> may be read by
+<b>fd[0]</b>.  This is of no use in a single process.
+However, between processes, it gives a method of
+communication.  
+
+<p>Look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe0.c">pipe0.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int pipefd[2];
+  int i;
+  char s[1000];
+  char *s2;
+
+  if (pipe(pipefd) &lt; 0) {
+    perror("pipe");
+    exit(1);
+  }
+
+  s2 = "Rex Morgan MD";
+
+  write(pipefd[1], s2, strlen(s2));
+
+  i = read(pipefd[0], s, 1000);
+  s[i] = '\0';
+
+  printf("Read %d bytes from the pipe: '%s'\n", i, s);
+
+}
+</pre></td></tr></tbody></table></center><p>
+
+This first calls <b>pipe()</b> to set up two file
+descriptors <b>pipefd[0]</b> and <b>pipefd[1]</b>.  Anything
+written to <b>pipefd[1]</b> can be read by <b>pipefd[0]</b>.
+To put this in another way, whenever you call
+<b>write(fd, buf, size)</b>, your process sends <b>size</b>
+bytes starting at the address specified by <b>buf</b> to
+the operating system.  The <b>fd</b> tells the operating
+system what to do with those bytes.  Usually <b>fd</b>
+is a file descriptor returned by <b>open()</b> -- thus,
+your <b>write()</b> call tells the operating system to
+write those bytes to a file.  However, there are
+other types of file descriptors.  For example,
+when you say <b>write(1, buf, size)</b>, you are saying
+to print those bytes to standard output, which often is
+not a disk file, but instead is a terminal.
+When <b>fd</b> is the writing end of a pipe, the <b>write()</b>
+specifies for the operating system to hold those
+bytes in a buffer until some process requests for
+them by performing a <b>read()</b> on the read end of
+the pipe.  
+
+</p><p>It's important to recognize that all interprocess
+communication must take place through the
+operating system.  Pipes are a nice clean way for
+this to occur. 
+
+</p><p>Back to 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe0.c"><b>pipe0.c</b></a>.
+After the <b>pipe()</b> system call returns in <b>pipe0</b>,
+we can view the running process as
+having 5 open file descriptors: standard input
+(0), standard output (1), standard error (2), the
+read end of the pipe (<b>pipefd[0]</b>), and the write
+end of the pipe (<b>pipefd[1]</b>).  Each of those file
+descriptors is a pointer to the operating system.
+We can visualize it as follows: 
+
+</p><pre>   pipe0        
+|----------|      file  
+| code,    |   descriptors
+| globals, |                  |---------|
+| heap.    |       0 &lt;-----   |         |
+|          |       1 -----&gt;   |operating|
+|          |       2 -----&gt;   | system  |
+|          | pipefd[0] &lt;---   |         |
+|          | pipefd[1] ---&gt;   |---------|
+|          |
+| stack    |
+|----------|
+</pre>
+
+Now, we first call: "<b>write(pipefd[1], s2, strlen(s2));</b>"
+
+<p>This sends the string <b>"Rex Morgan MD"</b> to the operating system,
+which holds it in a buffer:
+
+</p><pre>   pipe0           
+|----------|      file 
+| code,    |   descriptors
+| globals, |                  |---------|
+| heap.    |       0 &lt;-----   |         |
+|          |       1 -----&gt;   |operating|
+|          |       2 -----&gt;   | system  |
+|          | pipefd[0] &lt;---   |         |
+|          | pipefd[1] ---&gt;   |         |-&gt; "Rex Morgan MD"
+|          |                  |---------|
+| stack    |
+|----------|
+</pre>
+
+Next, we call "<b>i = read(pipefd[0], s, 1000);</b>", which attempts to 
+read up to 1000 bytes from the pipe.   This extracts the string
+<b>"Rex Morgan MD"</b> from the OS and puts it into the variable <b>s</b>:
+
+<pre>   pipe0           
+|----------|      file 
+| code,    |   descriptors
+| globals, |                  |---------|
+| heap.    |       0 &lt;-----   |         |
+|          |       1 -----&gt;   |operating|
+|          |       2 -----&gt;   | system  |
+|          | pipefd[0] &lt;---   |         |
+|          | pipefd[1] ---&gt;   |         |
+|          |                  |---------|
+| stack   s|-&gt; "Rex Morgan MD"
+|----------|
+</pre>
+
+This is a very simple use of pipes, and is not really something that
+you would ever do.  However, it shows the use of a pipe from within
+one process.
+
+<hr>
+Now, look at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe1.c">pipe1.c</a></b>
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>int main()
+{
+  int pipefd[2];
+  int pid;
+  int i, line;
+  char s[1000];
+
+  if (pipe(pipefd) &lt; 0) {
+    perror("pipe");
+    exit(1);
+  }
+
+  pid = fork();
+
+  <font color="blue">/* The parent reads lines of input from 
+     standard input, and writes them 
+     to the pipe. */</font>
+
+  if (pid &gt; 0) {
+    while(fgets(s, 1000, stdin) != NULL) {
+      write(pipefd[1], s, strlen(s));
+    }
+</pre></td><td valign="top"><pre>  <font color="blue">/* The child reads single characters from
+     the pipe, and when it sees a newline, it
+     writes the line to standard output, 
+     preceded by the line number. */</font>
+
+  } else {
+    i = 0;
+    line = 1;
+    while(read(pipefd[0], s+i, 1) == 1) {
+      if (s[i] == '\n') {
+        s[i] = '\0';
+        printf("%6d  %s\n", line, s);
+        line++;
+        i = 0;
+      } else {
+        i++;
+      }
+    }
+  }
+  return 0;
+} 
+</pre></td></tr></tbody></table></center><p>
+
+</p><p>Again, after <b>pipe()</b> is called, the system looks like:
+
+</p><pre>   pipe1           
+|----------|      file 
+| code,    |   descriptors
+| globals, |                  |---------|
+| heap.    |       0 &lt;-----   |         |
+|          |       1 -----&gt;   |operating|
+|          |       2 -----&gt;   | system  |
+|          | pipefd[0] &lt;---   |         |
+|          | pipefd[1] ---&gt;   |---------|
+|          |
+| stack    |
+|----------|
+</pre>
+
+Now, when <b>fork()</b> is called, a new process is created which is a
+duplicate of the original <b>pipe1</b> process.  
+The file descriptors are also duplicated so that
+they are the same pointers into the operating system.  The state now
+looks like: 
+
+<pre>pipe1(parent)                                                 pipe1(child)
+|----------|      file-                                       |----------|
+| code,    |   descriptors                                    | code,    |
+| globals, |                  |---------|                     | globals, |
+| heap.    |       0 &lt;-----   |         |  -----&gt; 0           | heap.    |
+|          |       1 -----&gt;   |operating|  &lt;----- 1           |          |
+|          |       2 -----&gt;   | system  |  &lt;----- 2           |          |
+|          | pipefd[0] &lt;---   |         |  ---&gt; pipefd[0]     |          |
+|          | pipefd[1] ---&gt;   |---------|  &lt;--- pipefd[1]     |          |
+|          |                                                  |          |
+| stack    |                                                  | stack    |
+|----------|                                                  |----------|
+</pre>
+
+The parent process now calls <b>fgets()</b> to
+read lines of text from standard input, and
+writes them to the pipe.  The child reads from
+the pipe, and prints each line on standard
+output, preceeded by its line number.  This code
+should seem straightforward to you.  You should see that
+each write to <b>pipefd[1]</b> goes to the
+operating system, which it passes it to the 
+child process as it calls <b>read</b> on 
+<b>pipefd[0]</b>.  
+
+<p>Try running <b>pipe1</b>:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./pipe1</b></font>
+<font color="darkred"><b>How bout them Vols!</b></font>
+     1  How bout them Vols!
+<font color="darkred"><b>Give him six!</b></font>
+     2  Give him six!
+<font color="darkred"><b>Juice em, Big Dog, Juice em!</b></font>
+     3  Juice em, Big Dog, Juice em!
+<font color="darkred"><b>&lt;CNTL-D&gt;</b></font>
+UNIX&gt;
+</pre>
+
+<p>Looks good.  Now, try doing the same thing to an output file:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./pipe1 &gt; output</b></font>
+<font color="darkred"><b>How bout them Vols!
+Give him six!
+Juice em, Big Dog, Juice em!
+&lt;CNTL-D&gt;</b></font>
+UNIX&gt; <font color="darkred"><b>cat output</b></font>
+UNIX&gt;
+</pre>
+
+Hmmm.  This appears to be a problem.  Since
+<b>fork()</b> duplicates file descriptors we'd assume that
+the child process writes to <b>output</b>, as that is
+where standard output has been redirected.  This
+is correct.  The problem can be seen by doing a
+<b>ps x</b> (or <b>ps aux | grep $USER</b>): 
+
+<pre>UNIX&gt; <font color="darkred"><b>ps aux | grep plank</b></font>
+...
+plank     6277  0.1  0.3  760  576 pts/22   S 09:40:25  0:00 grep plank
+plank     6241  0.0  0.2  684  436 pts/22   S 09:39:02  0:00 pipe1
+plank     6244  0.0  0.2  700  452 pts/22   S 09:39:23  0:00 pipe1
+...
+UNIX&gt;
+</pre>
+
+What's going on?  Well, it can best be explained
+by the picture below.  When the parent process
+receives CNTL-D, it closes <b>pipefd[1]</b>, and then
+exits.  The state of the system now looks as
+follows: 
+
+<pre>pipe1(parent)                                                 pipe1(child)
+                                                              |----------|
+exited                                                        | code,    |
+                              |---------|                     | globals, |
+                              |         |  -----&gt; 0           | heap.    |
+                              |operating|  &lt;----- 1           |          |
+                              | system  |  &lt;----- 2           |          |
+                              |         |  ---&gt; pipefd[0]     |          |
+                              |---------|  &lt;--- pipefd[1]     |          |
+                                                              |          |
+                                                              | stack    |
+                                                              |----------|
+</pre>
+
+Note that the child process still has <b>pipefd[1]</b>
+open.  Thus, it is waiting to read from
+<b>pipefd[0]</b>, and the operating system doesn't know
+that no process will be writing to <b>pipefd[1]</b>.
+So the child process just sits there doing
+nothing.  There is nothing in the output file
+because the child is printing using <b>printf()</b>, which
+buffers the output.  As the buffer isn't full, it
+hasn't performed the <b>write(1, ...)</b> yet, and thus we
+don't see anything in the output file.  
+
+<p>As the <b>ps x</b> command shows, there are two <b>pipe1</b> processes 
+-- one child from each of the two <b>pipe1</b>'s that
+we called above.  (i.e. "<b>./pipe1</b>" and "<b>./pipe1 &gt; output</b>").
+
+</p><p>Make sure you understand what has gone on here before you read 
+further.  The child process is hung reading from <b>pipefd[0]</b>.
+The <b>read()</b> call will not return because there is nothing to read,
+and since <b>pipefd[1]</b> is not closed, the OS cannot make the
+<b>read()</b> call return with a value of zero.  Thus, the process is
+hung.
+
+</p><hr>
+Now, kill those two child processes:
+
+<pre>UNIX&gt; <font color="darkred"><b>kill 6241 6244</b></font>
+</pre>
+
+And look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe2.c"><b>pipe2.c</b></a>.
+<b>Pipe2.c</b> has the parent
+close the file descriptors that it is not going to
+use, and it has the child close the file
+descriptors that it is not going to use.  When the
+parent and child both enter their loops, the
+state of the system looks as follows, due to the
+closing of unused file descriptors: 
+
+<pre>pipe2(parent)     file                                        pipe2(child)
+|----------|      desc-                                       |----------|
+| code,    |     riptors                                      | code,    |
+| globals, |                  |---------|                     | globals, |
+| heap.    |       0 &lt;-----   |         |                     | heap.    |
+|          |                  |operating|  &lt;----- 1           |          |
+|          |       2 -----&gt;   | system  |  &lt;----- 2           |          |
+|          |                  |         |  ---&gt; pipefd[0]     |          |
+|          | pipefd[1] ---&gt;   |---------|                     |          |
+|          |                                                  |          |
+| stack    |                                                  | stack    |
+|----------|                                                  |----------|
+</pre>
+
+Now, when you type <b>&lt; CNTL-D &gt;</b>, the parent exits, leaving the system in
+the following state: 
+
+<pre>pipe2(parent)                                                 pipe2(child)
+                                                              |----------|
+exited                                                        | code,    |
+                              |---------|                     | globals, |
+                              |         |                     | heap.    |
+                              |operating|  &lt;----- 1           |          |
+                              | system  |  &lt;----- 2           |          |
+                              |         |  ---&gt; pipefd[0]     |          |
+                              |---------|                     |          |
+                                                              |          |
+                                                              | stack    |
+                                                              |----------|
+</pre>
+
+Note that the writing end of <b>pipefd</b> is gone
+completely.  Thus, the operating system can have
+the child's <b>read(pipefd[0], ...)</b> return zero, and
+the child exits gracefully.  So, when you call
+<b>pipe2</b> as you did <b>pipe1</b> before, the output file is
+correctly created, and there are no child
+processes left hanging around: 
+
+<pre>UNIX&gt; <font color="darkred"><b>pipe2 &gt; output</b></font>
+How bout them Vols!
+Give him six!
+Juice em, Big Dog, Juice em!
+&lt; CNTL-D &gt;
+UNIX&gt; <font color="darkred"><b>cat output</b></font>
+     1  How bout them Vols!
+     2  Give him six!
+     3  Juice em, Big Dog, Juice em!
+UNIX&gt;
+</pre>
+
+If you do a "<b>ps x</b>", you should see no <b>pipe2</b> processes.
+
+<hr>
+<h1>SIGPIPE</h1>
+
+As you see from the program above, when you try to read from a pipe that
+has no write end, the <b>read()</b> returns 0.  
+When you try to write to a pipe 
+that has no read end, a <b>SIGPIPE</b> signal is generated.  
+If the signal isn't handled,
+the program exits silently.  This is nice because it means that, for 
+example, you execute:
+
+<pre>UNIX&gt; <font color="darkred"><b>cat exec1.c | head -5 | tail -1</b></font>
+</pre>
+
+You'll notice that the first process to die will be the middle one, because
+it exits after reading the first five lines of standard input.
+When it exits, the other two will 
+exit automatically -- <b>tail</b> 
+will have <b>read()</b> return 0, and will exit,
+and <b>cat</b> will try to write to an empty pipe, and thus will generate 
+<b>SIGPIPE</b> and exit.
+
+<p>Look at 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/pipe3.c"><b>pipe3.c</b></a>.
+
+</p><p>It does the same thing as the others, but catches <b>SIGPIPE</b>
+(If signals are unknown to you, read Chapter 10 in the book, and the
+<b>signal</b> man page.  We will have a lecture on <b>signal</b> later
+in the class). 
+To test it, run <b>pipe3</b>;
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./pipe3</b></font>
+Juice em, Big Dog, Juice em!
+     1  Juice em, Big Dog, Juice em!
+</pre>
+
+Then, in another window, kill the child process -- it will be the one with 
+the higher pid:
+
+<pre>UNIX&gt; <font color="darkred"><b>ps aux | grep plank</b></font>
+...
+plank     7064  0.1  0.2  684  452 pts/22   S 09:44:24  0:00 pipe3
+plank     7065  0.0  0.2  684  304 pts/22   S 09:44:24  0:00 pipe3
+...
+UNIX&gt; <font color="darkred"><b>kill 7065</b></font>
+UNIX&gt;
+</pre>
+
+You'll see nothing happen in the <b>pipe3</b> window, but the child is gone.  
+(Type "<b>ps aux | grep $USER</b>" again to make sure).
+This means that there is no process that has <b>pipefd[0]</b> open.  
+Thus, if you type into the <b>pipe3</b> process:
+
+<pre>Give Him Six!
+15454: caught a SIGPIPE
+UNIX&gt;
+</pre>
+
+The <b>write()</b> to <b>pipefd[1]</b> generates <b>SIGPIPE</b>.  
+
+<hr>
+<p>This should give you enough info to do the next lab.  
+(Actually, you won't need SIGPIPE in the <b>Jsh</b> lab.  That will
+come up later).
+To help you out,
+look at the program 
+<a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Pipe/headsort.c"><b>headsort.c</b></a>
+-- this implements:
+
+</p><pre>"head -10 headsort.c | sort"
+</pre>
+
+and waits for it to finish.  If we don't get to it in class, go over
+the code yourself.  You will find it very helpful for the <b>Jsh</b>
+lab.
+
+</body></html>

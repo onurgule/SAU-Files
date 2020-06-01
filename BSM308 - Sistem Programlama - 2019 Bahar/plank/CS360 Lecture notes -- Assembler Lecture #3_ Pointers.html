@@ -1,0 +1,630 @@
+
+<!-- saved from url=(0085)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Assembler Lecture #3: Pointers</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Assembler Lecture #3: Pointers</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Assembler3</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/lecture.html
+</b></a>
+</li><li> Original notes are from the 1990's.
+</li><li> Last modification: 
+Wed Feb 27 14:05:51 EST 2013
+</li></ul>
+
+<hr>
+<h2>Advice on dealing with pointers</h2>
+
+Pointers require some care -- my advice with pointers is to go 
+slowly, and think precisely.  As with the exercises on pointers and C code, it is often
+helpful to write out the addresses of everything that you can.  That helps you figure out
+memory and it helps you write code.
+
+<hr>
+<h2>Simple Pointer Dereferencing</h2> 
+
+Take a look at <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer1.c">pointer1.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int main()
+{
+  int i, j, *jp;
+
+  jp = &amp;j;
+  j = 15;
+  i = *jp;
+}
+</pre></td></tr></tbody></table></center><p>
+
+Let's list everything that we know about these variables:
+
+</p><ul>
+<li> There are three local variables, which will be accessed from the frame pointer:
+</li><li> <b>i</b> will be at memory location <b>(fp-8)</b>.  Therefore, <b>&amp;i</b> equals <b>(fp-8)</b> and <b>i</b>'s 
+value will be loaded and stored at <b>[fp-8]</b>.
+</li><li> Similarly, <b>&amp;j</b> equals <b>(fp-4)</b> and <b>j</b>'s 
+value will be loaded and stored at <b>[fp-4]</b>.
+</li><li> Finally, <b>&amp;jp</b> equals <b>fp</b> and <b>jp</b>'s 
+value will be loaded and stored at <b>[fp]</b>.  If you want <b>*jp</b>, you need
+to load <b>[fp]</b> into a register and dereference the register. 
+</li></ul>
+
+The assembler for this program is in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer1.jas">pointer1.jas</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>main:
+    push #12               <font color="blue">/ Allocate the three locals</font>
+    
+    mov #-4 -&gt; %r0         <font color="blue">/ jp = &amp;j.</font>
+    add %fp, %r0 -&gt; %r0
+    st %r0 -&gt; [fp]
+
+    mov #15 -&gt; %r0         <font color="blue">/ j = 15</font>
+    st %r0 -&gt; [fp-4]
+
+    ld [fp] -&gt; %r0         <font color="blue">/ i = *jp</font>
+    ld [r0] -&gt; %r0
+    st %r0 -&gt; [fp-8]
+
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+If this is not clear, trace through it in <b>jassem</b>.  Here's a reproduction
+of what I think is the important part of the program -- when you start
+doing "<b>i = *jp</b>":
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-1-1.jpg"></td></tr></tbody></table></center><p>
+
+We had to manually calculate <b>&amp;j</b> as 0xfff444.  You can see that value
+in <b>jp = [fp]</b>.  To calculate <b>*jp</b>, we first load <b>jp</b> into <b>r0</b>:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-1-2.jpg"></td></tr></tbody></table></center><p>
+
+And then we load <b>[r0]</b>: that grabs the value in 0xfff444, which is 15 
+(in <b>jassem</b>, you see it as 0xf, because <b>jassem</b> does everything
+in hexadecimal):
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-1-3.jpg"></td></tr></tbody></table></center><p>
+
+Finally, 15 is stored to <b>i</b> (location 0xfff440).  I'm not going to draw
+the picture.  Again, you should trace this with <b>jassem</b>.
+
+</p><p>
+Let's try a procedure with a pointer.  Take a look at
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer2.c">pointer2.c</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int a(int *p)
+{
+  return *p;
+}
+
+int main()
+{
+  int i, j;
+
+  j = 15;
+  i = a(&amp;j);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Again, the best thing to do is figure out every variable's address and value:
+
+</p><ul>
+<li> In <b>main()</b>, <b>&amp;i</b> is <b>(fp-4)</b>, and <b>i</b>'s value is <b>[fp-4]</b>.
+</li><li> In <b>main()</b>, <b>&amp;j</b> is <b>fp</b>, and <b>j</b>'s value is <b>[fp]</b>.
+</li><li> In <b>a()</b>, <b>&amp;p</b> is <b>(fp+12)</b>, and <b>p</b>'s value is <b>[fp+12]</b>.
+</li><li> To get <b>*p</b>, you need to load <b>[fp+12]</b> into a register and dereference
+the register.
+</li></ul>
+
+Here's the assembler (in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer2.jas">pointer2.jas</a></b>):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>a:
+    ld [fp+12] -&gt; %r0      <font color="blue">/ get p's value</font>
+    ld [r0] -&gt; %r0         <font color="blue">/ dereference it</font>
+    ret
+
+main:
+    push #8
+
+    mov #15 -&gt; %r0         <font color="blue">/ j = 15</font>
+    st %r0 -&gt; [fp]
+
+    st %fp -&gt; [sp]--       <font color="blue">/ push &amp;j on the stack </font>
+    jsr a                  <font color="blue">/ and call a()</font>
+    pop #4
+    st %r0 -&gt; [fp-4]
+
+    ret
+</pre></td></tr></tbody></table></center><p>
+
+Once again, you should trace through this in <b>jassem</b>.  I'll give you a screen 
+shot this time.   One thing that you should do while going through <b>jassem</b> is
+make sure you can identify <i>every</i> value on the stack.  I've done that on
+the screen shot below, when the code is at the <b>ret</b> statement for <b>a()</b>:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-2.jpg"></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h2>Array Dereferencing</h2>  
+
+Array dereferencing is much like pointer
+dereferencing.  You multiply the array index by the item's size, then 
+add it to the top of the array.  Then dereference that value.  For example,
+look 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer3.c">pointer3.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>void a(int *p)
+{
+  int i;
+ 
+  i = p[0];
+  i = p[3];
+  i = p[i];
+}
+
+int main()
+{
+  int array[5];
+
+  array[0] = 10;
+  array[1] = 11;
+  array[2] = 12;
+  array[3] = 2;
+  array[4] = 15;
+
+  a(array);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Let's not worry about <b>main()</b> for now.  I'm just using the <b>main()</b> to set up memory
+so that you can trace through <b>a</b>'s assembler.  Again, let's figure out our variables'
+addresses and values so that it's easier to come up with the assembler:
+
+</p><ul>
+<li> <b>&amp;i</b> is <b>fp</b>, and <b>i</b>'s value is <b>[fp]</b>.
+</li><li> <b>&amp;p</b> is <b>(fp+12)</b>, and <b>p</b>'s value is <b>[fp+12]</b>.
+</li><li> To get <b>p[0]</b>, we need to load <b>[fp+12]</b> and dereference it.
+</li><li> To get <b>p[3]</b>, we need to load <b>[fp+12]</b>, then add 12 to it (3 * the
+     size of an integer), and then dereference the result.
+</li><li> To get <b>p[i]</b>, we need to to calculate the following value:
+<p>
+</p><center>
+<b>[fp+12]</b> + 4 * <b>[fp]</b>
+</center>
+<p>
+And then dereference it.  Let's go ahead and put the dereferencing into the equation:
+</p><p>
+</p><center>
+<b>[ [fp+12]</b> + 4 * <b>[fp] ]</b>
+</center>
+<p>
+And let's turn that into a tree, just like we did in the last lecture with equations:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-3-1.jpg"></td></tr></tbody></table></center><p>
+I've labeled the nodes so that you can see how we construct <b>&amp;(p[i])</b>
+and then we dereference it.
+</p></li></ul>
+<p>
+Here's the assembler (in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer3.jas">pointer3.jas</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>a:
+   push #4
+
+   ld [fp+12] -&gt; %r0     <font color="blue">/ i = p[0]</font>
+   ld [r0] -&gt; %r0
+   st %r0 -&gt; [fp]
+
+   ld [fp+12] -&gt; %r0     <font color="blue">/ i = p[3]</font>
+   mov #12 -&gt; %r1
+   add %r0, %r1 -&gt; %r0
+   ld [r0] -&gt; %r0
+   st %r0 -&gt; [fp]
+
+   ld [fp] -&gt; %r0        <font color="blue">/ i = p[i]</font>
+   mov #4 -&gt; %r1
+   mul %r0, %r1 -&gt; %r0
+   ld [fp+12] -&gt; %r1
+   add %r0, %r1 -&gt; %r0
+   ld [r0] -&gt; %r0
+   st %r0 -&gt; [fp]
+   
+   ret
+</pre></td></tr></tbody></table></center><p>
+
+Let's run it in <b>jassem</b> and see what's going on.  Again, we're ignoring <b>main()</b>
+for now.  Just step through <b>jassem</b> until you're running <b>a()</b>, just after the "push #4".
+Again, it's useful to identify everything on the stack:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-3-2.jpg"></td></tr></tbody></table></center><p>
+
+Go ahead and trace through that code yourself with <b>jassem</b>.  You should see that
+<b>p[0]</b> is equal to 10 (0xa), <b>p[3]</b> is equal to 2, and because <b>i</b> is set
+to 2, <b>p[i]</b> is equal to 12 (0xc).  
+</p><p>
+Let's think about <b>main()</b> now.  The first thing that it will do is 
+call <b>push #20</b> to allocate the five integers of <b>array</b>.  After that, the 
+compiler knows that:
+
+</p><ul>
+<li> <b>&amp;(array[0])</b> is <b>(fp-16)</b>, and <b>array[0]</b>'s value is <b>[fp-16]</b>.
+</li><li> <b>&amp;(array[1])</b> is <b>(fp-12)</b>, and <b>array[1]</b>'s value is <b>[fp-12]</b>.
+</li><li> <b>&amp;(array[2])</b> is <b>(fp-8)</b>, and <b>array[2]</b>'s value is <b>[fp-8]</b>.
+</li><li> <b>&amp;(array[3])</b> is <b>(fp-4)</b>, and <b>array[3]</b>'s value is <b>[fp-4]</b>.
+</li><li> <b>&amp;(array[4])</b> is <b>fp</b>, and <b>array[4]</b>'s value is <b>[fp]</b>.
+</li></ul>
+
+You'll note -- there is no memory set aside for "array."  The compiler knows that 
+"array" is equal to <b>(fp-16)</b> -- it is a pointer to <b>array[0]</b>.
+<p>
+Armed with this knowledge, setting the elements of <b>array</b> is straightforward. 
+Calling <b>a(array)</b> is a little trickier, but we'll go over it.  Here's 
+the rest of <b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer3.jas">pointer3.jas</a></b>:
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>main:
+   push #20
+
+   mov #10 -&gt; %r0        <font color="blue">/ Store the values of array</font>
+   st %r0 -&gt; [fp-16]
+   mov #11 -&gt; %r0
+   st %r0 -&gt; [fp-12]
+   mov #12 -&gt; %r0
+   st %r0 -&gt; [fp-8]
+   mov #2 -&gt; %r0
+   st %r0 -&gt; [fp-4]
+   mov #15 -&gt; %r0
+   st %r0 -&gt; [fp]
+
+   mov #-16 -&gt; %r0        <font color="blue">/ Push array onto the stack</font>
+   add %fp, %r0 -&gt; %r0
+   st %r0 -&gt; [sp]--     
+   jsr a                  <font color="blue">/ call a</font>
+   pop #4
+   ret
+</pre></td></tr></tbody></table></center><p>
+
+To call <b>a(array)</b>, we have to calculate <b>(fp-16)</b> and push that onto the 
+stack. That's done in three lines starting with "<b>mov #-16 -&gt; %r0</b>".  
+The rest is straightforward.
+
+</p><hr>
+<h2>Some More Practice, and Uninitialized Locals</h2>
+
+Here's a nice and buggy program (in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer4.c">pointer4.c</a></b>):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>a(int i, int j, int k, int l)
+{
+  int m;
+
+  m = i + j + k + l;
+}
+</pre></td><td valign="top"><pre>int b(int i)
+{
+  int p[5];
+
+  return p[i];
+}
+</pre></td><td valign="top"><pre>main()
+{
+  int x;
+
+  a(5, 6, 7, 8);
+  x = b(2);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Why is it buggy?  Because we don't initialize <b>p</b> and we simply return <b>p[i]</b>.
+The assembler is below (in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer4.jas">pointer4.jas</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>a:
+  push #4
+
+  ld [fp+12] -&gt; %r0
+  ld [fp+16] -&gt; %r1
+  add %r0, %r1 -&gt; %r0
+  ld [fp+20] -&gt; %r1
+  add %r0, %r1 -&gt; %r0
+  ld [fp+24] -&gt; %r1
+  add %r0, %r1 -&gt; %r0
+  st %r0 -&gt; [fp]
+  ret
+</pre></td><td valign="top"><pre>b:
+  push #20
+
+  ld [fp+12] -&gt; %r0
+  mov #4 -&gt; %r1
+  mul %r0, %r1 -&gt; %r0
+  mov #-16 -&gt; %r1
+  add %r0, %r1 -&gt; %r0
+  add %r0, %fp -&gt; %r0
+  ld [r0] -&gt; %r0
+  ret
+</pre></td><td valign="top"><pre>main:
+  push #4
+
+  mov #8 -&gt; %r0
+  st %r0 -&gt; [sp]--
+  mov #7 -&gt; %r0
+  st %r0 -&gt; [sp]--
+  mov #6 -&gt; %r0
+  st %r0 -&gt; [sp]--
+  mov #5 -&gt; %r0
+  st %r0 -&gt; [sp]--
+  jsr a
+  pop #16
+
+  mov #2 -&gt; %r0
+  st %r0 -&gt; [sp]--
+  jsr b
+  pop #4
+  st %r0 -&gt; [fp]
+  ret
+</pre></td></tr></tbody></table></center><p>
+
+The implementations of <b>a()</b> and <b>main()</b> are straightforward, so I won't
+bother commenting on them.  In <b>b()</b>, we allocate the 20 bytes for <b>p</b> on 
+the stack, and we know that <b>p</b> points to element <b>p[0]</b>, which is at
+address <b>(fp-16)</b>.  Thus, to access <b>p[i]</b> we need to do:
+</p><p>
+</p><center>
+<b>[ (fp-16) + 4*[fp+12] ]</b>
+</center>
+<p>
+Let's draw that as a tree:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-4-1.jpg"></td></tr></tbody></table></center><p>
+Before turning that into code, we can note that addition is associative, so we can 
+reorganize the tree so that it represents the equivalent equation:
+</p><p>
+</p><center>
+<table><tbody><tr><td>
+<b>[ fp + (-16 + 4*[fp+12]) ]</b>
+</td>
+<td width="100"></td>
+<td>
+<table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-4-2.jpg"></td></tr></tbody></table></td></tr></tbody></table>
+</center>
+<p>
+
+That's how we get the assembly code for <b>b()</b> above, which doesn't need to use
+<b>r2</b>, and therefore doesn't have to do any spilling.
+
+</p><p>
+A program like this one is going to run differently from machine to machine, according to
+how each machine's assembly code is defined and how each compiler maps to that assembly
+code.  On our machine, we can trace through it deterministically.  Suppose I asked
+on an exam, "What is the value of <b>x</b> when <b>main()</b> returns?"  You'd have
+to trace through it to figure it out.
+</p><p>
+Let's do so with <b>jassem</b>.  I'll only give three screen shots.  The first 
+is right before <b>a()</b> returns:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-4-3.jpg"></td></tr></tbody></table></center><p>
+
+You can double check: 5+6+7+8 = 26 = 0x1a.
+</p><p>
+Now, after the return statement and "pop #16", the state of the system is as pictured:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-4-4.jpg"></td></tr></tbody></table></center><p>
+We go ahead and push the value 2 onto the stack and call <b>b()</b>.  <b>b()</b>
+calls "push #20" and now the state of the system is as pictured:
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-4-5.jpg"></td></tr></tbody></table></center><p>
+Since we didn't initialize the values of <b>p</b>, they are leftover from the previous
+call to <b>a</b>.  Actually, who really knows what <b>p[0]</b> would be, since
+<b>jassem</b> assumes that memory is all zeros when it starts up.
+</p><p>
+So <b>b()</b> will return <b>p[2]</b>, which is <tt>0xfff448</tt>, and the answer to the question 
+is that at the end of <b>main()</b>, <b>x</b> will have the value <tt>0xfff448</tt>.
+</p><hr>
+<h2>Some more practice</h2>
+
+This one is just for practice -- in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer5.c">pointer5.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>main()
+{
+  int *a, a2[3], i;
+
+  i = 6;
+  a = &amp;i;
+  a2[1] = i+2;
+  *a = 2;
+  *(a2+i) = i+5;
+}
+</pre></td></tr></tbody></table></center><p>
+
+We'll start with "push 20", and we can locate our variables as follows:
+</p><ul>
+<li> <b>i</b> will be <b>[fp]</b>.
+</li><li> <b>a2[0]</b>, <b>a2[1]</b> and <b>a2[2]</b> will be <b>[fp-12], [fp-8] and [fp-4]</b>.
+</li><li> <b>a</b> will be <b>[fp-16]</b>.
+</li></ul>
+Note that this means:
+<ul>
+<li> <b>&amp;i</b> will be <b>fp</b>.
+</li><li> <b>a2</b> will be <b>(fp-12)</b>.
+</li><li> <b>*a</b> will be <b>[[fp-16]]</b>.  You can't do that in
+   assembler.  Instead you will load <b>[fp-16]</b> into a register and 
+   dereference that register.
+</li><li> <b>*(a2+i)</b> will be <b>[ fp-12 + 4*[fp] ]</b>.  Remember -- that's pointer arithmetic.
+</li></ul>
+The only complex statement is the last one.  To render that with assembler, let's also 
+consider the "st" as a node in our tree:
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-5.jpg"></td></tr></tbody></table></center><p>
+We'll have to use three registers to execute that, so we'll have to spill <b>r2</b> at
+the beginning.
+Here's the assembler
+(<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer5.jas">pointer5.jas</a></b>):
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>main:
+  push #20              <font color="blue">/ Allocate locals and spill r2</font>
+  st %r2 -&gt; [sp]--
+
+  mov #6 -&gt; %r0         <font color="blue">/ i = 6</font>
+  st %r0 -&gt; [fp]
+
+  st %fp -&gt; [fp-16]     <font color="blue">/ a = &amp;i</font>
+  
+  mov #2 -&gt; %r0         <font color="blue">/ a2[1] = i+2</font>
+  ld [fp] -&gt; %r1
+  add %r0, %r1 -&gt; %r0
+  st %r0 -&gt; [fp-8]
+
+  mov #2 -&gt; %r0         <font color="blue">/ *a = 2</font>
+  ld [fp-16] -&gt; %r1
+  st %r0 -&gt; [r1]
+
+  ld [fp] -&gt; %r0        <font color="blue">/ *(a+i) = i+5</font>
+  mov #5 -&gt; %r1
+  add %r0, %r1 -&gt; %r0   
+  ld [fp] -&gt; %r1  
+  mov #4 -&gt; %r2
+  mul %r1, %r2 -&gt; %r1
+  mov #-12 -&gt; %r2
+  add %r1, %r2 -&gt; %r1
+  add %fp, %r1 -&gt; %r1
+  st %r0 -&gt; [r1]
+  
+  ld ++[sp] -&gt; %r2      <font color="blue">/ Unspill and exit</font>
+  ret
+</pre></td></tr></tbody></table></center><p>
+
+</p><hr>
+<h2>Double Indirection</h2>
+
+Of course, double indirection is more of a pain than single indirection.
+The best thing is to turn it into an equation and a tree, and that helps with
+the code.  Here's a nice and detailed example, in 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer6.c">pointer6.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>int x(int **p, int i, int j)
+{
+  return p[i+2][j-2];
+}
+
+main()
+{
+  int a[3], b[3], c[3];
+  int *d[3];
+  int e;
+
+  a[0] = 1; a[1] = 2; a[2] = 3;
+  b[0] = 4; b[1] = 5; b[2] = 6;
+  c[0] = 7; c[1] = 8; c[2] = 9;
+
+  d[0] = a; d[1] = b; d[2] = c;
+
+  e = x(d, 0, 3);
+}
+</pre></td></tr></tbody></table></center><p>
+
+Let's delay thinking about <b>main()</b> right now.  It sets up <b>d</b> so that 
+it is an array of three arrays, each of which has three elements.  Moreover, <b>d[i][j]</b>
+is equal to <i>i*3+j+1</i>.  So, when we run this, <b>e</b> will be set to <b>d[2][1]</b> = 8.
+</p><p>
+In <b>x()</b>, let's go ahead and build up the return value:
+</p><ul>
+<li> <b>p</b> is <b>[fp+12]</b>
+</li><li> <b>i</b> is <b>[fp+16]</b>
+</li><li> <b>j</b> is <b>[fp+20]</b>
+</li><li> <b>p[i+2]</b> will be <b>[ [fp+12] + 4*([fp+16]+2) ]</b>
+</li><li> <b>p[i+2][j-2]</b> will be <b>[ p[i+2] + 4*([fp+20]-2) ]</b>, which is
+<b>[ [ [fp+12] + 4*([fp+16]+2) ] + 4*([fp+20]-2) ]</b>
+</li></ul>
+Here's the tree for that one:
+<p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-6-1.jpg"></td></tr></tbody></table></center><p>
+Let's implement <b>x()</b> by doing a post-order traversal which is right-to-left
+rather than left-to-right.  We need to use <b>r2</b>.  It's in
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Assembler3/pointer6.jas">pointer6.jas</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td valign="top"><pre>x:
+   st %r2 -&gt; [sp]--        <font color="blue">/ Spill r2</font>
+
+   ld [fp+20] -&gt; %r0       <font color="blue">/ Do the right part of the tree.</font>
+   mov #2 -&gt; %r1
+   sub %r0, %r1 -&gt; %r0
+   mov #4 -&gt; %r1
+   mul %r0, %r1 -&gt; %r0
+   
+   mov #2 -&gt; %r1           <font color="blue">/ Do the left part of the tree</font>
+   ld [fp+16] -&gt; %r2
+   add %r1, %r2 -&gt; %r1
+   mov #4 -&gt; %r2
+   mul %r1, %r2 -&gt; %r1
+   ld [fp+12] -&gt; %r2
+   add %r1, %r2 -&gt; %r1
+   ld [r1] -&gt; %r1
+
+   add %r0, %r1 -&gt; %r0     <font color="blue">/ Add them up </font>
+   ld [r0] -&gt; %r0
+
+   ld ++[sp] -&gt; %r2        <font color="blue">/ Unspill r2</font>
+   ret
+</pre></td><td valign="top"><pre>main:
+   push #52
+
+   st %g1 -&gt; [fp-48]    <font color="blue">/ Do a[0] through c[2].</font>
+   mov #2 -&gt; %r0
+   st %r0 -&gt; [fp-44]
+   mov #3 -&gt; %r0
+   st %r0 -&gt; [fp-40]
+   mov #4 -&gt; %r0
+   st %r0 -&gt; [fp-36]
+   mov #5 -&gt; %r0
+   st %r0 -&gt; [fp-32]
+   mov #6 -&gt; %r0
+   st %r0 -&gt; [fp-28]
+   mov #7 -&gt; %r0
+   st %r0 -&gt; [fp-24]
+   mov #8 -&gt; %r0
+   st %r0 -&gt; [fp-20]
+   mov #9 -&gt; %r0
+   st %r0 -&gt; [fp-16]
+
+   mov #-48 -&gt; %r0        <font color="blue">/ d[0] = a</font>
+   add %fp, %r0 -&gt; %r0
+   st %r0 -&gt; [fp-12]
+
+   mov #-36 -&gt; %r0        <font color="blue">/ d[1] = b</font>
+   add %fp, %r0 -&gt; %r0
+   st %r0 -&gt; [fp-8]
+
+   mov #-24 -&gt; %r0        <font color="blue">/ d[2] = c</font>
+   add %fp, %r0 -&gt; %r0
+   st %r0 -&gt; [fp-4]
+
+   mov #3 -&gt; %r0          <font color="blue">/ Push the arguments in reverse order</font>
+   st %r0 -&gt; [sp]--
+   st %g0 -&gt; [sp]--
+   mov #-12 -&gt; %r0        
+   add %fp, %r0 -&gt; %r0
+   st %r0 -&gt; [sp]--
+
+   jsr x                     <font color="blue">/ call x and set e</font>
+   pop #12
+   st %r0 -&gt; [fp]
+   ret
+</pre></td></tr></tbody></table></center><p>
+
+I'm not going to go over <b>main()</b> -- you have the reference material in 
+this lecture to figure it out, and I urge you to do it, especially the
+setting of <b>d[0] - d[2]</b>, and the procedure call. 
+</p><p>
+Go ahead and run <b>jassem</b> on it.  Here's the stack just before the call to <b>x()</b>.
+I've labeled every byte of the stack for you:
+
+</p><p></p><center><table border="3"><tbody><tr><td><img src="./CS360 Lecture notes -- Assembler Lecture #3_ Pointers_files/Pointer-6-2.jpg"></td></tr></tbody></table></center><p>
+
+I don't think there's much point in putting more screen shots here -- instead, step 
+through the code so that you can see how the element in <tt>0xfff434</tt> (d[2][1]) gets returned.
+</p><p>
+
+</p><hr>
+I used to have some more difficult examples here, but I'm deleting them, 
+as I think that they confuse more than anything else.
+
+</body></html>

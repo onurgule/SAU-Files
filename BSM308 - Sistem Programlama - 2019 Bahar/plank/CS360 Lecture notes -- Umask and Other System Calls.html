@@ -1,0 +1,395 @@
+
+<!-- saved from url=(0091)http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Umask-And-Others/lecture.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>CS360 Lecture notes -- Umask and Other System Calls</title>
+</head><body bgcolor="ffffff">
+<h1>CS360 Lecture notes -- Umask and Other System Calls</h1>
+<ul>
+<li><a href="http://web.eecs.utk.edu/~jplank">James S. Plank</a>
+</li><li>Directory: <b>/home/plank/cs360/notes/Umask-And-Others</b>
+</li><li>Lecture notes:
+    <a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Umask-And-Others/lecture.html">
+    <b>
+  http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Umask-And-Others/lecture.html</b></a>
+</li><li> Original lecture notes: In the 1990's.
+</li><li> Latest modification: <i>
+Tue Feb 13 09:36:59 EST 2018
+</i>
+</li></ul>
+
+This is a catch-all lecture, to go over some system calls that I don't go over
+in other parts of the class.  With the exception of <b>umask</b>, they are
+straightforward, so if I end up being short on lecture time, I will skip them 
+and just refer you here.  Many of them will be useful for you when you write 
+<b>jtar</b>.
+<hr>
+<h1>Umask</h1>
+
+<b>Umask</b> is a system call that handles the "file mode creation mask."  
+Here's a man page (from my Mac in 2018):
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre><font color="blue">NAME</font>
+     umask -- set file creation mode mask
+
+<font color="blue">SYNOPSIS</font>
+     #include &lt;sys/stat.h&gt;
+
+     mode_t
+     umask(mode_t cmask);
+
+<font color="blue">DESCRIPTION</font>
+     The umask() routine sets the process's file mode creation mask to cmask and returns
+     the previous value of the mask.  The 9 low-order access permission bits of cmask are
+     used by system calls, including open(2), mkdir(2), mkfifo(2), and mknod(2) to turn
+     off corresponding bits requested in file mode.  (See chmod(2)).  This clearing allows
+     each user to restrict the default access to his files.
+
+     The default mask value is S_IWGRP | S_IWOTH (022, write access for the owner only).
+     Child processes inherit the mask of the calling process.
+
+<font color="blue">RETURN VALUES</font>
+     The previous value of the file mode mask is returned by the call.
+
+<font color="blue">ERRORS</font>
+     The umask() function is always successful.
+</pre></td></tr></tbody></table></center><p>
+
+The "file creation mask" (which I will call the "umask" out of habit) is a nine-bit
+number.  If a bit in the umask is set, then whenever you make a system call that 
+creates a file, that bit in the protection mode will be turned off.
+</p><p>
+Formally, when you specify a <b>mode</b> when you open a file, the real protection
+mode will be:
+</p><p></p><center><table border="0"><tbody><tr><td><tt>(mode &amp; ~umask)</tt></td></tr></tbody></table></center><p>
+
+Until you get used to "AND-NOT", it can be confusing.  If you have a mask <tt>m</tt>, then:
+
+</p><ul>
+<li> <tt>x = (a &amp; m)</tt> will set <tt>x</tt> to all of the bits in <tt>a</tt> in the positions of the one bits of <tt>m</tt>.  Put another way, it will "turn off" all of the zero bits of <tt>m</tt>, in <tt>a</tt>.
+<p>
+</p></li><li> <tt>x = (a &amp; ~m)</tt> will set <tt>x</tt> to all of the bits in <tt>a</tt> in the positions of the zero bits of <tt>m</tt>.  Put another way, it will "turn off" all of the one bits of <tt>m</tt>, in <tt>a</tt>.
+</li></ul>
+
+So, the umask "turns off" protection bits.  The point of the umask is to allow programs to 
+create files with the following protection modes:
+
+<ul>
+<li> Regular text and data files may be opened with the mode 0666.
+</li><li> Directories and executable files may be opened with the mode 0777.
+</li></ul>
+
+The user can tailor the protection modes to his or her liking with the umask.  
+<p>
+In the examples that follow, I'm not going to make the system call, but simply use the
+<b>umask</b> command, which does the same thing, but in the current shell.  If I type
+<tt>umask</tt> into my shell, then it will tell me the current umask, in octal:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>umask</b></font>
+22
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; f1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>umask 0</b></font>
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; f2.txt</b></font>
+UNIX&gt; <font color="darkred"><b>umask 77</b></font>
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; f3.txt</b></font>
+UNIX&gt; <font color="darkred"><b>umask 777 </b></font>
+UNIX&gt; <font color="darkred"><b>echo "Hi" &gt; f4.txt</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l f?.txt</b></font>
+-rw-r--r--. 1 plank loci 3 Feb 13 09:53 f1.txt
+-rw-rw-rw-. 1 plank loci 3 Feb 13 09:53 f2.txt
+-rw-------. 1 plank loci 3 Feb 13 09:53 f3.txt
+----------. 1 plank loci 3 Feb 13 09:54 f4.txt
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+The shell, when it opens a file for output redirection, uses a mode of 0666.  As you can 
+see from above:
+
+<ul>
+<li> When my umask is 022, then the "group" and "world" write bits are turned off, so the file has a protection mode of 0644.
+</li><li> When my umask is 0, then no bits are turned off, and the file has a protection mode of 0666.
+</li><li> When my umask is 077, then all of the group and world bits are turned off, so the file has a protection mode of 0600.
+</li><li> When my umask is 0777, then all nine bits, so the file has a protection mode of 0000.  You'll note, that I was still allowed to write "Hi" into it, because the <b>open()</b> call gave me a legal
+file descriptor for writing.  It's just that no other process can now open the file.
+</li></ul>
+
+The same thing is true of directories:
+
+<pre>UNIX&gt; <font color="darkred"><b>rm -rf f?.txt</b></font>
+UNIX&gt; <font color="darkred"><b>umask 22</b></font>
+UNIX&gt; <font color="darkred"><b>mkdir d1</b></font>
+UNIX&gt; <font color="darkred"><b>umask 0</b></font>
+UNIX&gt; <font color="darkred"><b>mkdir d2</b></font>
+UNIX&gt; <font color="darkred"><b>umask 077</b></font>
+UNIX&gt; <font color="darkred"><b>mkdir d3</b></font>
+UNIX&gt; <font color="darkred"><b>umask 0777</b></font>
+UNIX&gt; <font color="darkred"><b>mkdir d4</b></font>
+UNIX&gt; <font color="darkred"><b>ls -l | grep 'd.$'</b></font>
+drwxr-xr-x. 2 plank loci     6 Feb 13 09:59 d1
+drwxrwxrwx. 2 plank loci     6 Feb 13 09:59 d2
+drwx------. 2 plank loci     6 Feb 13 09:59 d3
+d---------. 2 plank loci     6 Feb 13 10:00 d4
+UNIX&gt; <font color="darkred"><b>rm -rf d?</b></font>
+UNIX&gt; <font color="darkred"><b>umask 22</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+You'll note, in the <b>umask</b> command, I don't need to include the initial 0 -- it interprets
+its argument in octal.  In the system call, you should specify octal.
+
+<hr>
+<h2>Random File/Inode System calls.</h2>
+
+These are sketchy because they are straightforward.
+
+<p><b>chmod(char *path, mode_t mode)</b>  -- Works just like chmod when executed from
+the shell.  E.g.   <b>chmod("f1", 0600)</b>  will set the protection of
+file <b>f1</b> to be "rw-" for you, and "---" for everyone else.
+</p><p>
+The man page for <b>chmod()</b> -- "man -s 2 chmod" shows you a bunch of 
+<b>#define's</b> from <b>&lt;sys/stat.h&gt;</b> that are useful for accessing
+individual bits from the mode.
+</p><p>
+Quiz yourself on your understanding of how <b>open()</b> and <b>chmod()</b> interact.
+Compile and run 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Umask-And-Others/o1.c">o1.c</a></b>
+
+</p><p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  int fd;
+
+  printf("Opening the file:\n");
+  fd = open("f1.txt", O_WRONLY | O_CREAT | O_TRUNC);
+  sleep(1);
+
+  printf("Doing chmod\n");
+  chmod("f1.txt", 0000);
+  sleep(1);
+
+  printf("Doing write\n");
+  write(fd, "Hi\n", 3);
+
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./o1</b></font>
+Opening the file:
+Doing chmod
+Doing write
+UNIX&gt; <font color="darkred"><b>ls -l f1.txt</b></font>
+<font color="blue">What will this show as the protection mode and the size of the file?</font>
+UNIX&gt; <font color="darkred"><b>cat f1.txt</b></font>
+<font color="blue">What will this do?</font>
+UNIX&gt;
+</pre>
+
+The answers are as follows:
+
+<pre>UNIX&gt; <font color="darkred"><b>ls -l f1.txt</b></font>
+----------. 1 plank loci 3 Feb 13 10:07 f1.txt
+UNIX&gt;
+</pre>
+
+The file descriptor is a valid file descriptor for writing.  The <b>chmod()</b> command did 
+not do anything to the open file, so the process can successfully write with it.  That is 
+why the file's size is three, and not zero.  The protection mode, of course, was changed
+by the <b>chmod</b> command.
+
+<pre>UNIX&gt; <font color="darkred"><b>cat f1.txt</b></font>
+cat: f1.txt: Permission denied
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+Since the protection mode was "---------", the <b>cat</b> program received an error when it
+tried to open the file (most likely with <b>fopen()</b>, which calls <b>open()</b>).
+<p>
+
+
+Suppose we run <b>o1</b> again:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>o1</b></font>
+Opening the file:
+Doing chmod
+Doing write
+UNIX&gt; <font color="darkred"><b>ls -l f1.txt</b></font>
+----------. 1 plank loci 3 Feb 13 10:07 f1.txt
+UNIX&gt;
+</pre>
+
+You'll note that the modification time of <b>f1.txt</b> has not changed.  This is because
+the <b>open()</b> call failed and return -1.  The file was not truncated or modified in 
+any way.  That's why the modification time is unchanged.  The <b>chmod()</b> command succeeded,
+but the <b>write()</b> system call was given a file descriptor of -1, so it failed too.
+<p>
+Let's kill that file:
+</p><pre>UNIX&gt; <font color="darkred"><b>rm -f f1.txt</b></font>
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+<hr>
+<p><b>link, unlink, remove, rename</b>:  
+
+These are straightforward: <b> link(char *f1, char *f2)</b> works just like:
+</p><pre>UNIX&gt; <font color="darkred"><b>ln f1 f2</b></font>
+</pre>
+<b>f2</b> has to be a file -- it cannot be a directory.
+<p>
+<b>unlink(char *f1)</b> works like:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>rm f1</b></font>
+</pre>
+
+<b>remove(char *f1)</b> works like <b>unlink()</b>, but it also works for (empty) 
+                    directories.  <b>Unlink()</b> fails on directories.  Take a look 
+at 
+<b><a href="http://web.eecs.utk.edu/~jplank/plank/classes/cs360/360/notes/Umask-And-Others/o2.c">o2.c</a></b>:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;unistd.h&gt;
+
+int main()
+{
+  int fd;
+  char s[11];
+  int i;
+
+<font color="blue">  printf("Opening f1.txt and putting \"Fun Fun\" into s.\n");</font>
+  strcpy(s, "Fun Fun\n");
+  fd = open("f1.txt", O_RDONLY);
+  sleep(1);
+
+<font color="blue">  printf("Removing f1.txt\n");</font>
+  remove("f1.txt");
+  sleep(1);
+
+<font color="blue">  printf("Listing f1.txt, and reading 10 bytes from the open file descriptor.\n");</font>
+  system("ls -l f1.txt");
+  i = read(fd, s, 10);
+  s[i] = '\0';
+<font color="blue">  printf("Read returned %d: %d %s\n", i, fd, s);</font>
+  return 0;
+}
+</pre></td></tr></tbody></table></center><p>
+
+This program opens <b>f1.txt</b> for reading, sleeps a second, and then removes <b>f1.txt</b>.
+It sleeps again, performs a long listing and then tries to read 10 bytes from the open file.
+The question is -- what happens when we remove <b>f1.txt</b>?  Will the read call succeed,
+or fail because the file is gone?
+
+</p><pre>UNIX&gt; <font color="darkred"><b>rm -f f1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>echo "Jim Plank" &gt; f1.txt</b></font>
+UNIX&gt; <font color="darkred"><b>./o2</b></font>
+Opening f1.txt and putting "Fun Fun" into s.
+Removing f1.txt
+Listing f1.txt, and reading 10 bytes from the open file descriptor.
+ls: cannot access f1.txt: No such file or directory
+Read returned 10: 3 Jim Plank
+
+UNIX&gt; <font color="darkred"><b></b></font>
+</pre>
+
+
+The <b>ls</b> command shows that <b>f1.txt</b> is indeed gone after the <b>remove()</b> call.
+However, the operating system does not delete the file until the last file descriptor to 
+it is closed.  For that reason, the <b>read()</b> call succeeds.
+<p>
+Try <b>o2</b> again -- since <b>f1.txt</b> was removed, it does not exist now:
+
+</p><pre>UNIX&gt; <font color="darkred"><b>./o2</b></font>
+Opening f1.txt and putting "Fun Fun" into s.
+Removing f1.txt
+Listing f1.txt, and reading 10 bytes from the open file descriptor.
+ls: cannot access f1.txt: No such file or directory
+Read returned -1: -1 Fun Fun
+
+UNIX&gt;
+</pre>
+
+What happened?  First, the <b>open()</b> call failed and returned -1. 
+Thus, the <b>read()</b> call also failed and returned -1.  Since the <b>read</b>
+call failed, the bytes of <b>s</b> were never overwritten - thus when we printed
+them out, we got "Fun Fun."  Make sure you understand this code and its output.
+It is deterministic -- we are not getting segmentation violations or random behavior
+with these calls -- we are simply getting well-defined errors in our  system calls.
+
+<p>
+</p><hr>
+<b>rename(char *f1, char *f2) </b> works just like:
+
+<pre>UNIX&gt; <font color="darkred"><b>mv f1 f2</b></font>
+</pre>
+
+<hr>
+<b>symlink</b> and <b>readlink</b>:  These routines mess with
+          symbolic links.  You will need them in your <b>jtar</b> assignment.
+          Go ahead and read the man pages for these.
+
+<hr>
+<b>mkdir</b> and <b>rmdir</b>:  Again straightforward, and like:
+
+<pre>UNIX&gt; <font color="darkred"><b>mkdir ...</b></font>
+UNIX&gt; <font color="darkred"><b>rmdir ...</b></font>
+</pre>
+
+Read the man pages.
+
+<hr>
+<b>utime</b>:  This system call lets you change the time
+fields of a file's inode.  It looks like it should
+be illegal (for example, one could write a program to make it look
+like one has finished his homework on time...), but it is very 
+handy, especially for writing <b>tar</b> (and <b>jtar</b>).  As always,
+read the man page.  When working with time values, you need to be aware of
+a few data structures:
+
+<ul>
+<li> <b>time_t</b>: This is a <b>long</b>, which contains the number of seconds since
+    time began (January 1, 1970).  The <b>time()</b> system call returns the current
+    time on your machine as a <b>time_t</b>.  Call it with <b>time(0)</b>.
+<p>
+</p></li><li> <b>struct timeval</b>.  This has the following definition:
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>struct timeval {
+    long tv_sec;        <font color="blue">/* seconds */</font>
+    long tv_usec;       <font color="blue">/* microseconds */</font>
+};
+</pre></td></tr></tbody></table></center><p>
+These give you a finer resolution.  You can get the current time with this resolution
+by calling <b>gettimeofday()</b>.
+</p><p>
+</p></li><li> <b>struct tm</b>.  This one has the following definition:
+
+<p></p><center><table border="3" cellpadding="3"><tbody><tr><td><pre>struct tm {
+    int tm_sec;         <font color="blue">/* seconds */</font>
+    int tm_min;         <font color="blue">/* minutes */</font>
+    int tm_hour;        <font color="blue">/* hours */</font>
+    int tm_mday;        <font color="blue">/* day of the month */</font>
+    int tm_mon;         <font color="blue">/* month */</font>
+    int tm_year;        <font color="blue">/* year */</font>
+    int tm_wday;        <font color="blue">/* day of the week */</font>
+    int tm_yday;        <font color="blue">/* day in the year */</font>
+    int tm_isdst;       <font color="blue">/* daylight saving time */</font>
+};
+</pre></td></tr></tbody></table></center><p>
+</p></li></ul>
+
+Do <tt>"man ctime"</tt> to see a list of procedures that convert between <b>time_t</b> data
+types, <b>struct tm</b> data types and strings.  Useful ones are <b>ctime()</b>, <b>localtime()</b>,
+<b>mktime()</b> (which is really useful when you want to, say, subtract a year from the current
+time), <b>strftime()</b>.  
+
+<hr>
+<b>chdir, getcwd</b>:  These are like the shell commands <b>cd</b> and <b>pwd</b>.
+
+You will not need these for <b>jtar</b>, but can use them if you'd like.
+</body></html>
