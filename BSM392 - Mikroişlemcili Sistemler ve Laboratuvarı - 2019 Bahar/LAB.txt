@@ -1,0 +1,13 @@
+P butonu
+And -> 7408
+OR -> 7432
+Multiplexer ->
+Switch -> sw-spdt-mom
+direnç -> RES
+LED
+NOT
+Terminals Mode
+3 011
+4 100
+5 101
+6 110

@@ -1,0 +1,35 @@
+ÖğrenciNo: G171210021
+1. Öğrenci tipinde kullanılacaktır. (21)
+
+Merkez İç Ağ:192.168.x.0 = 192.168.21.0
+			 192.168.x1.0 = 192.168.22.0
+Şube1 İç Ağ: 192.168.x2.0 = 192.168.23.0
+Şube2 İç Ağ: 192.168.x3.0 = 192.168.24.0
+Şube3 İç Ağ: 192.168.x4.0 = 192.168.25.0
+Merkez - Şube1: 200.10.x.0 = 200.10.21.0
+Merkez - Şube2: 200.20.x1.0 = 200.20.22.0
+Şube2-Şube3: 200.30.x2.0 = 200.30.23.0
+Şube1-Şube3: 200.40.x3.0 = 200.10.24.0
+
+Alt ağ planlaması
+Şube3 için alt ağ - VLAN ataması gerçekleştir.
+Diğerleri için ağ maskeleri 255.255.255.0 olarak alınacaktır.
+VLAN10: 192.168.25.0 -> 192.168.25.VLAN10
+VLAN20: 192.168.25.0 -> 192.168.25.VLAN20
+VLAN30: 192.168.25.0 -> 192.168.25.VLAN30
+VLAN40: 192.168.25.0 -> 192.168.25.VLAN40
+
+Packet Tracer ile yapılacak.
+Tüm IP adres atamaları(Router,Switch, PC) Tablo1'e göre yapılacaktır.
+Şube 3 İç Ağ Alt Ağ adrsleme ve VLAN ataması Tablo2'ye göre.
+Packet Tracer'de SW olarak 2950T serisi, yönlendirici(router) olarak 2620xm serisi kullanılabilir.
+Yönlendiriciler üzerinde OSPF configuration yapılacak. Alan bilgileri topoloji üstünde verilmiş.
+
+Şube3 İç ağında VLAN config için:
+-Tüm VLAN'lar kendi içinde haberleşecektir.
+Örn: SW2'ye bağlı VLAN10'daki pc ile SW3'e bağlı VLAN10'daki pc mesajlaşabilir.
+-VLAN10'daki pc ile VLAN30'daki pcler(SW3 ve SW4) birbirleriyle VLAN'lar arası haberleşme yapabilir.
+Diğer VLAN'lar arasında bir iletişim istenmemekte.
+
+Erişim denetim listesi kuralları:
+-Merkez LAN'daki A bilgisayarı Şube1'in İç ağındaki tüm bilgisayarlara (H,I,J,K) erişebilirken B bilgisayarı Şube1'in iç ağındaki hiçbir bilgisayara erişemez. Standart erişim listesi konfigurasyonu yapılacaktır.

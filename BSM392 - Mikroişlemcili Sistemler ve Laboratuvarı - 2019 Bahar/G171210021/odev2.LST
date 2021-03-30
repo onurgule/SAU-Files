@@ -1,0 +1,100 @@
+A51 MACRO ASSEMBLER  ODEV2                                                                04/11/2020 04:58:05 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN odev2.OBJ
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.exe ..\..\..\..\..\..\..\Desktop\SAU CSE 3X2\Mikro\Proje2\odev2.ASM DEBUG S
+                      YMBOLS OBJECT(odev2.OBJ) 
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0H
+0000 2090FD            2     BUTTON: JB P1.0,BUTTON
+0003 8000              3     SJMP ANA
+0005 758901            4     ANA: MOV TMOD, #01H
+0008 758C0F            5     MOV TH0,#00Fh
+000B 758A0F            6     MOV TL0,#00Fh
+000E D28C              7     SETB TR0
+0010                   8     DEVAM:
+0010 7B0A              9     MOV R3,#0AH
+0012 7C0F             10     MOV R4,#0FH
+0014                  11     DONGU: 
+0014 308DFD           12     BEKLE: JNB TF0,BEKLE
+0017 C28D             13     CLR TF0 ; BURADA DISPLAY KAPALI ÝKEN 1 SANÝYE BEKLEME
+0019 B2B5             14     CPL P3.5
+001B DBF7             15     DJNZ R3,DONGU
+                      16     
+001D                  17     AD:     
+001D B2B4             18     CPL P3.4
+001F C291             19             CLR P1.1
+0021 C292             20             CLR P1.2
+0023 C296             21             CLR P1.6
+0025 C2A3             22             CLR P2.3         
+0027 D2A3             23             SETB P2.3
+0029 D291             24             SETB P1.1
+002B D292             25             SETB P1.2
+002D D296             26             SETB P1.6
+002F 8000             27             SJMP SOYAD
+0031                  28     SOYAD:  
+0031 C292             29             CLR P1.2
+0033 C297             30             CLR P1.7
+0035 C2A2             31             CLR P2.2
+0037 D2A2             32             SETB P2.2
+0039 D292             33             SETB P1.2
+003B D297             34             SETB P1.7
+003D 8000             35             SJMP OGRENIM
+003F                  36     OGRENIM:        
+003F C293             37             CLR P1.3
+0041 C296             38             CLR P1.6
+0043 C2A1             39             CLR P2.1
+0045 D2A1             40             SETB P2.1
+0047 D293             41             SETB P1.3
+0049 D296             42             SETB P1.6
+004B 8000             43             SJMP GRUP
+004D                  44     GRUP:   
+004D C296             45             CLR P1.6
+004F C2A0             46             CLR P2.0
+0051 D2A0             47             SETB P2.0
+0053 D296             48             SETB P1.6
+0055 B2B3             49             CPL  P3.3
+0057 8000             50     SJMP BEKLE2
+0059                  51              DONGU1: 
+0059 308DC1           52              BEKLE2: JNB TF0,AD
+005C C28D             53              CLR TF0 ;BURADA DISPLAY ÇALIÞIRKEN 1 SANIYE
+005E DCF9             54              DJNZ R4,DONGU1
+0060 80AE             55              SJMP DEVAM
+*** WARNING #A41 IN 55 (..\..\..\..\..\..\..\Desktop\SAU CSE 3X2\Mikro\Proje2\odev2.ASM, LINE 55): MISSING 'END' STATEME
+                             NT
+A51 MACRO ASSEMBLER  ODEV2                                                                04/11/2020 04:58:05 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+AD . . . . . . . .  C ADDR   001DH   A   
+ANA. . . . . . . .  C ADDR   0005H   A   
+BEKLE. . . . . . .  C ADDR   0014H   A   
+BEKLE2 . . . . . .  C ADDR   0059H   A   
+BUTTON . . . . . .  C ADDR   0000H   A   
+DEVAM. . . . . . .  C ADDR   0010H   A   
+DONGU. . . . . . .  C ADDR   0014H   A   
+DONGU1 . . . . . .  C ADDR   0059H   A   
+GRUP . . . . . . .  C ADDR   004DH   A   
+OGRENIM. . . . . .  C ADDR   003FH   A   
+P1 . . . . . . . .  D ADDR   0090H   A   
+P2 . . . . . . . .  D ADDR   00A0H   A   
+P3 . . . . . . . .  D ADDR   00B0H   A   
+SOYAD. . . . . . .  C ADDR   0031H   A   
+TF0. . . . . . . .  B ADDR   0088H.5 A   
+TH0. . . . . . . .  D ADDR   008CH   A   
+TL0. . . . . . . .  D ADDR   008AH   A   
+TMOD . . . . . . .  D ADDR   0089H   A   
+TR0. . . . . . . .  B ADDR   0088H.4 A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  1 WARNING(S), 0 ERROR(S)

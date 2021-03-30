@@ -1,0 +1,7 @@
+AT89C51RC2
+STARTUP dosyası hayır olabilir.
+dosyalar .asm olacak.
+c dilinde olursa .c olacaktır. ama genelce .asm kullanılacak.
+Rebuild derler.
+F11->adım adım
+CTRL+F10 -> direk işlemi göster.

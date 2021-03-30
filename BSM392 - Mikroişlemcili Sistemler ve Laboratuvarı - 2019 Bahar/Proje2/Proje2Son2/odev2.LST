@@ -1,0 +1,79 @@
+A51 MACRO ASSEMBLER  ODEV2                                                                04/18/2020 04:18:48 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN odev2.OBJ
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.exe ..\..\..\..\..\..\..\Desktop\SAU CSE 3X2\Mikro\Proje2\odev2.ASM OBJECT(
+                      odev2.OBJ) 
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0H
+0000 2090FD            2     BUTTON: JB P1.0,BUTTON
+0003 758901            3     MOV TMOD, #01H
+0006 758C0F            4     MOV TH0,#00Fh
+0009 758A0F            5     MOV TL0,#00Fh
+000C                   6     ANA:
+000C D28C              7     SETB TR0
+000E 7B0D              8     MOV R3,#0DH
+0010 7C0D              9     MOV R4,#0DH
+0012 308D06           10              BEKLE: JNB TF0,AD
+0015 C28D             11              CLR TF0 ;BURADA DISPLAY ÇALIÞIRKEN 1 SANIYE
+0017 DCF9             12              DJNZ R4,BEKLE
+0019 8030             13     SJMP DEVAM
+001B B2B4             14     AD:  CPL P3.4
+001D C291             15             CLR P1.1
+001F C292             16             CLR P1.2
+0021 C296             17             CLR P1.6
+0023 C2A3             18             CLR P2.3         
+0025 D2A3             19             SETB P2.3
+0027 7590FF           20             MOV P1,#0FFH
+002A C292             21             CLR P1.2
+002C C297             22             CLR P1.7
+002E C2A2             23             CLR P2.2
+0030 D2A2             24             SETB P2.2
+0032 7590FF           25             MOV P1,#0FFH
+0035 C293             26             CLR P1.3
+0037 C296             27             CLR P1.6
+0039 C2A1             28             CLR P2.1
+003B D2A1             29             SETB P2.1
+003D 7590FF           30             MOV P1,#0FFH
+0040 C296             31             CLR P1.6
+0042 C2A0             32             CLR P2.0
+0044 D2A0             33             SETB P2.0
+0046 7590FF           34             MOV P1,#0FFH
+0049 80C7             35             SJMP BEKLE
+004B 308DFD           36     DEVAM: JNB TF0,DEVAM
+004E C28D             37     CLR TF0 ; BURADA DISPLAY KAPALI ÝKEN 1 SANÝYE BEKLEME
+0050 B2B5             38     CPL P3.5
+0052 DBF7             39     DJNZ R3,DEVAM
+0054 80B6             40     SJMP ANA
+*** WARNING #A41 IN 40 (..\..\..\..\..\..\..\Desktop\SAU CSE 3X2\Mikro\Proje2\odev2.ASM, LINE 40): MISSING 'END' STATEME
+                             NT
+A51 MACRO ASSEMBLER  ODEV2                                                                04/18/2020 04:18:48 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+AD . . . . . . . .  C ADDR   001BH   A   
+ANA. . . . . . . .  C ADDR   000CH   A   
+BEKLE. . . . . . .  C ADDR   0012H   A   
+BUTTON . . . . . .  C ADDR   0000H   A   
+DEVAM. . . . . . .  C ADDR   004BH   A   
+P1 . . . . . . . .  D ADDR   0090H   A   
+P2 . . . . . . . .  D ADDR   00A0H   A   
+P3 . . . . . . . .  D ADDR   00B0H   A   
+TF0. . . . . . . .  B ADDR   0088H.5 A   
+TH0. . . . . . . .  D ADDR   008CH   A   
+TL0. . . . . . . .  D ADDR   008AH   A   
+TMOD . . . . . . .  D ADDR   0089H   A   
+TR0. . . . . . . .  B ADDR   0088H.4 A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  1 WARNING(S), 0 ERROR(S)

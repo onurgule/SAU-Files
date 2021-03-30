@@ -1,0 +1,3 @@
+".\Objects\sinus.obj" 
+TO ".\Objects\sinus" 
+PRINT(".\Listings\sinus.m51") RAMSIZE(256) 

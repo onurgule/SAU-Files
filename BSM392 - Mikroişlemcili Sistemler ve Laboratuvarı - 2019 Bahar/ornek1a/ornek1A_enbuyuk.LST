@@ -1,0 +1,120 @@
+A51 MACRO ASSEMBLER  ORNEK1A_ENBUYUK                                                      04/04/2018 10:11:33 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.02
+OBJECT MODULE PLACED IN ornek1A_enbuyuk.OBJ
+ASSEMBLER INVOKED BY: C:\Keil_v5\C51\BIN\A51.EXE ornek1A_enbuyuk.asm SET(SMALL) DEBUG EP
+
+LOC  OBJ            LINE     SOURCE
+
+                       1     ;20h ile 40h arasindaki verilerden 
+                       2     ;a. en büyügünü bulan 41h adresine 
+                       3     ;b. en büyügünün tekrarlama sayisini 42h adresine 
+                       4     ;c. bu en büyük elemanin bulundugu adresleri de 
+                       5     ;50h adresinden itibaren yeni bir diziye yazan program
+0000                   6     org 0000h
+0000 802E              7             sjmp basla
+0030                   8     org 0030h
+0030                   9     basla:
+0030 752000           10             MOV 20H,#00H
+0033 752106           11             MOV 21H,#06H
+0036 752205           12             MOV 22H,#05H
+0039 752306           13             MOV 23H,#06H
+003C 752405           14             MOV 24H,#05H
+003F 752506           15             MOV 25H,#06H
+0042 752606           16             MOV 26H,#06H
+0045 752705           17             MOV 27H,#05H
+0048 752806           18             MOV 28H,#06H
+004B 753106           19             MOV 31H,#06H
+004E 753208           20             MOV 32H,#08H
+0051 753308           21             MOV 33H,#08H
+0054 753405           22             MOV 34H,#05H
+0057 753508           23             MOV 35H,#08H
+005A 753608           24             MOV 36H,#08H
+005D 753708           25             MOV 37H,#08H
+0060 753806           26             MOV 38H,#06H
+0063 753905           27             MOV 39H,#05H
+0066 852041           28             mov 41h,20h ;dizinin ilk elemanini en buyuk kabul ettim
+0069 7821             29             mov r0,#21h ;dizinin indisini atadim
+006B 754201           30             mov 42h,#01h ;en büyük en az bir adet var
+006E 7950             31             mov r1,#50h ;yeni dizi indisi
+0070                  32     tekrar:
+0070 E6               33             mov a,@r0
+0071 B54107           34             cjne a,41h,esitdegil
+                      35             ;esit bölgesi
+0074 0542             36             inc 42h ;en büyük frekansini bir artirdim
+0076 09               37             inc r1
+0077 A700             38             mov @r1,00h ;r0 yazamadigimiz icin 00h yazdim
+0079 800B             39             sjmp dongukontrol
+007B                  40     esitdegil:
+007B 4009             41             jc dongukontrol
+                      42             ;yeni sayinin büyük oldugu bolge
+007D F541             43             mov 41h,a ;yeni büyük sayiyi 41h a atadim
+007F 754201           44             mov 42h,#01h ;yeni en büyük bulundugu için frekans resetle
+0082 8850             45             mov 50h,r0
+0084 7950             46             mov r1,#50h
+0086                  47     dongukontrol:
+0086 08               48             inc r0  ;bir sonraki döngüye hazirlik
+0087 B841E6           49             cjne r0,#41h,tekrar      ;dongu sonu kontrolü
+                      50     
+                      51     ;en büyük elemanin frekansini bulma
+                      52     
+                      53     
+                      54     
+                      55     
+                      56     
+                      57     
+                      58     
+A51 MACRO ASSEMBLER  ORNEK1A_ENBUYUK                                                      04/04/2018 10:11:33 PAGE     2
+
+                      59     
+                      60     
+                      61     
+                      62     ;dizi içinde en büyük elemanlarin indislerini 50h itibaren yazma.
+                      63     
+                      64     
+                      65     
+                      66     
+                      67     
+                      68     
+                      69     
+                      70     
+                      71     
+                      72     
+                      73     
+                      74     
+                      75     
+                      76     
+                      77     
+                      78             end
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+A51 MACRO ASSEMBLER  ORNEK1A_ENBUYUK                                                      04/04/2018 10:11:33 PAGE     3
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+BASLA. . . . . . .  C ADDR   0030H   A   
+DONGUKONTROL . . .  C ADDR   0086H   A   
+ESITDEGIL. . . . .  C ADDR   007BH   A   
+TEKRAR . . . . . .  C ADDR   0070H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

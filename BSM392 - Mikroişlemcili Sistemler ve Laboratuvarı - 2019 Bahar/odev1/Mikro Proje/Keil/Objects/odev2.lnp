@@ -1,0 +1,3 @@
+".\Objects\uyg.obj" 
+TO ".\Objects\odev2" 
+PRINT(".\Listings\odev2.m51") RAMSIZE(256) 

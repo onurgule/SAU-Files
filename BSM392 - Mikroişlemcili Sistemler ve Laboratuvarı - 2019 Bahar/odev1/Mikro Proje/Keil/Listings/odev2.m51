@@ -1,0 +1,105 @@
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                    04/16/2020  20:10:24  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22.2.0, INVOKED BY:
+C:\KEIL_V5\C51\BIN\BL51.EXE .\Objects\uyg.obj TO .\Objects\odev2 PRINT (.\Listings\odev2.m51) RAMSIZE (256)
+
+
+INPUT MODULES INCLUDED:
+  .\Objects\uyg.obj (UYG)
+
+
+LINK MAP OF MODULE:  .\Objects\odev2 (UYG)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     009BH     ABSOLUTE     
+
+
+
+SYMBOL TABLE OF MODULE:  .\Objects\odev2 (UYG)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        UYG
+  C:003CH         SYMBOL        BASLA
+  C:0030H         SYMBOL        GIRIS
+  C:008FH         SYMBOL        KONTROL
+  C:004CH         SYMBOL        KUR
+  D:0090H         SYMBOL        P1
+  D:00A0H         SYMBOL        P2
+  D:00B0H         SYMBOL        P3
+  C:0041H         SYMBOL        SAY
+  C:003AH         SYMBOL        SIFIRLA
+  C:0033H         SYMBOL        TETIKLE
+  B:0088H.5       SYMBOL        TF0
+  D:008CH         SYMBOL        TH0
+  D:008AH         SYMBOL        TL0
+  D:0089H         SYMBOL        TMOD
+  B:0088H.4       SYMBOL        TR0
+  C:0000H         LINE#         4
+  C:0030H         LINE#         6
+  C:0033H         LINE#         7
+  C:0036H         LINE#         8
+  C:0038H         LINE#         9
+  C:003AH         LINE#         10
+  C:003CH         LINE#         11
+  C:003EH         LINE#         12
+  C:0041H         LINE#         13
+  C:0044H         LINE#         14
+  C:0047H         LINE#         15
+  C:0049H         LINE#         17
+  C:004CH         LINE#         19
+  C:004FH         LINE#         20
+  C:0051H         LINE#         21
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  04/16/2020  20:10:24  PAGE 2
+
+
+  C:0053H         LINE#         22
+  C:0055H         LINE#         23
+  C:0057H         LINE#         24
+  C:0059H         LINE#         25
+  C:005BH         LINE#         26
+  C:005EH         LINE#         27
+  C:0060H         LINE#         29
+  C:0062H         LINE#         30
+  C:0064H         LINE#         31
+  C:0066H         LINE#         32
+  C:0068H         LINE#         33
+  C:006AH         LINE#         34
+  C:006DH         LINE#         35
+  C:006FH         LINE#         38
+  C:0071H         LINE#         39
+  C:0073H         LINE#         40
+  C:0075H         LINE#         41
+  C:0078H         LINE#         42
+  C:007AH         LINE#         44
+  C:007CH         LINE#         45
+  C:007EH         LINE#         46
+  C:0080H         LINE#         47
+  C:0082H         LINE#         48
+  C:0084H         LINE#         49
+  C:0086H         LINE#         50
+  C:0088H         LINE#         51
+  C:008BH         LINE#         52
+  C:008DH         LINE#         53
+  C:008FH         LINE#         55
+  C:0092H         LINE#         56
+  C:0094H         LINE#         57
+  C:0096H         LINE#         58
+  C:0099H         LINE#         59
+  -------         ENDMOD        UYG
+
+******************************************************************************
+* RESTRICTED VERSION WITH 0800H BYTE CODE SIZE LIMIT; USED: 006DH BYTE ( 5%) *
+******************************************************************************
+
+Program Size: data=8.0 xdata=0 code=155
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

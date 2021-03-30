@@ -1,0 +1,30 @@
+Soru : 131.160.0.0 bu IP adresini en az 30 tane alt aða bölmek istiyoruz...
+
+Cevap :
+
+a) Subnet için en az kaç bit gerekir ?
+cevap: 2^5-2=30 olduðundan 5 bit yeterli...
+
+Bu IP adresi bir B sýnýfýna ait.
+B sýnýfýnda 16 bit að numarasý için kullanýlýr.Geriye kalan 16 bitin 5 bitini altað için 
+kullandýk dolayýsýyla host tarafý için 11 bit kullanýlacak...
+131.160.00000|000.00000000 --> 5 bit subnet için 11 bit de host için kullanýldý.
+
+b) Ýlk alt aðý adresi ne olur ?
+cevap : 131.160.00001|000.00000000 = 131.160.8.0 
+
+c) Tüm alt aðlar için maske ne olur ?
+cevap : host dýþýnda kalan diðer tüm bitler 1 yapýlýrsa maske bulunur.
+        255.255.11111|000.00000000 = 255.255.248.0
+
+d) Ýlk alt aða baðlanan son hostun adresi ne olur ?
+cevap : 131.160.00001|111.11111110 = 131.160.15.254
+
+e) Son alt aðýn adresi ne olur ? 
+cevap : 131.160.11110|000.00000000 = 131.160.240.0
+
+f) Son alt aða baðlanan son hostun adresi ne olur ? 
+cevap : 131.160.11110|111.11111110 = 131.160.247.254
+
+g) Her alt aða kaç tane host baðlanabilir ? 
+cevap : 2^11-2=2046 tane host baðlanabilir.

@@ -1,0 +1,20 @@
+;öğrenim türü yazdırma:2:
+	CLR P1.3
+	CLR P1.6
+	CLR P2.1
+	SETB P2.1
+	SETB P1.3
+	SETB P1.6
+; grup adı yazdırma: a:
+	CLR P1.6
+	CLR P2.0
+	SETB P2.0
+	SETB P1.6
+	
+;M ve o yu da yapacaksın.
+
+;Daha sonradan Timer-0 kullanman gerek saniyede 1 açma ve kapama için:
+MOV TMOD, #01H ;TIMER 0 MOD 1 ayarlanır.
+MOV TH0,#00Fh ;TIMER yüksek değerli bit ayarlanır.
+MOV TL0,#00Fh ;TIMER düşük değerli bit ayarlanır.
+;yazdığın kodlara göre bunun 1 saniye olmasını hesaplaman ve ona göre bir döngü içinde bekletmen gerekiyor.

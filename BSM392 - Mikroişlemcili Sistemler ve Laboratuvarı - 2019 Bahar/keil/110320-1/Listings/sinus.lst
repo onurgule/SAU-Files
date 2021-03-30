@@ -1,0 +1,47 @@
+A51 MACRO ASSEMBLER  SINUS                                                                03/11/2020 20:06:55 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\sinus.obj
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.EXE sinus.asm SET(SMALL) DEBUG PRINT(.\Listings\sinus.lst) OBJECT(.\Objects
+                      \sinus.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0000H
+0000 E4                2     CLR A
+0001 900050            3     UP: MOV DPTR,#SINE
+0004 7818              4     MOV R0,#24
+0006 93                5     LABEL: MOVC A,@A+DPTR
+0007 F5B0              6     MOV P3,A
+0009 E4                7     CLR A
+000A A3                8     INC DPTR
+000B D8F9              9     DJNZ R0,LABEL
+000D 80F2             10     SJMP UP
+0050                  11     ORG 050H
+0050                  12     SINE:
+0050 7FA0BFD9         13     DB 127,160,191,217,237,250,255,237,217,191,160,127,94,63,37,17,4,0,4,17,37,63,94,127
+0054 EDFAFFED                
+0058 D9BFA07F                
+005C 5E3F2511                
+0060 04000411                
+0064 253F5E7F                
+                      14     END
+A51 MACRO ASSEMBLER  SINUS                                                                03/11/2020 20:06:55 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+LABEL. . . . . . .  C ADDR   0006H   A   
+P3 . . . . . . . .  D ADDR   00B0H   A   
+SINE . . . . . . .  C ADDR   0050H   A   
+UP . . . . . . . .  C ADDR   0001H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

@@ -1,0 +1,82 @@
+BL51 BANKED LINKER/LOCATER V6.22                                                        04/04/2018  10:11:33  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
+C:\KEIL_V5\C51\BIN\BL51.EXE ornek1A_enbuyuk.obj TO ornek1A_enbuyuk RAMSIZE (256)
+
+
+INPUT MODULES INCLUDED:
+  ornek1A_enbuyuk.obj (ORNEK1A_ENBUYUK)
+
+
+LINK MAP OF MODULE:  ornek1A_enbuyuk (ORNEK1A_ENBUYUK)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     008AH     ABSOLUTE     
+
+
+
+SYMBOL TABLE OF MODULE:  ornek1A_enbuyuk (ORNEK1A_ENBUYUK)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        ORNEK1A_ENBUYUK
+  C:0030H         SYMBOL        BASLA
+  C:0086H         SYMBOL        DONGUKONTROL
+  C:007BH         SYMBOL        ESITDEGIL
+  C:0070H         SYMBOL        TEKRAR
+  C:0000H         LINE#         7
+  C:0030H         LINE#         10
+  C:0033H         LINE#         11
+  C:0036H         LINE#         12
+  C:0039H         LINE#         13
+  C:003CH         LINE#         14
+  C:003FH         LINE#         15
+  C:0042H         LINE#         16
+  C:0045H         LINE#         17
+  C:0048H         LINE#         18
+  C:004BH         LINE#         19
+  C:004EH         LINE#         20
+  C:0051H         LINE#         21
+  C:0054H         LINE#         22
+  C:0057H         LINE#         23
+  C:005AH         LINE#         24
+  C:005DH         LINE#         25
+  C:0060H         LINE#         26
+  C:0063H         LINE#         27
+  C:0066H         LINE#         28
+  C:0069H         LINE#         29
+  C:006BH         LINE#         30
+  C:006EH         LINE#         31
+  C:0070H         LINE#         33
+  C:0071H         LINE#         34
+  C:0074H         LINE#         36
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/04/2018  10:11:33  PAGE 2
+
+
+  C:0076H         LINE#         37
+  C:0077H         LINE#         38
+  C:0079H         LINE#         39
+  C:007BH         LINE#         41
+  C:007DH         LINE#         43
+  C:007FH         LINE#         44
+  C:0082H         LINE#         45
+  C:0084H         LINE#         46
+  C:0086H         LINE#         48
+  C:0087H         LINE#         49
+  -------         ENDMOD        ORNEK1A_ENBUYUK
+
+******************************************************************************
+* RESTRICTED VERSION WITH 0800H BYTE CODE SIZE LIMIT; USED: 005CH BYTE ( 4%) *
+******************************************************************************
+
+Program Size: data=8.0 xdata=0 code=138
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,36 @@
+A51 MACRO ASSEMBLER  DENEME2                                                              03/04/2020 20:02:13 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\deneme2.obj
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.EXE deneme2.asm SET(SMALL) DEBUG PRINT(.\Listings\deneme2.lst) OBJECT(.\Obj
+                      ects\deneme2.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0H
+0000 802E              2     SJMP BASLA
+0030                   3     ORG 30H
+                       4     
+0030 752010            5     BASLA: MOV 20H,#10H
+0033 752112            6     MOV 21H, #12H
+                       7     
+0036 E520              8     MOV A,20H
+0038 2521              9     ADD A,21H
+                      10     
+                      11     END
+A51 MACRO ASSEMBLER  DENEME2                                                              03/04/2020 20:02:13 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+BASLA. . . . . . .  C ADDR   0030H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

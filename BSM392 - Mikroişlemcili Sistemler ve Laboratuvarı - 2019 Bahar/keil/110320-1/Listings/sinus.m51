@@ -1,0 +1,52 @@
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                    03/11/2020  20:06:55  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22.2.0, INVOKED BY:
+D:\KEIL_V5\C51\BIN\BL51.EXE .\Objects\sinus.obj TO .\Objects\sinus PRINT (.\Listings\sinus.m51) RAMSIZE (256)
+
+
+INPUT MODULES INCLUDED:
+  .\Objects\sinus.obj (SINUS)
+
+
+LINK MAP OF MODULE:  .\Objects\sinus (SINUS)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0068H     ABSOLUTE     
+
+
+
+SYMBOL TABLE OF MODULE:  .\Objects\sinus (SINUS)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        SINUS
+  C:0006H         SYMBOL        LABEL
+  D:00B0H         SYMBOL        P3
+  C:0050H         SYMBOL        SINE
+  C:0001H         SYMBOL        UP
+  C:0000H         LINE#         2
+  C:0001H         LINE#         3
+  C:0004H         LINE#         4
+  C:0006H         LINE#         5
+  C:0007H         LINE#         6
+  C:0009H         LINE#         7
+  C:000AH         LINE#         8
+  C:000BH         LINE#         9
+  C:000DH         LINE#         10
+  -------         ENDMOD        SINUS
+
+******************************************************************************
+* RESTRICTED VERSION WITH 0800H BYTE CODE SIZE LIMIT; USED: 0027H BYTE ( 1%) *
+******************************************************************************
+
+Program Size: data=8.0 xdata=0 code=104
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

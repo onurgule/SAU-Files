@@ -1,0 +1,42 @@
+A51 MACRO ASSEMBLER  ODEV2                                                                06/12/2020 09:25:05 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN odev2.OBJ
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.exe ..\..\..\..\..\..\..\Desktop\SAU CSE 3X2\Mikro\Proje2\odev2.ASM OBJECT(
+                      odev2.OBJ) 
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0000H
+0000 802E              2     SJMP BASLA
+0030                   3     ORG 0030H
+0030 7825              4     BASLA: MOV R0, #25H
+0032 E8                5     MOV A, R0
+0033 F9                6     MOV R1, A
+0034 5401              7     KONTROL: ANL A, #01H
+0036 B40101            8     CJNE A, #01H, DEVAM
+0039 0A                9     INC R2
+003A E8               10     DEVAM: MOV A,R0
+003B 03               11     RR A
+003C F8               12     MOV R0,A
+003D B501F4           13     CJNE A, 01H, KONTROL
+0040 E501             14     MOV A,01H
+                      15     END
+A51 MACRO ASSEMBLER  ODEV2                                                                06/12/2020 09:25:05 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+BASLA. . . . . . .  C ADDR   0030H   A   
+DEVAM. . . . . . .  C ADDR   003AH   A   
+KONTROL. . . . . .  C ADDR   0034H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)
