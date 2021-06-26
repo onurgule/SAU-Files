@@ -1,0 +1,11 @@
+﻿  BirimTest.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\BirimTest.cpp(254,2): warning C4002: too many arguments for function-like macro invocation 'ASSERT_NO_THROW'
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\BirimTest.cpp(271,2): warning C4002: too many arguments for function-like macro invocation 'ASSERT_EQ'
+  EntegrasyonTest.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\EntegrasyonTest.cpp(91,2): warning C4002: too many arguments for function-like macro invocation 'ASSERT_NO_THROW'
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\EntegrasyonTest.cpp(185,44): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\EntegrasyonTest.cpp(205,25): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\EntegrasyonTest.cpp(243,18): warning C4244: 'initializing': conversion from '__int64' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\EntegrasyonTest.cpp(261,18): warning C4244: 'initializing': conversion from '__int64' to 'int', possible loss of data
+  Generating Code...
+  EkonometreTest.vcxproj -> C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\x64\Debug\EkonometreTest.exe

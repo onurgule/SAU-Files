@@ -1,0 +1,5 @@
+{ "Emirler":[
+{ "_id": "6083d99c82183862cf3c4f", "Sembol": "AKBNK", "Islem": "SATIS","Adet": 200},
+{ "_id": "6083d99543ab796362cf3c", "Sembol": "AKSA",  "Islem": "SATIS","Adet": 120},
+{ "_id": "6083d99543abb16362cf3c", "Sembol": "TATGD", "Islem": "ALIS","Adet": 250}
+]}

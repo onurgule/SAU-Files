@@ -1,0 +1,13 @@
+<VirtualHost *:80>
+    ServerName onurgule.com.tr
+
+    RewriteEngine On
+    RewriteCond %{HTTP:Connection} Upgrade [NC]
+    RewriteCond %{HTTP:Upgrade} websocket [NC]
+    RewriteRule /(.*) ws://onurgule.com.tr:8080/$1 [P,L]
+
+    ProxyPreserveHost On
+    ProxyRequests off
+    ProxyPass / http://onurgule.com.tr:8080/
+    ProxyPassReverse / http://onurgule.com.tr:8080/
+</VirtualHost>

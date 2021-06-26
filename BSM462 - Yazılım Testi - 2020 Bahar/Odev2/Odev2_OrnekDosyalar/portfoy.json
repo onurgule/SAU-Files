@@ -1,0 +1,6 @@
+{ "Portfoy":[
+{ "_id": "6083d9954308183862cf3c4f", "Sembol": "AKBNK", "Maliyet": 3.15,"Adet": 200},
+{ "_id": "6083d9954308196362cf3c50", "Sembol": "AKSA",  "Maliyet": 16.25,"Adet": 120},
+{ "_id": "6083d9954308183462cf3c9d", "Sembol": "TATGD", "Maliyet": 8.5,"Adet": 500},
+{ "_id": "6083d1634308183462cf3c9d", "Sembol": "TUPRS", "Maliyet": 86.5,"Adet": 1100}
+]}

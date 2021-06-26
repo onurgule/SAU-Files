@@ -1,0 +1,15 @@
+﻿  Banka.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(55,43): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(65,44): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(76,41): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(104,16): warning C4101: 'm': unreferenced local variable
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(128,16): warning C4101: 'm': unreferenced local variable
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(149,16): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(179,16): warning C4101: 'm': unreferenced local variable
+  Emir.cpp
+  Hisse.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Hisse.cpp(9,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+  main.cpp
+  Portfoy.cpp
+  Generating Code...
+  Ekonometre.vcxproj -> C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\x64\Debug\Ekonometre.exe

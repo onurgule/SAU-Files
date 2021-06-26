@@ -1,0 +1,10 @@
+{
+    "autoload": {
+        "psr-4": {
+            "Flash\\": "src"
+        }
+    },
+    "require": {
+        "cboden/ratchet": "v0.4"
+    }
+}

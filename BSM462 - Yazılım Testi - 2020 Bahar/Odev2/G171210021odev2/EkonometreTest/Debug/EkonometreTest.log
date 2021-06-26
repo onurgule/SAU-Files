@@ -1,0 +1,4 @@
+﻿  BirimTest.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\BirimTest.cpp(254,2): warning C4002: too many arguments for function-like macro invocation 'ASSERT_NO_THROW'
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\EkonometreTest\BirimTest.cpp(271,2): warning C4002: too many arguments for function-like macro invocation 'ASSERT_EQ'
+  EkonometreTest.vcxproj -> C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Debug\EkonometreTest.exe

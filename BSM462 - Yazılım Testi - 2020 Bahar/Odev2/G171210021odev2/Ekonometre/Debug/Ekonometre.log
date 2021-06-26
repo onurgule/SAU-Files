@@ -1,0 +1,15 @@
+﻿  Banka.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(104,16): warning C4101: 'm': unreferenced local variable
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(128,16): warning C4101: 'm': unreferenced local variable
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(179,16): warning C4101: 'm': unreferenced local variable
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(198,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(207,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Banka.cpp(248,23): warning C4018: '<': signed/unsigned mismatch
+  Emir.cpp
+  Hisse.cpp
+C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Hisse.cpp(9,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+  main.cpp
+  Portfoy.cpp
+  Generating Code...
+  LINK : C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Debug\Ekonometre.exe not found or not built by the last incremental link; performing full link
+  Ekonometre.vcxproj -> C:\Users\onurg\Desktop\OKUL\SAU CSE 4X2\Yazılım Testi\G171210021odev2\Ekonometre\Debug\Ekonometre.exe
